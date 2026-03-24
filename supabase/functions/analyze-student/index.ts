@@ -6,6 +6,46 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+async function fetchPdfAsBase64(url: string): Promise<string> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Failed to fetch PDF: ${res.status}`);
+  const buffer = await res.arrayBuffer();
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+function normalizeForMatch(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9àáâãäåæçèéêëìíîïðñòóôõöùúûüýþÿ]/g, "").trim();
+}
+
+function findBestMatch(aiName: string, criteria: any[]): any | null {
+  const norm = normalizeForMatch(aiName);
+  // Exact normalized match
+  let match = criteria.find(c => normalizeForMatch(c.criterium_naam) === norm);
+  if (match) return match;
+  // Substring match
+  match = criteria.find(c => normalizeForMatch(c.criterium_naam).includes(norm) || norm.includes(normalizeForMatch(c.criterium_naam)));
+  if (match) return match;
+  // Word overlap match
+  const aiWords = norm.split(/\s+/).filter(w => w.length > 2);
+  let bestScore = 0;
+  let bestMatch: any = null;
+  for (const c of criteria) {
+    const cWords = normalizeForMatch(c.criterium_naam).split(/\s+/).filter((w: string) => w.length > 2);
+    const overlap = aiWords.filter(w => cWords.some((cw: string) => cw.includes(w) || w.includes(cw))).length;
+    const score = overlap / Math.max(aiWords.length, cWords.length, 1);
+    if (score > bestScore && score >= 0.3) {
+      bestScore = score;
+      bestMatch = c;
+    }
+  }
+  return bestMatch;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -18,17 +58,12 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Fetch project and student data
     const { data: project } = await supabase.from("projects").select("*").eq("id", projectId).single();
     const { data: student } = await supabase.from("students").select("*").eq("id", studentId).single();
 
     if (!project || !student) throw new Error("Project of student niet gevonden");
-    if (!project.opdracht_pdf_url || !project.graderingstabel_pdf_url) {
-      throw new Error("Upload eerst de opdracht en graderingstabel PDFs");
-    }
     if (!student.pdf_url) throw new Error("Student heeft geen PDF");
 
-    // Fetch existing criteria or create from AI
     let { data: existingCriteria } = await supabase
       .from("grading_criteria")
       .select("*")
@@ -36,77 +71,90 @@ serve(async (req) => {
       .order("volgorde", { ascending: true });
 
     const niveau = niveauOverride || (project as any).beoordelingsniveau || "streng";
-    
+
     const niveauInstructies: Record<string, string> = {
-      streng: `Wees zeer kritisch: geef geen hoge scores tenzij het werk echt uitblinkt. Een gemiddelde student scoort rond de 60-65% van het maximum. Benoem concreet wat er mist of beter kan. Wees eerlijk, streng en constructief.`,
-      neutraal: `Beoordeel evenwichtig: benoem zowel sterke punten als verbeterpunten. Een gemiddelde student scoort rond de 65-75% van het maximum. Wees eerlijk en constructief.`,
-      mild: `Beoordeel stimulerend en positief: benadruk wat goed gaat en formuleer verbeterpunten als groeikansen. Een gemiddelde student scoort rond de 70-80% van het maximum. Motiveer de student om verder te groeien.`,
+      streng: `Wees zeer kritisch: geef geen hoge scores tenzij het werk echt uitblinkt. Een gemiddelde student scoort rond de 60-65% van het maximum. Benoem concreet wat er mist of beter kan.`,
+      neutraal: `Beoordeel evenwichtig: benoem zowel sterke punten als verbeterpunten. Een gemiddelde student scoort rond de 65-75% van het maximum.`,
+      mild: `Beoordeel stimulerend en positief: benadruk wat goed gaat en formuleer verbeterpunten als groeikansen. Een gemiddelde student scoort rond de 70-80% van het maximum.`,
     };
 
-    const systemPrompt = `Je bent een ervaren docent aan de lerarenopleiding kleuteronderwijs (bachelor kleuteronderwijs). Je beoordeelt het werk van studenten rechtvaardig, vanuit hoge verwachtingen voor toekomstige kleuterjuffen.
+    // Download PDFs as base64 for multimodal analysis
+    console.log("Downloading PDFs...");
+    const pdfPromises: Promise<string>[] = [];
+    const pdfLabels: string[] = [];
 
-Let specifiek op:
-- Pedagogisch-didactische onderbouwing: Is het werk theoretisch goed onderbouwd? Worden relevante ontwikkelingspsychologische theorieën correct toegepast?
-- Praktijkgerichtheid: Kan de student theorie vertalen naar de kleuterpraktijk? Zijn de voorbeelden en uitwerkingen realistisch en toepasbaar?
-- Taalgebruik en professionaliteit: Is het taalgebruik professioneel, helder en foutloos? Past het bij het niveau van een bacheloropleiding?
-- Reflectief vermogen: Toont de student zelfreflectie en kritisch denkvermogen?
-- Creativiteit en eigenheid: Toont het werk originaliteit of is het oppervlakkig en generiek?
+    if (project.graderingstabel_pdf_url) {
+      pdfPromises.push(fetchPdfAsBase64(project.graderingstabel_pdf_url));
+      pdfLabels.push("graderingstabel");
+    }
+    if (project.opdracht_pdf_url) {
+      pdfPromises.push(fetchPdfAsBase64(project.opdracht_pdf_url));
+      pdfLabels.push("opdracht");
+    }
+    pdfPromises.push(fetchPdfAsBase64(student.pdf_url));
+    pdfLabels.push("student");
+
+    const pdfBase64s = await Promise.all(pdfPromises);
+    console.log("PDFs downloaded:", pdfLabels.join(", "));
+
+    // Build multimodal content parts
+    const contentParts: any[] = [];
+
+    // Add each PDF as a file part
+    for (let i = 0; i < pdfBase64s.length; i++) {
+      contentParts.push({
+        type: "text",
+        text: `--- ${pdfLabels[i].toUpperCase()} PDF ---`,
+      });
+      contentParts.push({
+        type: "image_url",
+        image_url: {
+          url: `data:application/pdf;base64,${pdfBase64s[i]}`,
+        },
+      });
+    }
+
+    // Build the text instruction
+    let instruction: string;
+    if (existingCriteria && existingCriteria.length > 0) {
+      const criteriaList = existingCriteria.map((c, idx) =>
+        `${idx + 1}. "${c.criterium_naam}" — max score: ${c.max_score} (geef een score van 0 tot ${c.max_score})`
+      ).join("\n");
+      instruction = `Beoordeel het werk van student "${student.naam}".
+
+Je MOET exact de volgende criteria gebruiken (gebruik de namen LETTERLIJK):
+${criteriaList}
+
+BELANGRIJK:
+- Lees de graderingstabel PDF grondig en volg de beschrijvingen erin om te bepalen welke score past.
+- Respecteer de max_score per criterium STRIKT.
+- Gebruik de criteria namen EXACT zoals hierboven opgegeven in je JSON antwoord.
+- Lees het studentwerk (student PDF) zorgvuldig en beoordeel op basis van de inhoud.`;
+    } else {
+      instruction = `Analyseer het werk van student "${student.naam}".
+
+1. Lees eerst de graderingstabel PDF en extraheer alle beoordelingscriteria met hun max scores.
+2. Lees dan het studentwerk (student PDF) en beoordeel per criterium.
+3. Gebruik exact de scoreschaal uit de graderingstabel.`;
+    }
+
+    contentParts.push({
+      type: "text",
+      text: instruction,
+    });
+
+    const systemPrompt = `Je bent een ervaren docent die studentwerk beoordeelt. Je leest de aangeleverde documenten (graderingstabel, opdracht, studentwerk) grondig en geeft een eerlijke beoordeling.
 
 ${niveauInstructies[niveau] || niveauInstructies["streng"]}
 
-SCORESCHAAL - KRITISCH BELANGRIJK:
+SCORESCHAAL:
 - Elke criterium heeft een eigen max_score. Dit kan 10, 20, 100, of elk ander getal zijn.
 - Je score MOET een getal zijn tussen 0 en de max_score van dat criterium.
-- Gebruik de VOLLEDIGE schaal. Als max_score 20 is, geef scores tussen 0 en 20.
-- Als max_score 10 is, geef scores tussen 0 en 10.
-- Geef NOOIT een score hoger dan de max_score.
+- Gebruik de VOLLEDIGE schaal.
+- Volg de graderingstabel: als daar beschreven staat wat nodig is voor een bepaalde score, pas dat dan strikt toe.
 
-Je MOET altijd antwoorden in valid JSON met deze structuur:
-{
-  "criteria": [
-    {
-      "naam": "Criterium naam",
-      "max_score": 20,
-      "score": 14,
-      "motivatie": "Korte onderbouwing waarom deze score"
-    }
-  ],
-  "algemene_feedback": "Korte algemene feedback over het werk"
-}
+Geef concrete, specifieke motivatie per criterium gebaseerd op wat je in het studentwerk hebt gelezen.`;
 
-Geef concrete verbeterpunten.`;
-
-    let userPrompt: string;
-    if (existingCriteria && existingCriteria.length > 0) {
-      const criteriaList = existingCriteria.map(c => 
-        `- ${c.criterium_naam} (max score: ${c.max_score}, geef een score tussen 0 en ${c.max_score})`
-      ).join("\n");
-      userPrompt = `Beoordeel het werk van student "${student.naam}" op basis van de volgende criteria:
-
-${criteriaList}
-
-BELANGRIJK: Respecteer de max_score per criterium STRIKT. Als een criterium max_score 20 heeft, geef dan een score tussen 0 en 20 (NIET tussen 0 en 10). De scoreschaal is NIET altijd 0-10!
-
-Opdracht PDF: ${project.opdracht_pdf_url}
-Graderingstabel PDF: ${project.graderingstabel_pdf_url}
-Student PDF: ${student.pdf_url}
-
-Analyseer de inhoud van de PDFs en geef scores per criterium met de juiste scoreschaal.`;
-    } else {
-      userPrompt = `Analyseer de graderingstabel en het werk van student "${student.naam}".
-
-1. Eerst: Haal de beoordelingscriteria uit de graderingstabel PDF
-2. Dan: Beoordeel het studentwerk per criterium
-3. BELANGRIJK: Gebruik exact de scoreschaal uit de graderingstabel (bijv. 0-20, 0-10, etc.)
-
-Opdracht PDF: ${project.opdracht_pdf_url}
-Graderingstabel PDF: ${project.graderingstabel_pdf_url}
-Student PDF: ${student.pdf_url}
-
-Geef je antwoord in het gevraagde JSON formaat met criteria, scores en motivatie.`;
-    }
-
-    // Call Lovable AI with tool calling for structured output
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -114,17 +162,17 @@ Geef je antwoord in het gevraagde JSON formaat met criteria, scores en motivatie
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
+          { role: "user", content: contentParts },
         ],
         tools: [
           {
             type: "function",
             function: {
               name: "submit_grading",
-              description: "Submit the grading results for a student. IMPORTANT: score must be between 0 and max_score for each criterion.",
+              description: "Submit grading results. Use the EXACT criteria names as provided.",
               parameters: {
                 type: "object",
                 properties: {
@@ -133,16 +181,16 @@ Geef je antwoord in het gevraagde JSON formaat met criteria, scores en motivatie
                     items: {
                       type: "object",
                       properties: {
-                        naam: { type: "string", description: "Name of the criterion" },
-                        max_score: { type: "number", description: "Maximum score for this criterion (from the grading table)" },
-                        score: { type: "number", description: "Suggested score (must be between 0 and max_score)" },
-                        motivatie: { type: "string", description: "Justification for the score" },
+                        naam: { type: "string", description: "Exact name of the criterion as provided" },
+                        max_score: { type: "number", description: "Maximum score for this criterion" },
+                        score: { type: "number", description: "Score between 0 and max_score" },
+                        motivatie: { type: "string", description: "Specific justification based on student work" },
                       },
                       required: ["naam", "max_score", "score", "motivatie"],
                       additionalProperties: false,
                     },
                   },
-                  algemene_feedback: { type: "string", description: "General feedback about the work" },
+                  algemene_feedback: { type: "string", description: "General feedback" },
                 },
                 required: ["criteria", "algemene_feedback"],
                 additionalProperties: false,
@@ -160,38 +208,38 @@ Geef je antwoord in het gevraagde JSON formaat met criteria, scores en motivatie
       if (aiResponse.status === 429) {
         await supabase.from("students").update({ status: "pending" }).eq("id", studentId);
         return new Response(JSON.stringify({ error: "AI is tijdelijk overbelast, probeer later opnieuw" }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       if (aiResponse.status === 402) {
         await supabase.from("students").update({ status: "pending" }).eq("id", studentId);
-        return new Response(JSON.stringify({ error: "AI credits op, voeg credits toe" }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        return new Response(JSON.stringify({ error: "AI credits op" }), {
+          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      throw new Error("AI analyse mislukt");
+      throw new Error(`AI analyse mislukt: ${aiResponse.status}`);
     }
 
     const aiData = await aiResponse.json();
     const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
-    
+
     let result;
     if (toolCall?.function?.arguments) {
       result = JSON.parse(toolCall.function.arguments);
     } else {
-      // Fallback: try to parse from content
       const content = aiData.choices?.[0]?.message?.content || "";
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         result = JSON.parse(jsonMatch[0]);
       } else {
+        console.error("Unexpected AI response:", JSON.stringify(aiData).substring(0, 500));
         throw new Error("Kon AI antwoord niet verwerken");
       }
     }
 
-    // If no criteria exist, create them
+    console.log("AI returned criteria:", result.criteria?.length, "items");
+
+    // If no criteria exist yet, create them
     if (!existingCriteria || existingCriteria.length === 0) {
       const criteriaToInsert = result.criteria.map((c: any, i: number) => ({
         project_id: projectId,
@@ -209,38 +257,54 @@ Geef je antwoord in het gevraagde JSON formaat met criteria, scores en motivatie
       existingCriteria = inserted;
     }
 
-    // Delete existing scores for this student first, then insert fresh
+    // Delete existing scores for this student, then insert new ones
     await supabase.from("student_scores").delete().eq("student_id", studentId);
 
-    // Insert new scores
+    let matchedCount = 0;
+    const usedCriteria = new Set<string>();
+
     for (const aiCriterium of result.criteria) {
-      const matchedCriterium = existingCriteria!.find(
-        (c: any) => c.criterium_naam.toLowerCase() === aiCriterium.naam.toLowerCase()
-      );
-      if (matchedCriterium) {
-        // Clamp score to valid range
-        const clampedScore = Math.min(Math.max(0, aiCriterium.score), matchedCriterium.max_score);
+      const matched = findBestMatch(aiCriterium.naam, existingCriteria!.filter((c: any) => !usedCriteria.has(c.id)));
+      if (matched) {
+        usedCriteria.add(matched.id);
+        const clampedScore = Math.min(Math.max(0, Number(aiCriterium.score) || 0), matched.max_score);
         await supabase.from("student_scores").insert({
           student_id: studentId,
-          criterium_id: matchedCriterium.id,
+          criterium_id: matched.id,
           ai_suggested_score: clampedScore,
           ai_motivatie: aiCriterium.motivatie,
+        });
+        matchedCount++;
+      } else {
+        console.warn("No match for AI criterion:", aiCriterium.naam);
+      }
+    }
+
+    // For any unmatched existing criteria, insert a score of 0 so nothing is missing
+    for (const c of existingCriteria!) {
+      if (!usedCriteria.has(c.id)) {
+        console.warn("No AI score for criterion:", c.criterium_naam, "— inserting 0");
+        await supabase.from("student_scores").insert({
+          student_id: studentId,
+          criterium_id: c.id,
+          ai_suggested_score: 0,
+          ai_motivatie: "Geen beoordeling ontvangen van AI voor dit criterium.",
         });
       }
     }
 
-    // Update student status and feedback
+    console.log(`Matched ${matchedCount}/${result.criteria.length} AI criteria to ${existingCriteria!.length} DB criteria`);
+
     await supabase.from("students").update({
       status: "reviewed",
       ai_feedback: result.algemene_feedback,
     }).eq("id", studentId);
 
-    return new Response(JSON.stringify({ success: true }), {
+    return new Response(JSON.stringify({ success: true, matched: matchedCount, total: existingCriteria!.length }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
     console.error("Error:", error);
-    // Reset status on error
     try {
       const { studentId } = await req.clone().json();
       const supabaseUrl = Deno.env.get("SUPABASE_URL")!;

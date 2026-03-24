@@ -5,6 +5,18 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+async function fetchPdfAsBase64(url: string): Promise<string> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Failed to fetch PDF: ${res.status}`);
+  const buffer = await res.arrayBuffer();
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -15,6 +27,11 @@ serve(async (req) => {
 
     if (!graderingstabelUrl) throw new Error("Geen graderingstabel URL opgegeven");
 
+    // Download PDF and convert to base64 for multimodal analysis
+    console.log("Downloading grading table PDF...");
+    const pdfBase64 = await fetchPdfAsBase64(graderingstabelUrl);
+    console.log("PDF downloaded, size:", Math.round(pdfBase64.length / 1024), "KB base64");
+
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -22,29 +39,32 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "google/gemini-2.5-flash",
         messages: [
           {
             role: "system",
             content: `Je bent een expert in het analyseren van beoordelingstabellen voor het hoger onderwijs. Analyseer de graderingstabel PDF en extraheer ALLE beoordelingscriteria met hun maximale scores.
 
-Je MOET antwoorden in valid JSON met deze structuur:
-{
-  "criteria": [
-    {
-      "naam": "Naam van het criterium",
-      "max_score": 10,
-      "beschrijving": "Korte beschrijving van wat er beoordeeld wordt"
-    }
-  ],
-  "samenvatting": "Korte samenvatting van de beoordelingstabel"
-}
-
-Wees nauwkeurig. Neem alle criteria over exact zoals ze in het document staan. Als er geen expliciete max_score staat, gebruik dan 10 als standaard.`,
+Wees nauwkeurig:
+- Neem de criteria over EXACT zoals ze in het document staan.
+- Neem de max_score over EXACT zoals in het document (kan 10, 20, 100, of elk ander getal zijn).
+- Als er geen expliciete max_score staat, gebruik dan 10 als standaard.
+- Lees het hele document grondig — mis geen enkel criterium.`,
           },
           {
             role: "user",
-            content: `Analyseer deze graderingstabel PDF en extraheer alle beoordelingscriteria:\n\n${graderingstabelUrl}`,
+            content: [
+              {
+                type: "text",
+                text: "Analyseer deze graderingstabel PDF en extraheer alle beoordelingscriteria met hun max scores:",
+              },
+              {
+                type: "image_url",
+                image_url: {
+                  url: `data:application/pdf;base64,${pdfBase64}`,
+                },
+              },
+            ],
           },
         ],
         tools: [
@@ -52,7 +72,7 @@ Wees nauwkeurig. Neem alle criteria over exact zoals ze in het document staan. A
             type: "function",
             function: {
               name: "submit_criteria",
-              description: "Submit the extracted grading criteria",
+              description: "Submit the extracted grading criteria from the PDF",
               parameters: {
                 type: "object",
                 properties: {
@@ -103,6 +123,7 @@ Wees nauwkeurig. Neem alle criteria over exact zoals ze in het document staan. A
       }
     }
 
+    console.log("Parsed criteria:", result.criteria?.length, "items");
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
