@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, Upload, FileText, Pencil, Check, X, Loader2, Bot, Download, Settings, LayoutGrid, RefreshCw, AlertTriangle, Users, FolderOpen } from "lucide-react";
+import { ArrowLeft, Upload, FileText, Pencil, Check, X, Loader2, Bot, Download, Settings, LayoutGrid, RefreshCw, AlertTriangle, Users, FolderOpen, Search, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
@@ -47,6 +47,9 @@ const ProjectDetail = () => {
   const [newName, setNewName] = useState("");
   const [dragOver, setDragOver] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [pdfViewerUrl, setPdfViewerUrl] = useState<string | null>(null);
+  const [pdfViewerTitle, setPdfViewerTitle] = useState("");
 
   // Grading table parse state
   const [parsingGrading, setParsingGrading] = useState(false);
@@ -489,9 +492,13 @@ const ProjectDetail = () => {
             <CardContent>
               {project.opdracht_pdf_url ? (
                 <div className="flex items-center gap-2">
-                  <a href={project.opdracht_pdf_url} target="_blank" className="text-sm text-primary hover:underline truncate flex-1">
+                  <button
+                    onClick={() => { setPdfViewerUrl(project.opdracht_pdf_url!); setPdfViewerTitle("Opdracht"); }}
+                    className="text-sm text-primary hover:underline truncate flex-1 text-left flex items-center gap-1.5"
+                  >
+                    <Eye className="h-3.5 w-3.5 shrink-0" />
                     Bekijk opdracht
-                  </a>
+                  </button>
                   <Label htmlFor="opdracht-upload" className="cursor-pointer text-xs text-muted-foreground hover:text-foreground">
                     Vervang
                   </Label>
@@ -527,9 +534,13 @@ const ProjectDetail = () => {
                 </div>
               ) : project.graderingstabel_pdf_url ? (
                 <div className="flex items-center gap-2">
-                  <a href={project.graderingstabel_pdf_url} target="_blank" className="text-sm text-primary hover:underline truncate flex-1">
+                  <button
+                    onClick={() => { setPdfViewerUrl(project.graderingstabel_pdf_url!); setPdfViewerTitle("Graderingstabel"); }}
+                    className="text-sm text-primary hover:underline truncate flex-1 text-left flex items-center gap-1.5"
+                  >
+                    <Eye className="h-3.5 w-3.5 shrink-0" />
                     Bekijk graderingstabel
-                  </a>
+                  </button>
                   <Label htmlFor="graderingstabel-upload" className="cursor-pointer text-xs text-muted-foreground hover:text-foreground">
                     Vervang
                   </Label>
@@ -647,52 +658,74 @@ const ProjectDetail = () => {
               )}
             </div>
 
-            {/* Studenten tabel */}
+            {/* Zoekbalk + Studenten tabel */}
             {students && students.length > 0 && (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Student</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Score</TableHead>
-                    <TableHead className="text-right">Acties</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {students.map((student) => {
-                    const total = getTotalScore(student);
-                    const max = getMaxTotal();
-                    return (
-                      <TableRow key={student.id} className="cursor-pointer" onClick={() => navigate(`/project/${id}/student/${student.id}`)}>
-                        <TableCell className="font-medium">{student.naam}</TableCell>
-                        <TableCell>
-                          <Badge variant={statusVariants[student.status as StudentStatus]}>
-                            {student.status === "analyzing" && <Loader2 className="h-3 w-3 animate-spin mr-1" />}
-                            {statusLabels[student.status as StudentStatus]}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {total !== null ? `${total}/${max}` : "—"}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={!project.opdracht_pdf_url || !project.graderingstabel_pdf_url || student.status === "analyzing"}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              analyzeStudent.mutate(student.id);
-                            }}
-                          >
-                            <Bot className="h-4 w-4 mr-1" />
-                            Analyseer
-                          </Button>
+              <>
+                {students.length > 3 && (
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Zoek student..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-9 max-w-xs"
+                    />
+                  </div>
+                )}
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Student</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Score</TableHead>
+                      <TableHead className="text-right">Acties</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {students
+                      .filter((s) => s.naam.toLowerCase().includes(searchQuery.toLowerCase()))
+                      .map((student) => {
+                        const total = getTotalScore(student);
+                        const max = getMaxTotal();
+                        return (
+                          <TableRow key={student.id} className="cursor-pointer" onClick={() => navigate(`/project/${id}/student/${student.id}`)}>
+                            <TableCell className="font-medium">{student.naam}</TableCell>
+                            <TableCell>
+                              <Badge variant={statusVariants[student.status as StudentStatus]}>
+                                {student.status === "analyzing" && <Loader2 className="h-3 w-3 animate-spin mr-1" />}
+                                {statusLabels[student.status as StudentStatus]}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              {total !== null ? `${total}/${max}` : "—"}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={!project.opdracht_pdf_url || !project.graderingstabel_pdf_url || student.status === "analyzing"}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  analyzeStudent.mutate(student.id);
+                                }}
+                              >
+                                <Bot className="h-4 w-4 mr-1" />
+                                Analyseer
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    {students.filter((s) => s.naam.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center text-muted-foreground py-6">
+                          Geen studenten gevonden voor "{searchQuery}"
                         </TableCell>
                       </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+                    )}
+                  </TableBody>
+                </Table>
+              </>
             )}
           </CardContent>
         </Card>
@@ -763,6 +796,24 @@ const ProjectDetail = () => {
               )}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* PDF Viewer Dialog */}
+      <Dialog open={!!pdfViewerUrl} onOpenChange={(open) => !open && setPdfViewerUrl(null)}>
+        <DialogContent className="max-w-4xl h-[85vh] p-0 flex flex-col">
+          <DialogHeader className="px-6 pt-6 pb-3 shrink-0">
+            <DialogTitle>{pdfViewerTitle}</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 px-6 pb-6 min-h-0">
+            {pdfViewerUrl && (
+              <iframe
+                src={pdfViewerUrl}
+                className="w-full h-full rounded-md border"
+                title={pdfViewerTitle}
+              />
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>
