@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, Upload, FileText, Pencil, Check, X, Loader2, Bot, Download, Settings, LayoutGrid } from "lucide-react";
+import { ArrowLeft, Upload, FileText, Pencil, Check, X, Loader2, Bot, Download, Settings, LayoutGrid, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
@@ -131,6 +131,8 @@ const ProjectDetail = () => {
   };
 
   const [batchAnalyzing, setBatchAnalyzing] = useState(false);
+  const [reAnalyzing, setReAnalyzing] = useState(false);
+  const [reAnalyzeNiveau, setReAnalyzeNiveau] = useState("streng");
 
   const analyzeStudent = useMutation({
     mutationFn: async (studentId: string) => {
@@ -179,6 +181,34 @@ const ProjectDetail = () => {
     setBatchAnalyzing(false);
     queryClient.invalidateQueries({ queryKey: ["students", id] });
     toast.success(`Batch analyse klaar: ${success} geslaagd${failed > 0 ? `, ${failed} mislukt` : ""}`);
+  };
+
+  const batchReAnalyze = async () => {
+    const eligible = students?.filter((s) => s.status === "reviewed" || s.status === "graded") || [];
+    if (eligible.length === 0) {
+      toast.info("Geen geanalyseerde studenten om opnieuw te beoordelen");
+      return;
+    }
+    setReAnalyzing(true);
+    let success = 0;
+    let failed = 0;
+    for (const student of eligible) {
+      try {
+        await supabase.from("students").update({ status: "analyzing" as StudentStatus }).eq("id", student.id);
+        queryClient.invalidateQueries({ queryKey: ["students", id] });
+        const { error } = await supabase.functions.invoke("analyze-student", {
+          body: { studentId: student.id, projectId: id, niveauOverride: reAnalyzeNiveau },
+        });
+        if (error) throw error;
+        success++;
+      } catch {
+        failed++;
+      }
+      queryClient.invalidateQueries({ queryKey: ["students", id] });
+    }
+    setReAnalyzing(false);
+    queryClient.invalidateQueries({ queryKey: ["students", id] });
+    toast.success(`Heranalyse klaar: ${success} geslaagd${failed > 0 ? `, ${failed} mislukt` : ""}`);
   };
 
   const handleDrop = useCallback(
@@ -395,12 +425,37 @@ const ProjectDetail = () => {
                   <Button
                     variant="default"
                     size="sm"
-                    disabled={batchAnalyzing || !project.opdracht_pdf_url || !project.graderingstabel_pdf_url}
+                    disabled={batchAnalyzing || reAnalyzing || !project.opdracht_pdf_url || !project.graderingstabel_pdf_url}
                     onClick={batchAnalyze}
                   >
                     {batchAnalyzing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Bot className="h-4 w-4 mr-2" />}
                     Analyseer Alle
                   </Button>
+                )}
+                {students && students.some((s) => s.status === "reviewed" || s.status === "graded") && (
+                  <div className="flex items-center gap-1 border rounded-lg px-2 py-0.5 bg-card">
+                    <RefreshCw className="h-3.5 w-3.5 text-muted-foreground" />
+                    <Select value={reAnalyzeNiveau} onValueChange={setReAnalyzeNiveau}>
+                      <SelectTrigger className="w-[110px] h-7 border-0 shadow-none text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="streng">Streng</SelectItem>
+                        <SelectItem value="neutraal">Neutraal</SelectItem>
+                        <SelectItem value="mild">Mild</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="h-7 text-xs"
+                      disabled={reAnalyzing || batchAnalyzing}
+                      onClick={batchReAnalyze}
+                    >
+                      {reAnalyzing ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : null}
+                      Heranalyse
+                    </Button>
+                  </div>
                 )}
                 {students && students.length > 0 && criteria && criteria.length > 0 && (
                   <Button
