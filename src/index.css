@@ -40,14 +40,14 @@
 
     --radius: 0.75rem;
 
-    --sidebar-background: 220 25% 12%;
-    --sidebar-foreground: 210 20% 92%;
-    --sidebar-primary: 221 83% 65%;
+    --sidebar-background: 222 28% 14%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 217 91% 70%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 20% 22%;
-    --sidebar-accent-foreground: 210 20% 95%;
-    --sidebar-border: 220 18% 25%;
-    --sidebar-ring: 221 83% 65%;
+    --sidebar-accent: 222 22% 24%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 222 18% 30%;
+    --sidebar-ring: 217 91% 70%;
   }
 
   .dark {
