@@ -305,9 +305,14 @@ function buildStudentDocument(
         children: [new TextRun({ text: "Analyse", bold: true, size: 28, font: "Arial" })],
       })
     );
-    children.push(
-      new Paragraph({ children: [new TextRun({ text: student.ai_feedback, font: "Arial", size: 22 })] })
-    );
+    const cleanedFeedback = cleanMarkdown(student.ai_feedback);
+    for (const line of cleanedFeedback.split("\n")) {
+      if (line.trim()) {
+        children.push(
+          new Paragraph({ children: [new TextRun({ text: line.trim(), font: "Arial", size: 22 })] })
+        );
+      }
+    }
     children.push(new Paragraph({ children: [] }));
   }
 
