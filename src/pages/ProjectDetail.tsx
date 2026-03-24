@@ -234,7 +234,7 @@ const ProjectDetail = () => {
           toast.error(`${file.name} is geen PDF`);
           continue;
         }
-        const naam = file.name.replace(/\.pdf$/i, "");
+        const naam = extractStudentName(file.name);
         const path = `${id}/students/${Date.now()}_${file.name}`;
         const { error: uploadError } = await supabase.storage.from("pdfs").upload(path, file);
         if (uploadError) {
