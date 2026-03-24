@@ -214,7 +214,7 @@ const StudentScorecard = () => {
           {criteria && criteria.length > 0 && (
             <Button
               variant="outline"
-              onClick={() => exportStudentToPdf(student, project!, criteria, scores || [], getScoreForCriterium)}
+              onClick={() => exportStudentToPdf(student, project!, criteria, scores || [], getScoreForCriterium, feedbackValue)}
             >
               <Download className="h-4 w-4 mr-2" />
               Export PDF
