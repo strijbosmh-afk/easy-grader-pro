@@ -47,6 +47,8 @@ const ProjectOverview = () => {
     },
   });
 
+  const eindscoreCriterium = criteria?.find((c: any) => c.is_eindscore);
+
   const getScore = (student: any, criteriumId: string) => {
     const sc = student.student_scores?.find((s: any) => s.criterium_id === criteriumId);
     if (!sc) return null;
@@ -54,6 +56,9 @@ const ProjectOverview = () => {
   };
 
   const getTotal = (student: any) => {
+    if (eindscoreCriterium) {
+      return getScore(student, eindscoreCriterium.id);
+    }
     if (!criteria) return null;
     let sum = 0;
     let hasAny = false;
@@ -68,6 +73,7 @@ const ProjectOverview = () => {
   };
 
   const getMaxTotal = () => {
+    if (eindscoreCriterium) return Number(eindscoreCriterium.max_score);
     if (!criteria) return 0;
     return criteria.reduce((a, c) => a + Number(c.max_score), 0);
   };
