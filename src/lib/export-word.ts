@@ -81,7 +81,7 @@ function parseVerslagSections(verslag: string | null): { sterktes: string[]; zwa
     if (line.startsWith("## ") || (line.startsWith("**") && line.endsWith("**"))) {
       continue;
     }
-    const cleaned = line.replace(/^[-•*]\s*/, "").replace(/^\*\*/g, "").replace(/\*\*$/g, "").trim();
+    const cleaned = cleanMarkdown(line);
     if (!cleaned) continue;
 
     if (currentSection === "sterktes") sterktes.push(cleaned);
