@@ -74,7 +74,7 @@ Totaalscore: ${totalScore}/${totalMax} (${totalMax > 0 ? Math.round((totalScore 
 Scores per criterium:
 ${scoreSummary.map((s: any) => `- ${s.criterium}: ${s.score ?? "n.v.t."}/${s.max}${s.ai_motivatie ? ` — ${s.ai_motivatie}` : ""}${s.opmerkingen ? ` (Opmerking docent: ${s.opmerkingen})` : ""}`).join("\n")}
 
-${student.ai_feedback ? `AI Feedback: ${student.ai_feedback}` : ""}
+${student.ai_feedback ? `Analyse van het werk: ${student.ai_feedback}` : ""}
 ${student.docent_feedback ? `Docent Feedback: ${student.docent_feedback}` : ""}
 
 Schrijf nu het volledige verslag.`;

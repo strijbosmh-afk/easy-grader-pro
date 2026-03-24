@@ -51,7 +51,7 @@ function parseVerslagSections(verslag: string | null): { sterktes: string[]; zwa
   let currentSection = "overig";
   for (const line of verslag.split("\n")) {
     const lower = line.toLowerCase();
-    if (lower.includes("sterkte") || lower.includes("sterk punt") || lower.includes("positie")) {
+    if (lower.includes("sterkte") || lower.includes("sterk punt")) {
       currentSection = "sterktes";
       continue;
     }
@@ -59,8 +59,11 @@ function parseVerslagSections(verslag: string | null): { sterktes: string[]; zwa
       currentSection = "zwaktes";
       continue;
     }
-    if (line.startsWith("## ") || (line.startsWith("**") && line.endsWith("**"))) {
+    if ((line.startsWith("## ") || (line.startsWith("**") && line.endsWith("**"))) && currentSection !== "sterktes" && currentSection !== "zwaktes") {
       currentSection = "overig";
+    }
+    if (line.startsWith("## ") || (line.startsWith("**") && line.endsWith("**"))) {
+      continue;
     }
     const cleaned = line.replace(/^[-•*]\s*/, "").replace(/^\*\*/g, "").replace(/\*\*$/g, "").trim();
     if (!cleaned) continue;
@@ -278,12 +281,12 @@ function buildStudentDocument(
     children.push(new Paragraph({ children: [] }));
   }
 
-  // AI feedback
+  // Analyse (was AI feedback - rename to remove AI reference)
   if (student.ai_feedback) {
     children.push(
       new Paragraph({
         heading: HeadingLevel.HEADING_2,
-        children: [new TextRun({ text: "AI Feedback", bold: true, size: 28, font: "Arial" })],
+        children: [new TextRun({ text: "Analyse", bold: true, size: 28, font: "Arial" })],
       })
     );
     children.push(
