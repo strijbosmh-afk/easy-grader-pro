@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import ProjectDetail from "./pages/ProjectDetail";
 import StudentScorecard from "./pages/StudentScorecard";
 import Statistics from "./pages/Statistics";
+import ProjectOverview from "./pages/ProjectOverview";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
