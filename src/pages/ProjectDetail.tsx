@@ -658,52 +658,74 @@ const ProjectDetail = () => {
               )}
             </div>
 
-            {/* Studenten tabel */}
+            {/* Zoekbalk + Studenten tabel */}
             {students && students.length > 0 && (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Student</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Score</TableHead>
-                    <TableHead className="text-right">Acties</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {students.map((student) => {
-                    const total = getTotalScore(student);
-                    const max = getMaxTotal();
-                    return (
-                      <TableRow key={student.id} className="cursor-pointer" onClick={() => navigate(`/project/${id}/student/${student.id}`)}>
-                        <TableCell className="font-medium">{student.naam}</TableCell>
-                        <TableCell>
-                          <Badge variant={statusVariants[student.status as StudentStatus]}>
-                            {student.status === "analyzing" && <Loader2 className="h-3 w-3 animate-spin mr-1" />}
-                            {statusLabels[student.status as StudentStatus]}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {total !== null ? `${total}/${max}` : "—"}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={!project.opdracht_pdf_url || !project.graderingstabel_pdf_url || student.status === "analyzing"}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              analyzeStudent.mutate(student.id);
-                            }}
-                          >
-                            <Bot className="h-4 w-4 mr-1" />
-                            Analyseer
-                          </Button>
+              <>
+                {students.length > 3 && (
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Zoek student..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-9 max-w-xs"
+                    />
+                  </div>
+                )}
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Student</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Score</TableHead>
+                      <TableHead className="text-right">Acties</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {students
+                      .filter((s) => s.naam.toLowerCase().includes(searchQuery.toLowerCase()))
+                      .map((student) => {
+                        const total = getTotalScore(student);
+                        const max = getMaxTotal();
+                        return (
+                          <TableRow key={student.id} className="cursor-pointer" onClick={() => navigate(`/project/${id}/student/${student.id}`)}>
+                            <TableCell className="font-medium">{student.naam}</TableCell>
+                            <TableCell>
+                              <Badge variant={statusVariants[student.status as StudentStatus]}>
+                                {student.status === "analyzing" && <Loader2 className="h-3 w-3 animate-spin mr-1" />}
+                                {statusLabels[student.status as StudentStatus]}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              {total !== null ? `${total}/${max}` : "—"}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={!project.opdracht_pdf_url || !project.graderingstabel_pdf_url || student.status === "analyzing"}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  analyzeStudent.mutate(student.id);
+                                }}
+                              >
+                                <Bot className="h-4 w-4 mr-1" />
+                                Analyseer
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    {students.filter((s) => s.naam.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center text-muted-foreground py-6">
+                          Geen studenten gevonden voor "{searchQuery}"
                         </TableCell>
                       </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+                    )}
+                  </TableBody>
+                </Table>
+              </>
             )}
           </CardContent>
         </Card>
