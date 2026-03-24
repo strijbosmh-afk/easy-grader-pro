@@ -843,8 +843,10 @@ const ProjectDetail = () => {
                                 <Loader2 className="h-4 w-4 animate-spin text-yellow-500" />
                               ) : missing.length > 0 ? (
                                 <AlertTriangle className="h-4 w-4 text-yellow-500" />
-                              ) : (
+                              ) : student.status === "graded" ? (
                                 <CheckCircle className="h-4 w-4 text-green-600" />
+                              ) : (
+                                <Circle className="h-4 w-4 text-yellow-500" />
                               )}
                             </TableCell>
                             <TableCell className="text-right">
