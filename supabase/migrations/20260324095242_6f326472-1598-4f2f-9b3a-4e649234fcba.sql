@@ -1,0 +1,1 @@
+ALTER TABLE public.projects ADD COLUMN beoordelingsniveau text NOT NULL DEFAULT 'streng';

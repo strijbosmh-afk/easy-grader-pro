@@ -7,10 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, Upload, FileText, Pencil, Check, X, Loader2, Bot, Download } from "lucide-react";
+import { ArrowLeft, Upload, FileText, Pencil, Check, X, Loader2, Bot, Download, Settings } from "lucide-react";
 import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { exportProjectToExcel } from "@/lib/export";
 
 type StudentStatus = "pending" | "analyzing" | "reviewed" | "graded";
@@ -284,6 +285,34 @@ const ProjectDetail = () => {
       </header>
 
       <main className="container mx-auto px-6 py-8 space-y-8">
+        {/* Settings row */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              Beoordelingsperspectief
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Select
+              value={(project as any).beoordelingsniveau || "streng"}
+              onValueChange={(value) => updateProject.mutateAsync({ beoordelingsniveau: value })}
+            >
+              <SelectTrigger className="w-[240px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="streng">Streng — kritisch, hoge lat</SelectItem>
+                <SelectItem value="neutraal">Neutraal — evenwichtig</SelectItem>
+                <SelectItem value="mild">Mild — stimulerend, positief</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground mt-2">
+              Bepaalt hoe kritisch de AI studenten beoordeelt.
+            </p>
+          </CardContent>
+        </Card>
+
         {/* PDF uploads */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card>
