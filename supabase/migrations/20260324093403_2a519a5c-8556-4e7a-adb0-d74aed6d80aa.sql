@@ -1,0 +1,1 @@
+ALTER TABLE public.students ADD COLUMN docent_feedback text;
