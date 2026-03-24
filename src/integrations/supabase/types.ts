@@ -122,6 +122,7 @@ export type Database = {
         Row: {
           ai_feedback: string | null
           created_at: string
+          docent_feedback: string | null
           id: string
           naam: string
           pdf_url: string | null
@@ -131,6 +132,7 @@ export type Database = {
         Insert: {
           ai_feedback?: string | null
           created_at?: string
+          docent_feedback?: string | null
           id?: string
           naam: string
           pdf_url?: string | null
@@ -140,6 +142,7 @@ export type Database = {
         Update: {
           ai_feedback?: string | null
           created_at?: string
+          docent_feedback?: string | null
           id?: string
           naam?: string
           pdf_url?: string | null

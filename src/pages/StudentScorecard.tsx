@@ -16,6 +16,7 @@ const StudentScorecard = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [saving, setSaving] = useState(false);
+  const [docentFeedback, setDocentFeedback] = useState<string | null>(null);
 
   const { data: project } = useQuery({
     queryKey: ["project", projectId],
@@ -89,6 +90,8 @@ const StudentScorecard = () => {
     }));
   };
 
+  const feedbackValue = docentFeedback !== null ? docentFeedback : (student?.docent_feedback || "");
+
   const saveScores = async () => {
     if (!criteria) return;
     setSaving(true);
@@ -106,12 +109,15 @@ const StudentScorecard = () => {
           { onConflict: "student_id,criterium_id" }
         );
       }
-      // Mark as graded
-      await supabase.from("students").update({ status: "graded" as any }).eq("id", studentId!);
+      await supabase.from("students").update({
+        status: "graded" as any,
+        docent_feedback: feedbackValue || null,
+      }).eq("id", studentId!);
       queryClient.invalidateQueries({ queryKey: ["scores", studentId] });
       queryClient.invalidateQueries({ queryKey: ["student", studentId] });
       queryClient.invalidateQueries({ queryKey: ["students", projectId] });
       setLocalScores({});
+      setDocentFeedback(null);
       toast.success("Scores opgeslagen!");
     } catch {
       toast.error("Opslaan mislukt");
@@ -208,7 +214,7 @@ const StudentScorecard = () => {
           {criteria && criteria.length > 0 && (
             <Button
               variant="outline"
-              onClick={() => exportStudentToPdf(student, project!, criteria, scores || [], getScoreForCriterium)}
+              onClick={() => exportStudentToPdf(student, project!, criteria, scores || [], getScoreForCriterium, feedbackValue)}
             >
               <Download className="h-4 w-4 mr-2" />
               Export PDF
@@ -282,6 +288,20 @@ const StudentScorecard = () => {
                 </Card>
               );
             })}
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Docent Feedback</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Textarea
+                  value={feedbackValue}
+                  onChange={(e) => setDocentFeedback(e.target.value)}
+                  placeholder="Schrijf hier je persoonlijke feedback voor de student..."
+                  rows={4}
+                />
+              </CardContent>
+            </Card>
 
             <div className="flex justify-end">
               <Button onClick={saveScores} disabled={saving} size="lg">

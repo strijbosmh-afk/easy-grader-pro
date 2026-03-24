@@ -26,7 +26,8 @@ export function exportStudentToPdf(
   project: any,
   criteria: any[],
   scores: any[],
-  getScore: (criteriumId: string) => { final_score: string; opmerkingen: string }
+  getScore: (criteriumId: string) => { final_score: string; opmerkingen: string },
+  docentFeedback?: string
 ) {
   const doc = new jsPDF();
   const margin = 20;
@@ -90,6 +91,23 @@ export function exportStudentToPdf(
   doc.text("Totaal", margin, y);
   doc.text(totalFinal.toString(), 130, y);
   doc.text(totalMax.toString(), 155, y);
+  y += 12;
+
+  if (docentFeedback) {
+    if (y > 250) {
+      doc.addPage();
+      y = margin;
+    }
+    doc.setFontSize(12);
+    doc.setFont(undefined!, "bold");
+    doc.text("Docent Feedback", margin, y);
+    y += 7;
+    doc.setFontSize(10);
+    doc.setFont(undefined!, "normal");
+    const feedbackLines = doc.splitTextToSize(docentFeedback, 170);
+    doc.text(feedbackLines, margin, y);
+    y += feedbackLines.length * 5;
+  }
 
   doc.save(`${student.naam}_scorekaart.pdf`);
 }
