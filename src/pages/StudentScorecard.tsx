@@ -90,6 +90,8 @@ const StudentScorecard = () => {
     }));
   };
 
+  const feedbackValue = docentFeedback !== null ? docentFeedback : (student?.docent_feedback || "");
+
   const saveScores = async () => {
     if (!criteria) return;
     setSaving(true);
@@ -107,12 +109,15 @@ const StudentScorecard = () => {
           { onConflict: "student_id,criterium_id" }
         );
       }
-      // Mark as graded
-      await supabase.from("students").update({ status: "graded" as any }).eq("id", studentId!);
+      await supabase.from("students").update({
+        status: "graded" as any,
+        docent_feedback: feedbackValue || null,
+      }).eq("id", studentId!);
       queryClient.invalidateQueries({ queryKey: ["scores", studentId] });
       queryClient.invalidateQueries({ queryKey: ["student", studentId] });
       queryClient.invalidateQueries({ queryKey: ["students", projectId] });
       setLocalScores({});
+      setDocentFeedback(null);
       toast.success("Scores opgeslagen!");
     } catch {
       toast.error("Opslaan mislukt");
