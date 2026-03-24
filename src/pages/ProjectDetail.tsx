@@ -175,6 +175,7 @@ const ProjectDetail = () => {
         criterium_naam: c.naam,
         max_score: c.max_score || 10,
         volgorde: i,
+        is_eindscore: c.is_eindscore || false,
       }));
       await supabase.from("grading_criteria").insert(criteriaToInsert);
 
@@ -374,14 +375,30 @@ const ProjectDetail = () => {
     toast.success("Student verwijderd");
   };
 
+  // Find the eindscore criterion if it exists
+  const eindscoreCriterium = criteria?.find((c: any) => c.is_eindscore);
+
+  const getEindScore = (student: any) => {
+    if (!eindscoreCriterium) return null;
+    const sc = student.student_scores?.find((s: any) => s.criterium_id === eindscoreCriterium.id);
+    if (!sc) return null;
+    return sc.final_score ?? sc.ai_suggested_score ?? null;
+  };
+
   const getTotalScore = (student: any) => {
+    // If there's an eindscore criterion, use that
+    if (eindscoreCriterium) {
+      return getEindScore(student);
+    }
+    // Otherwise sum all scores
     const scores = student.student_scores || [];
-    const finals = scores.map((s: any) => s.final_score).filter(Boolean);
-    if (finals.length === 0) return null;
-    return finals.reduce((a: number, b: number) => a + b, 0);
+    const vals = scores.map((s: any) => s.final_score ?? s.ai_suggested_score).filter((v: any) => v !== null && v !== undefined);
+    if (vals.length === 0) return null;
+    return vals.reduce((a: number, b: number) => a + Number(b), 0);
   };
 
   const getMaxTotal = () => {
+    if (eindscoreCriterium) return Number(eindscoreCriterium.max_score);
     if (!criteria) return 0;
     return criteria.reduce((a, c) => a + Number(c.max_score), 0);
   };

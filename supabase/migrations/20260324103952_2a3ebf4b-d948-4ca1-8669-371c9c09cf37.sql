@@ -1,0 +1,1 @@
+ALTER TABLE public.grading_criteria ADD COLUMN is_eindscore boolean NOT NULL DEFAULT false;
