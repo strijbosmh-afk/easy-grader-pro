@@ -50,6 +50,9 @@ const ProjectDetail = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [pdfViewerUrl, setPdfViewerUrl] = useState<string | null>(null);
   const [pdfViewerTitle, setPdfViewerTitle] = useState("");
+  const [editingStudentId, setEditingStudentId] = useState<string | null>(null);
+  const [editStudentName, setEditStudentName] = useState("");
+  const [deletingStudentId, setDeletingStudentId] = useState<string | null>(null);
 
   // Grading table parse state
   const [parsingGrading, setParsingGrading] = useState(false);
