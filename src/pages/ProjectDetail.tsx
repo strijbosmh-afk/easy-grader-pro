@@ -829,7 +829,19 @@ const ProjectDetail = () => {
                               </Badge>
                             </TableCell>
                             <TableCell>
-                              {total !== null ? `${total}/${max}` : "—"}
+                              {total !== null ? (
+                                <div className="flex items-center gap-2">
+                                  <span className={missing.length > 0 ? "text-destructive font-semibold" : ""}>
+                                    {total}/{max}
+                                  </span>
+                                  {missing.length > 0 && (
+                                    <span className="inline-flex items-center gap-1 text-xs text-destructive bg-destructive/10 px-2 py-0.5 rounded-full">
+                                      <AlertTriangle className="h-3 w-3" />
+                                      {missing.length} ontbrekend
+                                    </span>
+                                  )}
+                                </div>
+                              ) : "—"}
                             </TableCell>
                             <TableCell className="text-right">
                               <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
