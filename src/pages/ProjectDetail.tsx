@@ -476,7 +476,7 @@ const ProjectDetail = () => {
                     onClick={() => exportProjectToExcel(project, students, criteria)}
                   >
                     <Download className="h-4 w-4 mr-2" />
-                    Excel
+                    Export Scores
                   </Button>
                   <Button
                     variant="outline"
