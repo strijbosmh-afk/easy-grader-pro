@@ -31,6 +31,22 @@ interface CriteriumData {
   max_score: number;
 }
 
+function cleanMarkdown(text: string): string {
+  return text
+    // Remove score patterns like "(25/30):" or "(8/10)"
+    .replace(/\(\d+\/\d+\)\s*:?/g, "")
+    // Remove bold/italic markdown markers
+    .replace(/\*{1,3}/g, "")
+    // Remove heading markers
+    .replace(/^#{1,4}\s*/gm, "")
+    // Remove bullet markers at start of lines
+    .replace(/^[-•]\s*/gm, "")
+    // Clean up extra whitespace
+    .replace(/  +/g, " ")
+    .replace(/^ +/gm, "")
+    .trim();
+}
+
 function getScore(scores: ScoreData[], criteriumId: string): number {
   const sc = scores.find((s) => s.criterium_id === criteriumId);
   return sc?.final_score ?? sc?.ai_suggested_score ?? 0;
@@ -65,7 +81,7 @@ function parseVerslagSections(verslag: string | null): { sterktes: string[]; zwa
     if (line.startsWith("## ") || (line.startsWith("**") && line.endsWith("**"))) {
       continue;
     }
-    const cleaned = line.replace(/^[-•*]\s*/, "").replace(/^\*\*/g, "").replace(/\*\*$/g, "").trim();
+    const cleaned = cleanMarkdown(line);
     if (!cleaned) continue;
 
     if (currentSection === "sterktes") sterktes.push(cleaned);
@@ -161,7 +177,7 @@ function buildStudentDocument(
     ];
     if (motivatie) {
       cellChildren.push(
-        new Paragraph({ children: [new TextRun({ text: motivatie, font: "Arial", size: 18, italics: true, color: "666666" })] })
+        new Paragraph({ children: [new TextRun({ text: cleanMarkdown(motivatie), font: "Arial", size: 18, italics: true, color: "666666" })] })
       );
     }
 
@@ -289,9 +305,14 @@ function buildStudentDocument(
         children: [new TextRun({ text: "Analyse", bold: true, size: 28, font: "Arial" })],
       })
     );
-    children.push(
-      new Paragraph({ children: [new TextRun({ text: student.ai_feedback, font: "Arial", size: 22 })] })
-    );
+    const cleanedFeedback = cleanMarkdown(student.ai_feedback);
+    for (const line of cleanedFeedback.split("\n")) {
+      if (line.trim()) {
+        children.push(
+          new Paragraph({ children: [new TextRun({ text: line.trim(), font: "Arial", size: 22 })] })
+        );
+      }
+    }
     children.push(new Paragraph({ children: [] }));
   }
 
