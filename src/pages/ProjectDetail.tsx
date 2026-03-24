@@ -425,12 +425,37 @@ const ProjectDetail = () => {
                   <Button
                     variant="default"
                     size="sm"
-                    disabled={batchAnalyzing || !project.opdracht_pdf_url || !project.graderingstabel_pdf_url}
+                    disabled={batchAnalyzing || reAnalyzing || !project.opdracht_pdf_url || !project.graderingstabel_pdf_url}
                     onClick={batchAnalyze}
                   >
                     {batchAnalyzing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Bot className="h-4 w-4 mr-2" />}
                     Analyseer Alle
                   </Button>
+                )}
+                {students && students.some((s) => s.status === "reviewed" || s.status === "graded") && (
+                  <div className="flex items-center gap-1 border rounded-lg px-2 py-0.5 bg-card">
+                    <RefreshCw className="h-3.5 w-3.5 text-muted-foreground" />
+                    <Select value={reAnalyzeNiveau} onValueChange={setReAnalyzeNiveau}>
+                      <SelectTrigger className="w-[110px] h-7 border-0 shadow-none text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="streng">Streng</SelectItem>
+                        <SelectItem value="neutraal">Neutraal</SelectItem>
+                        <SelectItem value="mild">Mild</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="h-7 text-xs"
+                      disabled={reAnalyzing || batchAnalyzing}
+                      onClick={batchReAnalyze}
+                    >
+                      {reAnalyzing ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : null}
+                      Heranalyse
+                    </Button>
+                  </div>
                 )}
                 {students && students.length > 0 && criteria && criteria.length > 0 && (
                   <Button
