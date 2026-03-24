@@ -110,9 +110,102 @@ const ProjectDetail = () => {
     const { error: uploadError } = await supabase.storage.from("pdfs").upload(path, file);
     if (uploadError) throw uploadError;
     const { data: urlData } = supabase.storage.from("pdfs").getPublicUrl(path);
-    const field = type === "opdracht" ? "opdracht_pdf_url" : "graderingstabel_pdf_url";
-    await updateProject.mutateAsync({ [field]: urlData.publicUrl });
-    toast.success(`${type === "opdracht" ? "Opdracht" : "Graderingstabel"} geüpload`);
+    const publicUrl = urlData.publicUrl;
+
+    if (type === "graderingstabel") {
+      // Parse the grading table first before applying
+      setPendingGradingUrl(publicUrl);
+      setParsingGrading(true);
+      try {
+        const { data, error } = await supabase.functions.invoke("parse-grading-table", {
+          body: { graderingstabelUrl: publicUrl },
+        });
+        if (error) throw error;
+        setParsedCriteria(data.criteria || []);
+        setParsedSamenvatting(data.samenvatting || "");
+        setShowGradingDialog(true);
+      } catch (err: any) {
+        toast.error("Kon graderingstabel niet analyseren: " + (err?.message || "onbekende fout"));
+        // Still save the URL even if parsing fails
+        await updateProject.mutateAsync({ graderingstabel_pdf_url: publicUrl });
+      } finally {
+        setParsingGrading(false);
+      }
+    } else {
+      await updateProject.mutateAsync({ opdracht_pdf_url: publicUrl });
+      toast.success("Opdracht geüpload");
+    }
+  };
+
+  const applyNewCriteria = async () => {
+    if (!parsedCriteria || !pendingGradingUrl) return;
+    setApplyingCriteria(true);
+    try {
+      // Save grading table URL
+      await updateProject.mutateAsync({ graderingstabel_pdf_url: pendingGradingUrl });
+
+      // Delete old criteria (cascades to scores via foreign key? no — delete scores manually)
+      if (criteria && criteria.length > 0) {
+        const criteriaIds = criteria.map((c) => c.id);
+        await supabase.from("student_scores").delete().in("criterium_id", criteriaIds);
+        await supabase.from("grading_criteria").delete().eq("project_id", id!);
+      }
+
+      // Insert new criteria
+      const criteriaToInsert = parsedCriteria.map((c: any, i: number) => ({
+        project_id: id!,
+        criterium_naam: c.naam,
+        max_score: c.max_score || 10,
+        volgorde: i,
+      }));
+      await supabase.from("grading_criteria").insert(criteriaToInsert);
+
+      queryClient.invalidateQueries({ queryKey: ["criteria", id] });
+      queryClient.invalidateQueries({ queryKey: ["students", id] });
+
+      setShowGradingDialog(false);
+      toast.success("Nieuwe criteria toegepast! Heranalyse wordt gestart...");
+
+      // Re-analyze all students that have a PDF
+      const studentsWithPdf = students?.filter((s) => s.pdf_url) || [];
+      if (studentsWithPdf.length > 0) {
+        setBatchAnalyzing(true);
+        let success = 0;
+        let failed = 0;
+        for (const student of studentsWithPdf) {
+          try {
+            await supabase.from("students").update({ status: "analyzing" as StudentStatus }).eq("id", student.id);
+            queryClient.invalidateQueries({ queryKey: ["students", id] });
+            const { error } = await supabase.functions.invoke("analyze-student", {
+              body: { studentId: student.id, projectId: id },
+            });
+            if (error) throw error;
+            success++;
+          } catch {
+            failed++;
+          }
+          queryClient.invalidateQueries({ queryKey: ["students", id] });
+        }
+        setBatchAnalyzing(false);
+        queryClient.invalidateQueries({ queryKey: ["students", id] });
+        toast.success(`Heranalyse klaar: ${success} geslaagd${failed > 0 ? `, ${failed} mislukt` : ""}`);
+      }
+    } catch (err: any) {
+      toast.error("Fout bij toepassen criteria: " + (err?.message || "onbekende fout"));
+    } finally {
+      setApplyingCriteria(false);
+    }
+  };
+
+  const dismissGradingDialog = async () => {
+    // Just save the URL without changing criteria
+    if (pendingGradingUrl) {
+      await updateProject.mutateAsync({ graderingstabel_pdf_url: pendingGradingUrl });
+      toast.success("Graderingstabel geüpload (criteria niet gewijzigd)");
+    }
+    setShowGradingDialog(false);
+    setParsedCriteria(null);
+    setPendingGradingUrl(null);
   };
 
   const uploadStudentPdfs = async (files: FileList | File[]) => {
