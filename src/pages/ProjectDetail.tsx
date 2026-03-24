@@ -784,6 +784,7 @@ const ProjectDetail = () => {
                       .map((student) => {
                         const total = getTotalScore(student);
                         const max = getMaxTotal();
+                        const missing = getMissingScores(student);
                         const isEditing = editingStudentId === student.id;
                         return (
                           <TableRow key={student.id} className="cursor-pointer" onClick={() => !isEditing && navigate(`/project/${id}/student/${student.id}`)}>
