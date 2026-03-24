@@ -16,6 +16,7 @@ const StudentScorecard = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [saving, setSaving] = useState(false);
+  const [docentFeedback, setDocentFeedback] = useState<string | null>(null);
 
   const { data: project } = useQuery({
     queryKey: ["project", projectId],
