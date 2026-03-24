@@ -476,7 +476,33 @@ const ProjectDetail = () => {
                     onClick={() => exportProjectToExcel(project, students, criteria)}
                   >
                     <Download className="h-4 w-4 mr-2" />
-                    Export
+                    Excel
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={exportingWord}
+                    onClick={async () => {
+                      setExportingWord(true);
+                      try {
+                        const toExport = selectedStudents.size > 0
+                          ? students.filter((s) => selectedStudents.has(s.id))
+                          : students;
+                        const scoresMap = new Map<string, any[]>();
+                        for (const s of toExport) {
+                          scoresMap.set(s.id, s.student_scores || []);
+                        }
+                        await exportStudentsBatchToWord(toExport, project, criteria, scoresMap);
+                        toast.success(`${toExport.length} verslag(en) geëxporteerd`);
+                      } catch {
+                        toast.error("Word export mislukt");
+                      } finally {
+                        setExportingWord(false);
+                      }
+                    }}
+                  >
+                    {exportingWord ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileDown className="h-4 w-4 mr-2" />}
+                    {selectedStudents.size > 0 ? `Word (${selectedStudents.size})` : "Word"}
                   </Button>
                 </>
               )}
