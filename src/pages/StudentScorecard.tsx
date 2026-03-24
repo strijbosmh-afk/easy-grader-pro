@@ -6,10 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Loader2, Bot, Check, Download, RefreshCw, FileText } from "lucide-react";
+import { ArrowLeft, Loader2, Bot, Check, Download, RefreshCw, FileText, FileDown } from "lucide-react";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { exportStudentToPdf } from "@/lib/export";
+import { exportStudentToWord } from "@/lib/export-word";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const StudentScorecard = () => {
@@ -265,13 +266,29 @@ const StudentScorecard = () => {
             </Button>
           )}
           {criteria && criteria.length > 0 && (
-            <Button
-              variant="outline"
-              onClick={() => exportStudentToPdf(student, project!, criteria, scores || [], getScoreForCriterium, feedbackValue)}
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Export PDF
-            </Button>
+            <>
+              <Button
+                variant="outline"
+                onClick={() => exportStudentToPdf(student, project!, criteria, scores || [], getScoreForCriterium, feedbackValue)}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Export PDF
+              </Button>
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  try {
+                    await exportStudentToWord(student, project!, criteria, scores || []);
+                    toast.success("Word verslag geëxporteerd");
+                  } catch {
+                    toast.error("Word export mislukt");
+                  }
+                }}
+              >
+                <FileDown className="h-4 w-4 mr-2" />
+                Export Word
+              </Button>
+            </>
           )}
           {scores && scores.length > 0 && (
             <Button

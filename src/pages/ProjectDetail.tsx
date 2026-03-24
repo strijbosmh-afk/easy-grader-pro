@@ -7,13 +7,15 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, Upload, FileText, Pencil, Check, X, Loader2, Bot, Download, Settings, LayoutGrid, RefreshCw, AlertTriangle, Users, FolderOpen, Search, Eye, Trash2, MoreHorizontal } from "lucide-react";
+import { ArrowLeft, Upload, FileText, Pencil, Check, X, Loader2, Bot, Download, Settings, LayoutGrid, RefreshCw, AlertTriangle, Users, FolderOpen, Search, Eye, Trash2, FileDown } from "lucide-react";
 import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { exportProjectToExcel } from "@/lib/export";
+import { exportStudentsBatchToWord, extractStudentName } from "@/lib/export-word";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -53,6 +55,8 @@ const ProjectDetail = () => {
   const [editingStudentId, setEditingStudentId] = useState<string | null>(null);
   const [editStudentName, setEditStudentName] = useState("");
   const [deletingStudentId, setDeletingStudentId] = useState<string | null>(null);
+  const [selectedStudents, setSelectedStudents] = useState<Set<string>>(new Set());
+  const [exportingWord, setExportingWord] = useState(false);
 
   // Grading table parse state
   const [parsingGrading, setParsingGrading] = useState(false);
@@ -230,7 +234,7 @@ const ProjectDetail = () => {
           toast.error(`${file.name} is geen PDF`);
           continue;
         }
-        const naam = file.name.replace(/\.pdf$/i, "");
+        const naam = extractStudentName(file.name);
         const path = `${id}/students/${Date.now()}_${file.name}`;
         const { error: uploadError } = await supabase.storage.from("pdfs").upload(path, file);
         if (uploadError) {
@@ -472,7 +476,33 @@ const ProjectDetail = () => {
                     onClick={() => exportProjectToExcel(project, students, criteria)}
                   >
                     <Download className="h-4 w-4 mr-2" />
-                    Export
+                    Excel
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={exportingWord}
+                    onClick={async () => {
+                      setExportingWord(true);
+                      try {
+                        const toExport = selectedStudents.size > 0
+                          ? students.filter((s) => selectedStudents.has(s.id))
+                          : students;
+                        const scoresMap = new Map<string, any[]>();
+                        for (const s of toExport) {
+                          scoresMap.set(s.id, s.student_scores || []);
+                        }
+                        await exportStudentsBatchToWord(toExport, project, criteria, scoresMap);
+                        toast.success(`${toExport.length} verslag(en) geëxporteerd`);
+                      } catch {
+                        toast.error("Word export mislukt");
+                      } finally {
+                        setExportingWord(false);
+                      }
+                    }}
+                  >
+                    {exportingWord ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileDown className="h-4 w-4 mr-2" />}
+                    {selectedStudents.size > 0 ? `Word (${selectedStudents.size})` : "Word"}
                   </Button>
                 </>
               )}
@@ -703,6 +733,18 @@ const ProjectDetail = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-10">
+                        <Checkbox
+                          checked={selectedStudents.size === students.length && students.length > 0}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setSelectedStudents(new Set(students.map((s) => s.id)));
+                            } else {
+                              setSelectedStudents(new Set());
+                            }
+                          }}
+                        />
+                      </TableHead>
                       <TableHead>Student</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Score</TableHead>
@@ -718,6 +760,19 @@ const ProjectDetail = () => {
                         const isEditing = editingStudentId === student.id;
                         return (
                           <TableRow key={student.id} className="cursor-pointer" onClick={() => !isEditing && navigate(`/project/${id}/student/${student.id}`)}>
+                            <TableCell onClick={(e) => e.stopPropagation()}>
+                              <Checkbox
+                                checked={selectedStudents.has(student.id)}
+                                onCheckedChange={(checked) => {
+                                  setSelectedStudents((prev) => {
+                                    const next = new Set(prev);
+                                    if (checked) next.add(student.id);
+                                    else next.delete(student.id);
+                                    return next;
+                                  });
+                                }}
+                              />
+                            </TableCell>
                             <TableCell className="font-medium">
                               {isEditing ? (
                                 <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
@@ -793,7 +848,7 @@ const ProjectDetail = () => {
                       })}
                     {students.filter((s) => s.naam.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={4} className="text-center text-muted-foreground py-6">
+                        <TableCell colSpan={5} className="text-center text-muted-foreground py-6">
                           Geen studenten gevonden voor "{searchQuery}"
                         </TableCell>
                       </TableRow>
