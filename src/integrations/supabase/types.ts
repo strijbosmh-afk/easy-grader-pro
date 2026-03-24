@@ -14,7 +14,148 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      grading_criteria: {
+        Row: {
+          criterium_naam: string
+          id: string
+          max_score: number
+          project_id: string
+          volgorde: number
+        }
+        Insert: {
+          criterium_naam: string
+          id?: string
+          max_score?: number
+          project_id: string
+          volgorde?: number
+        }
+        Update: {
+          criterium_naam?: string
+          id?: string
+          max_score?: number
+          project_id?: string
+          volgorde?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grading_criteria_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      projects: {
+        Row: {
+          created_at: string
+          graderingstabel_pdf_url: string | null
+          id: string
+          naam: string
+          opdracht_pdf_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          graderingstabel_pdf_url?: string | null
+          id?: string
+          naam: string
+          opdracht_pdf_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          graderingstabel_pdf_url?: string | null
+          id?: string
+          naam?: string
+          opdracht_pdf_url?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      student_scores: {
+        Row: {
+          ai_motivatie: string | null
+          ai_suggested_score: number | null
+          criterium_id: string
+          final_score: number | null
+          id: string
+          opmerkingen: string | null
+          student_id: string
+        }
+        Insert: {
+          ai_motivatie?: string | null
+          ai_suggested_score?: number | null
+          criterium_id: string
+          final_score?: number | null
+          id?: string
+          opmerkingen?: string | null
+          student_id: string
+        }
+        Update: {
+          ai_motivatie?: string | null
+          ai_suggested_score?: number | null
+          criterium_id?: string
+          final_score?: number | null
+          id?: string
+          opmerkingen?: string | null
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_scores_criterium_id_fkey"
+            columns: ["criterium_id"]
+            isOneToOne: false
+            referencedRelation: "grading_criteria"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_scores_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      students: {
+        Row: {
+          ai_feedback: string | null
+          created_at: string
+          id: string
+          naam: string
+          pdf_url: string | null
+          project_id: string
+          status: Database["public"]["Enums"]["student_status"]
+        }
+        Insert: {
+          ai_feedback?: string | null
+          created_at?: string
+          id?: string
+          naam: string
+          pdf_url?: string | null
+          project_id: string
+          status?: Database["public"]["Enums"]["student_status"]
+        }
+        Update: {
+          ai_feedback?: string | null
+          created_at?: string
+          id?: string
+          naam?: string
+          pdf_url?: string | null
+          project_id?: string
+          status?: Database["public"]["Enums"]["student_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "students_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +164,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      student_status: "pending" | "analyzing" | "reviewed" | "graded"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +291,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      student_status: ["pending", "analyzing", "reviewed", "graded"],
+    },
   },
 } as const
