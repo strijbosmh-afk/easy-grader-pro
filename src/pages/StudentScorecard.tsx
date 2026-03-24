@@ -19,6 +19,7 @@ const StudentScorecard = () => {
   const [saving, setSaving] = useState(false);
   const [docentFeedback, setDocentFeedback] = useState<string | null>(null);
   const [reAnalyzeNiveau, setReAnalyzeNiveau] = useState("streng");
+  const [generatingReport, setGeneratingReport] = useState(false);
 
   const { data: project } = useQuery({
     queryKey: ["project", projectId],
