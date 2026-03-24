@@ -26,7 +26,8 @@ export function exportStudentToPdf(
   project: any,
   criteria: any[],
   scores: any[],
-  getScore: (criteriumId: string) => { final_score: string; opmerkingen: string }
+  getScore: (criteriumId: string) => { final_score: string; opmerkingen: string },
+  docentFeedback?: string
 ) {
   const doc = new jsPDF();
   const margin = 20;
