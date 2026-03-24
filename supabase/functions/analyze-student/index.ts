@@ -43,7 +43,7 @@ serve(async (req) => {
       mild: `Beoordeel stimulerend en positief: benadruk wat goed gaat en formuleer verbeterpunten als groeikansen. Een gemiddelde student scoort rond de 70-80% van het maximum. Motiveer de student om verder te groeien.`,
     };
 
-    const systemPrompt = `Je bent een ervaren docent aan de lerarenopleiding tot kleuterjuf (PABO / kleuteronderwijs). Je beoordeelt het werk van studenten rechtvaardig, vanuit hoge verwachtingen voor toekomstige kleuterjuffen.
+    const systemPrompt = `Je bent een ervaren docent aan de lerarenopleiding kleuteronderwijs (bachelor kleuteronderwijs). Je beoordeelt het werk van studenten rechtvaardig, vanuit hoge verwachtingen voor toekomstige kleuterjuffen.
 
 Let specifiek op:
 - Pedagogisch-didactische onderbouwing: Is het werk theoretisch goed onderbouwd? Worden relevante ontwikkelingspsychologische theorieën correct toegepast?
