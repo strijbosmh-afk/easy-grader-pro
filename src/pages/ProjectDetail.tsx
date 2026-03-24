@@ -733,6 +733,18 @@ const ProjectDetail = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-10">
+                        <Checkbox
+                          checked={selectedStudents.size === students.length && students.length > 0}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setSelectedStudents(new Set(students.map((s) => s.id)));
+                            } else {
+                              setSelectedStudents(new Set());
+                            }
+                          }}
+                        />
+                      </TableHead>
                       <TableHead>Student</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Score</TableHead>
@@ -748,6 +760,19 @@ const ProjectDetail = () => {
                         const isEditing = editingStudentId === student.id;
                         return (
                           <TableRow key={student.id} className="cursor-pointer" onClick={() => !isEditing && navigate(`/project/${id}/student/${student.id}`)}>
+                            <TableCell onClick={(e) => e.stopPropagation()}>
+                              <Checkbox
+                                checked={selectedStudents.has(student.id)}
+                                onCheckedChange={(checked) => {
+                                  setSelectedStudents((prev) => {
+                                    const next = new Set(prev);
+                                    if (checked) next.add(student.id);
+                                    else next.delete(student.id);
+                                    return next;
+                                  });
+                                }}
+                              />
+                            </TableCell>
                             <TableCell className="font-medium">
                               {isEditing ? (
                                 <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
