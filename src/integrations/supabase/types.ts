@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           criterium_naam: string
           id: string
+          is_eindscore: boolean
           max_score: number
           project_id: string
           volgorde: number
@@ -25,6 +26,7 @@ export type Database = {
         Insert: {
           criterium_naam: string
           id?: string
+          is_eindscore?: boolean
           max_score?: number
           project_id: string
           volgorde?: number
@@ -32,6 +34,7 @@ export type Database = {
         Update: {
           criterium_naam?: string
           id?: string
+          is_eindscore?: boolean
           max_score?: number
           project_id?: string
           volgorde?: number
