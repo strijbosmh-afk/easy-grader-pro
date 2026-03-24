@@ -848,7 +848,7 @@ const ProjectDetail = () => {
                       })}
                     {students.filter((s) => s.naam.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={4} className="text-center text-muted-foreground py-6">
+                        <TableCell colSpan={5} className="text-center text-muted-foreground py-6">
                           Geen studenten gevonden voor "{searchQuery}"
                         </TableCell>
                       </TableRow>
