@@ -148,12 +148,19 @@ const ProjectDetail = () => {
       // Save grading table URL
       await updateProject.mutateAsync({ graderingstabel_pdf_url: pendingGradingUrl });
 
-      // Delete old criteria (cascades to scores via foreign key? no — delete scores manually)
-      if (criteria && criteria.length > 0) {
-        const criteriaIds = criteria.map((c) => c.id);
-        await supabase.from("student_scores").delete().in("criterium_id", criteriaIds);
-        await supabase.from("grading_criteria").delete().eq("project_id", id!);
+      // Delete ALL scores for students in this project, then delete old criteria
+      const studentIds = students?.map((s) => s.id) || [];
+      if (studentIds.length > 0) {
+        await supabase.from("student_scores").delete().in("student_id", studentIds);
       }
+      await supabase.from("grading_criteria").delete().eq("project_id", id!);
+
+      // Reset all student statuses
+      await supabase.from("students").update({ 
+        status: "pending" as StudentStatus, 
+        ai_feedback: null, 
+        verslag: null 
+      }).eq("project_id", id!);
 
       // Insert new criteria
       const criteriaToInsert = parsedCriteria.map((c: any, i: number) => ({
