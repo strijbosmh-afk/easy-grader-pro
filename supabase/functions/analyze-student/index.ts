@@ -59,39 +59,47 @@ Je MOET altijd antwoorden in valid JSON met deze structuur:
   "criteria": [
     {
       "naam": "Criterium naam",
-      "max_score": 10,
-      "score": 7.5,
+      "max_score": 20,
+      "score": 14,
       "motivatie": "Korte onderbouwing waarom deze score"
     }
   ],
   "algemene_feedback": "Korte algemene feedback over het werk"
 }
 
-Geef concrete verbeterpunten.`;
+BELANGRIJK:
+- Gebruik EXACT de max_score die bij elk criterium hoort (dit kan 10, 20, 100 of elk ander getal zijn).
+- De score MOET een getal zijn tussen 0 en de max_score van dat criterium.
+- Gebruik de VOLLEDIGE schaal: als max_score 20 is, geef dan scores tussen 0 en 20.
+
+Geef concrete verbeterpunten.\`;
 
     let userPrompt: string;
     if (existingCriteria && existingCriteria.length > 0) {
-      const criteriaList = existingCriteria.map(c => `- ${c.criterium_naam} (max: ${c.max_score})`).join("\n");
-      userPrompt = `Beoordeel het werk van student "${student.naam}" op basis van de volgende criteria:
+      const criteriaList = existingCriteria.map(c => \`- \${c.criterium_naam} (max score: \${c.max_score}, scores moeten tussen 0 en \${c.max_score} liggen)\`).join("\\n");
+      userPrompt = \`Beoordeel het werk van student "\${student.naam}" op basis van de volgende criteria:
 
-${criteriaList}
+\${criteriaList}
 
-Opdracht PDF: ${project.opdracht_pdf_url}
-Graderingstabel PDF: ${project.graderingstabel_pdf_url}
-Student PDF: ${student.pdf_url}
+BELANGRIJK: Respecteer de max_score per criterium. Als een criterium max_score 20 heeft, geef dan een score tussen 0 en 20 (NIET tussen 0 en 10).
 
-Analyseer de inhoud van de PDFs en geef scores per criterium.`;
+Opdracht PDF: \${project.opdracht_pdf_url}
+Graderingstabel PDF: \${project.graderingstabel_pdf_url}
+Student PDF: \${student.pdf_url}
+
+Analyseer de inhoud van de PDFs en geef scores per criterium. Gebruik de juiste scoreschaal!\`;
     } else {
-      userPrompt = `Analyseer de graderingstabel en het werk van student "${student.naam}".
+      userPrompt = \`Analyseer de graderingstabel en het werk van student "\${student.naam}".
 
 1. Eerst: Haal de beoordelingscriteria uit de graderingstabel PDF
 2. Dan: Beoordeel het studentwerk per criterium
+3. BELANGRIJK: Gebruik exact de scoreschaal uit de graderingstabel (bijv. 0-20, 0-10, etc.)
 
-Opdracht PDF: ${project.opdracht_pdf_url}
-Graderingstabel PDF: ${project.graderingstabel_pdf_url}
-Student PDF: ${student.pdf_url}
+Opdracht PDF: \${project.opdracht_pdf_url}
+Graderingstabel PDF: \${project.graderingstabel_pdf_url}
+Student PDF: \${student.pdf_url}
 
-Geef je antwoord in het gevraagde JSON formaat met criteria, scores en motivatie.`;
+Geef je antwoord in het gevraagde JSON formaat met criteria, scores en motivatie.\`;
     }
 
     // Call Lovable AI with tool calling for structured output
