@@ -27,7 +27,6 @@ serve(async (req) => {
 
     if (!graderingstabelUrl) throw new Error("Geen graderingstabel URL opgegeven");
 
-    // Download PDF and convert to base64 for multimodal analysis
     console.log("Downloading grading table PDF...");
     const pdfBase64 = await fetchPdfAsBase64(graderingstabelUrl);
     console.log("PDF downloaded, size:", Math.round(pdfBase64.length / 1024), "KB base64");
@@ -43,20 +42,23 @@ serve(async (req) => {
         messages: [
           {
             role: "system",
-            content: `Je bent een expert in het analyseren van beoordelingstabellen voor het hoger onderwijs. Analyseer de graderingstabel PDF en extraheer ALLE beoordelingscriteria met hun maximale scores.
+            content: `Je bent een expert in het analyseren van beoordelingstabellen voor het hoger onderwijs in België. Analyseer de graderingstabel PDF en extraheer ALLE beoordelingscriteria.
 
-Wees nauwkeurig:
-- Neem de criteria over EXACT zoals ze in het document staan.
-- Neem de max_score over EXACT zoals in het document (kan 10, 20, 100, of elk ander getal zijn).
-- Als er geen expliciete max_score staat, gebruik dan 10 als standaard.
-- Lees het hele document grondig — mis geen enkel criterium.`,
+HEEL BELANGRIJK:
+- Zoek naar de DEELCRITERIA (de individuele beoordelingspunten) met hun max scores.
+- Zoek ook naar het EINDCIJFER — dit is de uiteindelijke totaalscore (vaak "Cijfer", "Totaal", "Eindscore", "Score op /20", etc.).
+- Het eindcijfer is NIET de som van de deelscores — het is een apart veld in de tabel.
+- Neem de criteria namen EXACT over zoals in het document.
+- Neem de max_scores EXACT over.
+- Markeer welk criterium het eindcijfer is (is_eindscore: true).
+- Als er geen apart eindcijfer staat, markeer geen enkel criterium als eindscore.`,
           },
           {
             role: "user",
             content: [
               {
                 type: "text",
-                text: "Analyseer deze graderingstabel PDF en extraheer alle beoordelingscriteria met hun max scores:",
+                text: "Analyseer deze graderingstabel PDF. Extraheer alle deelcriteria EN identificeer het eindcijfer (totaalscore):",
               },
               {
                 type: "image_url",
@@ -81,11 +83,12 @@ Wees nauwkeurig:
                     items: {
                       type: "object",
                       properties: {
-                        naam: { type: "string" },
-                        max_score: { type: "number" },
-                        beschrijving: { type: "string" },
+                        naam: { type: "string", description: "Exact name of the criterion from the document" },
+                        max_score: { type: "number", description: "Maximum score for this criterion" },
+                        beschrijving: { type: "string", description: "Description of the criterion" },
+                        is_eindscore: { type: "boolean", description: "True if this is the final/total grade (Cijfer, Totaal, Eindscore), false for sub-criteria" },
                       },
-                      required: ["naam", "max_score"],
+                      required: ["naam", "max_score", "is_eindscore"],
                       additionalProperties: false,
                     },
                   },
@@ -124,6 +127,11 @@ Wees nauwkeurig:
     }
 
     console.log("Parsed criteria:", result.criteria?.length, "items");
+    const eindscore = result.criteria?.find((c: any) => c.is_eindscore);
+    if (eindscore) {
+      console.log("Eindscore found:", eindscore.naam, "max:", eindscore.max_score);
+    }
+
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
