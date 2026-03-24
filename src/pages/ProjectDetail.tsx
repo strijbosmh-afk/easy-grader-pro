@@ -129,6 +129,8 @@ const ProjectDetail = () => {
     }
   };
 
+  const [batchAnalyzing, setBatchAnalyzing] = useState(false);
+
   const analyzeStudent = useMutation({
     mutationFn: async (studentId: string) => {
       await supabase.from("students").update({ status: "analyzing" as StudentStatus }).eq("id", studentId);
@@ -149,6 +151,34 @@ const ProjectDetail = () => {
       toast.error(err?.message || "Analyse mislukt");
     },
   });
+
+  const batchAnalyze = async () => {
+    const pending = students?.filter((s) => s.status === "pending" || s.status === "reviewed") || [];
+    if (pending.length === 0) {
+      toast.info("Geen studenten om te analyseren");
+      return;
+    }
+    setBatchAnalyzing(true);
+    let success = 0;
+    let failed = 0;
+    for (const student of pending) {
+      try {
+        await supabase.from("students").update({ status: "analyzing" as StudentStatus }).eq("id", student.id);
+        queryClient.invalidateQueries({ queryKey: ["students", id] });
+        const { error } = await supabase.functions.invoke("analyze-student", {
+          body: { studentId: student.id, projectId: id },
+        });
+        if (error) throw error;
+        success++;
+      } catch {
+        failed++;
+      }
+      queryClient.invalidateQueries({ queryKey: ["students", id] });
+    }
+    setBatchAnalyzing(false);
+    queryClient.invalidateQueries({ queryKey: ["students", id] });
+    toast.success(`Batch analyse klaar: ${success} geslaagd${failed > 0 ? `, ${failed} mislukt` : ""}`);
+  };
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
@@ -322,6 +352,17 @@ const ProjectDetail = () => {
             <div className="flex items-center justify-between">
               <CardTitle className="text-base">Studenten</CardTitle>
               <div className="flex gap-2">
+                {students && students.length > 0 && (
+                  <Button
+                    variant="default"
+                    size="sm"
+                    disabled={batchAnalyzing || !project.opdracht_pdf_url || !project.graderingstabel_pdf_url}
+                    onClick={batchAnalyze}
+                  >
+                    {batchAnalyzing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Bot className="h-4 w-4 mr-2" />}
+                    Analyseer Alle
+                  </Button>
+                )}
                 {students && students.length > 0 && criteria && criteria.length > 0 && (
                   <Button
                     variant="outline"
