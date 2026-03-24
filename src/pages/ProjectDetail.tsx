@@ -671,6 +671,74 @@ const ProjectDetail = () => {
           </CardContent>
         </Card>
       </main>
+
+      {/* Grading table confirmation dialog */}
+      <Dialog open={showGradingDialog} onOpenChange={(open) => !open && dismissGradingDialog()}>
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              Nieuwe graderingstabel gedetecteerd
+            </DialogTitle>
+            <DialogDescription>
+              {parsedSamenvatting || "De graderingstabel is geanalyseerd. Hieronder vind je de geëxtraheerde criteria."}
+            </DialogDescription>
+          </DialogHeader>
+
+          {parsedCriteria && parsedCriteria.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-foreground">
+                {parsedCriteria.length} criteria gevonden:
+              </p>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Criterium</TableHead>
+                    <TableHead className="w-24 text-right">Max score</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {parsedCriteria.map((c: any, i: number) => (
+                    <TableRow key={i}>
+                      <TableCell className="text-sm">
+                        <div>{c.naam}</div>
+                        {c.beschrijving && (
+                          <div className="text-xs text-muted-foreground mt-0.5">{c.beschrijving}</div>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-sm">{c.max_score}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+
+              {criteria && criteria.length > 0 && (
+                <div className="bg-destructive/10 border border-destructive/20 rounded-md p-3 mt-3">
+                  <p className="text-sm text-destructive font-medium">
+                    ⚠️ Let op: de huidige {criteria.length} criteria en alle bijbehorende scores worden vervangen. Alle studenten worden opnieuw geanalyseerd.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={dismissGradingDialog} disabled={applyingCriteria}>
+              Nee, alleen uploaden
+            </Button>
+            <Button onClick={applyNewCriteria} disabled={applyingCriteria}>
+              {applyingCriteria ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Toepassen...
+                </>
+              ) : (
+                "Ja, toepassen & heranalyseren"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
