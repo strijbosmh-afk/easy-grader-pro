@@ -47,6 +47,14 @@ const ProjectDetail = () => {
   const [dragOver, setDragOver] = useState(false);
   const [uploading, setUploading] = useState(false);
 
+  // Grading table parse state
+  const [parsingGrading, setParsingGrading] = useState(false);
+  const [parsedCriteria, setParsedCriteria] = useState<any[] | null>(null);
+  const [parsedSamenvatting, setParsedSamenvatting] = useState("");
+  const [pendingGradingUrl, setPendingGradingUrl] = useState<string | null>(null);
+  const [showGradingDialog, setShowGradingDialog] = useState(false);
+  const [applyingCriteria, setApplyingCriteria] = useState(false);
+
   const { data: project, isLoading } = useQuery({
     queryKey: ["project", id],
     queryFn: async () => {
