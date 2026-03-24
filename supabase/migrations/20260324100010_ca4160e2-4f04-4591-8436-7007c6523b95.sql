@@ -1,0 +1,1 @@
+ALTER TABLE public.students ADD COLUMN verslag text;

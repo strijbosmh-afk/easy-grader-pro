@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Loader2, Bot, Check, Download, RefreshCw } from "lucide-react";
+import { ArrowLeft, Loader2, Bot, Check, Download, RefreshCw, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { exportStudentToPdf } from "@/lib/export";
@@ -19,6 +19,7 @@ const StudentScorecard = () => {
   const [saving, setSaving] = useState(false);
   const [docentFeedback, setDocentFeedback] = useState<string | null>(null);
   const [reAnalyzeNiveau, setReAnalyzeNiveau] = useState("streng");
+  const [generatingReport, setGeneratingReport] = useState(false);
 
   const { data: project } = useQuery({
     queryKey: ["project", projectId],
@@ -272,7 +273,54 @@ const StudentScorecard = () => {
               Export PDF
             </Button>
           )}
+          {scores && scores.length > 0 && (
+            <Button
+              variant="outline"
+              disabled={generatingReport}
+              onClick={async () => {
+                setGeneratingReport(true);
+                try {
+                  const { data, error } = await supabase.functions.invoke("generate-report", {
+                    body: { studentId, projectId },
+                  });
+                  if (error) throw error;
+                  queryClient.invalidateQueries({ queryKey: ["student", studentId] });
+                  toast.success("Verslag gegenereerd!");
+                } catch (err: any) {
+                  toast.error(err?.message || "Verslag genereren mislukt");
+                } finally {
+                  setGeneratingReport(false);
+                }
+              }}
+            >
+              {generatingReport ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileText className="h-4 w-4 mr-2" />}
+              {(student as any).verslag ? "Verslag hergenereren" : "Genereer Verslag"}
+            </Button>
+          )}
         </div>
+
+        {/* Verslag */}
+        {(student as any).verslag && (
+          <Card className="border-primary/20 bg-primary/5">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <FileText className="h-4 w-4 text-primary" />
+                Eindverslag
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="prose prose-sm max-w-none text-foreground">
+                {(student as any).verslag.split('\n').map((line: string, i: number) => {
+                  if (line.startsWith('## ')) return <h2 key={i} className="text-lg font-bold mt-4 mb-2 text-foreground">{line.replace('## ', '')}</h2>;
+                  if (line.startsWith('**') && line.endsWith('**')) return <h3 key={i} className="text-base font-semibold mt-3 mb-1 text-foreground">{line.replace(/\*\*/g, '')}</h3>;
+                  if (line.startsWith('- ')) return <li key={i} className="ml-4 text-sm text-foreground/90">{line.replace('- ', '')}</li>;
+                  if (line.trim() === '') return <br key={i} />;
+                  return <p key={i} className="text-sm text-foreground/90 mb-1">{line}</p>;
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {student.ai_feedback && (
           <Card>
