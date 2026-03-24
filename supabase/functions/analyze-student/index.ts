@@ -10,8 +10,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { studentId, projectId } = await req.json();
-    
+    const { studentId, projectId, niveauOverride } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
@@ -36,7 +35,7 @@ serve(async (req) => {
       .eq("project_id", projectId)
       .order("volgorde", { ascending: true });
 
-    const niveau = (project as any).beoordelingsniveau || "streng";
+    const niveau = niveauOverride || (project as any).beoordelingsniveau || "streng";
     
     const niveauInstructies: Record<string, string> = {
       streng: `Wees zeer kritisch: geef geen hoge scores tenzij het werk echt uitblinkt. Een gemiddelde student scoort rond de 60-65% van het maximum. Benoem concreet wat er mist of beter kan. Wees eerlijk, streng en constructief.`,

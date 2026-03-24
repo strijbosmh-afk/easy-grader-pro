@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import ProjectDetail from "./pages/ProjectDetail";
 import StudentScorecard from "./pages/StudentScorecard";
 import Statistics from "./pages/Statistics";
+import ProjectOverview from "./pages/ProjectOverview";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -23,6 +24,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/project/:id" element={<ProjectDetail />} />
             <Route path="/project/:id/student/:studentId" element={<StudentScorecard />} />
+            <Route path="/project/:id/overzicht" element={<ProjectOverview />} />
             <Route path="/statistieken" element={<Statistics />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

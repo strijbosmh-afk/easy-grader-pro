@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, Upload, FileText, Pencil, Check, X, Loader2, Bot, Download, Settings } from "lucide-react";
+import { ArrowLeft, Upload, FileText, Pencil, Check, X, Loader2, Bot, Download, Settings, LayoutGrid } from "lucide-react";
 import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
@@ -381,6 +381,16 @@ const ProjectDetail = () => {
             <div className="flex items-center justify-between">
               <CardTitle className="text-base">Studenten</CardTitle>
               <div className="flex gap-2">
+                {students && students.length > 0 && criteria && criteria.length > 0 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate(`/project/${id}/overzicht`)}
+                  >
+                    <LayoutGrid className="h-4 w-4 mr-2" />
+                    Scoreoverzicht
+                  </Button>
+                )}
                 {students && students.length > 0 && (
                   <Button
                     variant="default"
