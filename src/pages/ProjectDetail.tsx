@@ -476,7 +476,7 @@ const ProjectDetail = () => {
                     onClick={() => exportProjectToExcel(project, students, criteria)}
                   >
                     <Download className="h-4 w-4 mr-2" />
-                    Excel
+                    Export Scores
                   </Button>
                   <Button
                     variant="outline"
@@ -502,7 +502,7 @@ const ProjectDetail = () => {
                     }}
                   >
                     {exportingWord ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileDown className="h-4 w-4 mr-2" />}
-                    {selectedStudents.size > 0 ? `Word (${selectedStudents.size})` : "Word"}
+                    {selectedStudents.size > 0 ? `Export Verslag (${selectedStudents.size})` : "Export Verslag"}
                   </Button>
                 </>
               )}
