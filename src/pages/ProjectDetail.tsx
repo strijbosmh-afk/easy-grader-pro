@@ -351,8 +351,26 @@ const ProjectDetail = () => {
       setEditingName(false);
     }
   };
+  const renameStudent = async (studentId: string, name: string) => {
+    if (!name.trim()) return;
+    const { error } = await supabase.from("students").update({ naam: name.trim() }).eq("id", studentId);
+    if (error) { toast.error("Naam wijzigen mislukt"); return; }
+    queryClient.invalidateQueries({ queryKey: ["students", id] });
+    setEditingStudentId(null);
+    toast.success("Naam gewijzigd");
+  };
 
-  const getTotalScore = (student: any) => {
+  const deleteStudent = async (studentId: string) => {
+    // Delete scores first, then student
+    await supabase.from("student_scores").delete().eq("student_id", studentId);
+    const { error } = await supabase.from("students").delete().eq("id", studentId);
+    if (error) { toast.error("Verwijderen mislukt"); return; }
+    queryClient.invalidateQueries({ queryKey: ["students", id] });
+    setDeletingStudentId(null);
+    toast.success("Student verwijderd");
+  };
+
+
     const scores = student.student_scores || [];
     const finals = scores.map((s: any) => s.final_score).filter(Boolean);
     if (finals.length === 0) return null;
