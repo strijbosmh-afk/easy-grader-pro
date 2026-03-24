@@ -177,7 +177,7 @@ function buildStudentDocument(
     ];
     if (motivatie) {
       cellChildren.push(
-        new Paragraph({ children: [new TextRun({ text: motivatie, font: "Arial", size: 18, italics: true, color: "666666" })] })
+        new Paragraph({ children: [new TextRun({ text: cleanMarkdown(motivatie), font: "Arial", size: 18, italics: true, color: "666666" })] })
       );
     }
 
