@@ -492,9 +492,13 @@ const ProjectDetail = () => {
             <CardContent>
               {project.opdracht_pdf_url ? (
                 <div className="flex items-center gap-2">
-                  <a href={project.opdracht_pdf_url} target="_blank" className="text-sm text-primary hover:underline truncate flex-1">
+                  <button
+                    onClick={() => { setPdfViewerUrl(project.opdracht_pdf_url!); setPdfViewerTitle("Opdracht"); }}
+                    className="text-sm text-primary hover:underline truncate flex-1 text-left flex items-center gap-1.5"
+                  >
+                    <Eye className="h-3.5 w-3.5 shrink-0" />
                     Bekijk opdracht
-                  </a>
+                  </button>
                   <Label htmlFor="opdracht-upload" className="cursor-pointer text-xs text-muted-foreground hover:text-foreground">
                     Vervang
                   </Label>
