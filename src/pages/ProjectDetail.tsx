@@ -534,9 +534,13 @@ const ProjectDetail = () => {
                 </div>
               ) : project.graderingstabel_pdf_url ? (
                 <div className="flex items-center gap-2">
-                  <a href={project.graderingstabel_pdf_url} target="_blank" className="text-sm text-primary hover:underline truncate flex-1">
+                  <button
+                    onClick={() => { setPdfViewerUrl(project.graderingstabel_pdf_url!); setPdfViewerTitle("Graderingstabel"); }}
+                    className="text-sm text-primary hover:underline truncate flex-1 text-left flex items-center gap-1.5"
+                  >
+                    <Eye className="h-3.5 w-3.5 shrink-0" />
                     Bekijk graderingstabel
-                  </a>
+                  </button>
                   <Label htmlFor="graderingstabel-upload" className="cursor-pointer text-xs text-muted-foreground hover:text-foreground">
                     Vervang
                   </Label>
