@@ -35,7 +35,7 @@ serve(async (req) => {
       .eq("project_id", projectId)
       .order("volgorde", { ascending: true });
 
-    const niveau = (project as any).beoordelingsniveau || "streng";
+    const niveau = niveauOverride || (project as any).beoordelingsniveau || "streng";
     
     const niveauInstructies: Record<string, string> = {
       streng: `Wees zeer kritisch: geef geen hoge scores tenzij het werk echt uitblinkt. Een gemiddelde student scoort rond de 60-65% van het maximum. Benoem concreet wat er mist of beter kan. Wees eerlijk, streng en constructief.`,

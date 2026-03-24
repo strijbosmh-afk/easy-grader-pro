@@ -6,10 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Loader2, Bot, Check, Download } from "lucide-react";
+import { ArrowLeft, Loader2, Bot, Check, Download, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { exportStudentToPdf } from "@/lib/export";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const StudentScorecard = () => {
   const { id: projectId, studentId } = useParams<{ id: string; studentId: string }>();
@@ -17,6 +18,7 @@ const StudentScorecard = () => {
   const queryClient = useQueryClient();
   const [saving, setSaving] = useState(false);
   const [docentFeedback, setDocentFeedback] = useState<string | null>(null);
+  const [reAnalyzeNiveau, setReAnalyzeNiveau] = useState("streng");
 
   const { data: project } = useQuery({
     queryKey: ["project", projectId],
@@ -61,7 +63,31 @@ const StudentScorecard = () => {
     },
   });
 
+  // Initialize local scores from DB scores when they load
   const [localScores, setLocalScores] = useState<Record<string, { final_score: string; opmerkingen: string }>>({});
+  const [initialized, setInitialized] = useState(false);
+
+  useEffect(() => {
+    if (scores && criteria && !initialized) {
+      const initial: Record<string, { final_score: string; opmerkingen: string }> = {};
+      for (const c of criteria) {
+        const score = scores.find((s) => s.criterium_id === c.id);
+        initial[c.id] = {
+          final_score: score?.final_score?.toString() ?? score?.ai_suggested_score?.toString() ?? "",
+          opmerkingen: score?.opmerkingen ?? "",
+        };
+      }
+      setLocalScores(initial);
+      setInitialized(true);
+    }
+  }, [scores, criteria, initialized]);
+
+  // Reset initialized when studentId changes
+  useEffect(() => {
+    setInitialized(false);
+    setLocalScores({});
+    setDocentFeedback(null);
+  }, [studentId]);
 
   const getScoreForCriterium = (criteriumId: string) => {
     if (localScores[criteriumId]) return localScores[criteriumId];
@@ -97,8 +123,8 @@ const StudentScorecard = () => {
     setSaving(true);
     try {
       for (const c of criteria) {
-        const vals = getScoreForCriterium(c.id);
-        const finalScore = vals.final_score ? parseFloat(vals.final_score) : null;
+        const vals = localScores[c.id] || getScoreForCriterium(c.id);
+        const finalScore = vals.final_score !== "" ? parseFloat(vals.final_score) : null;
         await supabase.from("student_scores").upsert(
           {
             student_id: studentId!,
@@ -116,8 +142,6 @@ const StudentScorecard = () => {
       queryClient.invalidateQueries({ queryKey: ["scores", studentId] });
       queryClient.invalidateQueries({ queryKey: ["student", studentId] });
       queryClient.invalidateQueries({ queryKey: ["students", projectId] });
-      setLocalScores({});
-      setDocentFeedback(null);
       toast.success("Scores opgeslagen!");
     } catch {
       toast.error("Opslaan mislukt");
@@ -127,16 +151,18 @@ const StudentScorecard = () => {
   };
 
   const analyzeStudent = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (niveauOverride?: string) => {
       await supabase.from("students").update({ status: "analyzing" as any }).eq("id", studentId!);
       queryClient.invalidateQueries({ queryKey: ["student", studentId] });
-      const { data, error } = await supabase.functions.invoke("analyze-student", {
-        body: { studentId, projectId },
-      });
+      const body: any = { studentId, projectId };
+      if (niveauOverride) body.niveauOverride = niveauOverride;
+      const { data, error } = await supabase.functions.invoke("analyze-student", { body });
       if (error) throw error;
       return data;
     },
     onSuccess: () => {
+      setInitialized(false);
+      setLocalScores({});
       queryClient.invalidateQueries({ queryKey: ["student", studentId] });
       queryClient.invalidateQueries({ queryKey: ["scores", studentId] });
       queryClient.invalidateQueries({ queryKey: ["criteria", projectId] });
@@ -197,7 +223,7 @@ const StudentScorecard = () => {
       </header>
 
       <main className="container mx-auto px-6 py-8 space-y-6">
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           <Button
             variant="outline"
             onClick={() => analyzeStudent.mutate()}
@@ -206,6 +232,32 @@ const StudentScorecard = () => {
             {analyzeStudent.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Bot className="h-4 w-4 mr-2" />}
             {scores?.length ? "Opnieuw analyseren" : "AI Analyse starten"}
           </Button>
+          
+          {/* Re-analyze with custom norm */}
+          {scores && scores.length > 0 && (
+            <div className="flex items-center gap-2 border rounded-lg px-3 py-1 bg-card">
+              <RefreshCw className="h-4 w-4 text-muted-foreground" />
+              <Select value={reAnalyzeNiveau} onValueChange={setReAnalyzeNiveau}>
+                <SelectTrigger className="w-[140px] h-8 border-0 shadow-none text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="streng">Streng</SelectItem>
+                  <SelectItem value="neutraal">Neutraal</SelectItem>
+                  <SelectItem value="mild">Mild</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => analyzeStudent.mutate(reAnalyzeNiveau)}
+                disabled={analyzeStudent.isPending}
+              >
+                Herbeoordeel
+              </Button>
+            </div>
+          )}
+
           {student.pdf_url && (
             <Button variant="outline" asChild>
               <a href={student.pdf_url} target="_blank">Bekijk PDF</a>
