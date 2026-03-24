@@ -350,8 +350,8 @@ export async function exportStudentsBatchToWord(
         children: content,
       }],
     });
-    const buffer = await Packer.toBuffer(doc);
-    zip.file(`${student.naam}_verslag.docx`, buffer);
+    const blob = await Packer.toBlob(doc);
+    zip.file(`${student.naam}_verslag.docx`, blob);
   }
 
   const zipBlob = await zip.generateAsync({ type: "blob" });
