@@ -289,6 +289,20 @@ const StudentScorecard = () => {
               );
             })}
 
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Docent Feedback</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Textarea
+                  value={feedbackValue}
+                  onChange={(e) => setDocentFeedback(e.target.value)}
+                  placeholder="Schrijf hier je persoonlijke feedback voor de student..."
+                  rows={4}
+                />
+              </CardContent>
+            </Card>
+
             <div className="flex justify-end">
               <Button onClick={saveScores} disabled={saving} size="lg">
                 {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Check className="h-4 w-4 mr-2" />}
