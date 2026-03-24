@@ -31,6 +31,22 @@ interface CriteriumData {
   max_score: number;
 }
 
+function cleanMarkdown(text: string): string {
+  return text
+    // Remove score patterns like "(25/30):" or "(8/10)"
+    .replace(/\(\d+\/\d+\)\s*:?/g, "")
+    // Remove bold/italic markdown markers
+    .replace(/\*{1,3}/g, "")
+    // Remove heading markers
+    .replace(/^#{1,4}\s*/gm, "")
+    // Remove bullet markers at start of lines
+    .replace(/^[-•]\s*/gm, "")
+    // Clean up extra whitespace
+    .replace(/  +/g, " ")
+    .replace(/^ +/gm, "")
+    .trim();
+}
+
 function getScore(scores: ScoreData[], criteriumId: string): number {
   const sc = scores.find((s) => s.criterium_id === criteriumId);
   return sc?.final_score ?? sc?.ai_suggested_score ?? 0;
