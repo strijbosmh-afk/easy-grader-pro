@@ -715,9 +715,30 @@ const ProjectDetail = () => {
                       .map((student) => {
                         const total = getTotalScore(student);
                         const max = getMaxTotal();
+                        const isEditing = editingStudentId === student.id;
                         return (
-                          <TableRow key={student.id} className="cursor-pointer" onClick={() => navigate(`/project/${id}/student/${student.id}`)}>
-                            <TableCell className="font-medium">{student.naam}</TableCell>
+                          <TableRow key={student.id} className="cursor-pointer" onClick={() => !isEditing && navigate(`/project/${id}/student/${student.id}`)}>
+                            <TableCell className="font-medium">
+                              {isEditing ? (
+                                <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                                  <Input
+                                    value={editStudentName}
+                                    onChange={(e) => setEditStudentName(e.target.value)}
+                                    onKeyDown={(e) => e.key === "Enter" && renameStudent(student.id, editStudentName)}
+                                    className="h-7 text-sm w-48"
+                                    autoFocus
+                                  />
+                                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => renameStudent(student.id, editStudentName)}>
+                                    <Check className="h-3 w-3" />
+                                  </Button>
+                                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditingStudentId(null)}>
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              ) : (
+                                student.naam
+                              )}
+                            </TableCell>
                             <TableCell>
                               <Badge variant={statusVariants[student.status as StudentStatus]}>
                                 {student.status === "analyzing" && <Loader2 className="h-3 w-3 animate-spin mr-1" />}
@@ -728,18 +749,44 @@ const ProjectDetail = () => {
                               {total !== null ? `${total}/${max}` : "—"}
                             </TableCell>
                             <TableCell className="text-right">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                disabled={!project.opdracht_pdf_url || !project.graderingstabel_pdf_url || student.status === "analyzing"}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  analyzeStudent.mutate(student.id);
-                                }}
-                              >
-                                <Bot className="h-4 w-4 mr-1" />
-                                Analyseer
-                              </Button>
+                              <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={!project.opdracht_pdf_url || !project.graderingstabel_pdf_url || student.status === "analyzing"}
+                                  onClick={() => analyzeStudent.mutate(student.id)}
+                                >
+                                  <Bot className="h-4 w-4 mr-1" />
+                                  Analyseer
+                                </Button>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-8 w-8"
+                                  onClick={() => { setEditingStudentId(student.id); setEditStudentName(student.naam); }}
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                                {deletingStudentId === student.id ? (
+                                  <div className="flex items-center gap-1">
+                                    <Button size="sm" variant="destructive" className="h-8 text-xs" onClick={() => deleteStudent(student.id)}>
+                                      Bevestig
+                                    </Button>
+                                    <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setDeletingStudentId(null)}>
+                                      <X className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                    onClick={() => setDeletingStudentId(student.id)}
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                )}
+                              </div>
                             </TableCell>
                           </TableRow>
                         );
