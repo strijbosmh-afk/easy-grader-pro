@@ -1,0 +1,95 @@
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
+import jsPDF from "jspdf";
+
+export function exportProjectToExcel(project: any, students: any[], criteria: any[]) {
+  const header = ["Student", ...criteria.map((c) => c.criterium_naam), "Totaal", "Max"];
+  const rows = students.map((s) => {
+    const scores = criteria.map((c) => {
+      const sc = s.student_scores?.find((ss: any) => ss.criterium_id === c.id);
+      return sc?.final_score ?? sc?.ai_suggested_score ?? "";
+    });
+    const total = scores.reduce((sum: number, v: any) => sum + (Number(v) || 0), 0);
+    const max = criteria.reduce((sum: number, c: any) => sum + Number(c.max_score), 0);
+    return [s.naam, ...scores, total, max];
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Resultaten");
+  const buf = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+  saveAs(new Blob([buf], { type: "application/octet-stream" }), `${project.naam}_resultaten.xlsx`);
+}
+
+export function exportStudentToPdf(
+  student: any,
+  project: any,
+  criteria: any[],
+  scores: any[],
+  getScore: (criteriumId: string) => { final_score: string; opmerkingen: string }
+) {
+  const doc = new jsPDF();
+  const margin = 20;
+  let y = margin;
+
+  doc.setFontSize(18);
+  doc.text("Scorekaart", margin, y);
+  y += 10;
+
+  doc.setFontSize(12);
+  doc.text(`Student: ${student.naam}`, margin, y);
+  y += 7;
+  doc.text(`Project: ${project.naam}`, margin, y);
+  y += 7;
+  doc.text(`Datum: ${new Date().toLocaleDateString("nl-NL")}`, margin, y);
+  y += 12;
+
+  // Table header
+  doc.setFontSize(10);
+  doc.setFont(undefined!, "bold");
+  doc.text("Criterium", margin, y);
+  doc.text("Score", 130, y);
+  doc.text("Max", 155, y);
+  doc.line(margin, y + 2, 190, y + 2);
+  y += 8;
+
+  doc.setFont(undefined!, "normal");
+  let totalFinal = 0;
+  let totalMax = 0;
+
+  criteria.forEach((c) => {
+    const vals = getScore(c.id);
+    const score = parseFloat(vals.final_score) || 0;
+    totalFinal += score;
+    totalMax += Number(c.max_score);
+
+    doc.text(c.criterium_naam, margin, y);
+    doc.text(score.toString(), 130, y);
+    doc.text(c.max_score.toString(), 155, y);
+    y += 6;
+
+    if (vals.opmerkingen) {
+      doc.setFontSize(8);
+      doc.setTextColor(120);
+      const lines = doc.splitTextToSize(`${vals.opmerkingen}`, 170);
+      doc.text(lines, margin + 5, y);
+      y += lines.length * 4 + 2;
+      doc.setFontSize(10);
+      doc.setTextColor(0);
+    }
+
+    if (y > 270) {
+      doc.addPage();
+      y = margin;
+    }
+  });
+
+  doc.line(margin, y, 190, y);
+  y += 6;
+  doc.setFont(undefined!, "bold");
+  doc.text("Totaal", margin, y);
+  doc.text(totalFinal.toString(), 130, y);
+  doc.text(totalMax.toString(), 155, y);
+
+  doc.save(`${student.naam}_scorekaart.pdf`);
+}
