@@ -403,6 +403,16 @@ const ProjectDetail = () => {
     return criteria.reduce((a, c) => a + Number(c.max_score), 0);
   };
 
+  const getMissingScores = (student: any) => {
+    if (!criteria || criteria.length === 0) return [];
+    const scores = student.student_scores || [];
+    return criteria.filter((c: any) => {
+      const sc = scores.find((s: any) => s.criterium_id === c.id);
+      if (!sc) return true;
+      return sc.ai_motivatie?.includes("Geen beoordeling ontvangen");
+    });
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
