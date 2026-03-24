@@ -6,10 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Loader2, Bot, Check, Download, RefreshCw, FileText } from "lucide-react";
+import { ArrowLeft, Loader2, Bot, Check, Download, RefreshCw, FileText, FileDown } from "lucide-react";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { exportStudentToPdf } from "@/lib/export";
+import { exportStudentToWord } from "@/lib/export-word";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const StudentScorecard = () => {
