@@ -266,13 +266,29 @@ const StudentScorecard = () => {
             </Button>
           )}
           {criteria && criteria.length > 0 && (
-            <Button
-              variant="outline"
-              onClick={() => exportStudentToPdf(student, project!, criteria, scores || [], getScoreForCriterium, feedbackValue)}
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Export PDF
-            </Button>
+            <>
+              <Button
+                variant="outline"
+                onClick={() => exportStudentToPdf(student, project!, criteria, scores || [], getScoreForCriterium, feedbackValue)}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Export PDF
+              </Button>
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  try {
+                    await exportStudentToWord(student, project!, criteria, scores || []);
+                    toast.success("Word verslag geëxporteerd");
+                  } catch {
+                    toast.error("Word export mislukt");
+                  }
+                }}
+              >
+                <FileDown className="h-4 w-4 mr-2" />
+                Export Word
+              </Button>
+            </>
           )}
           {scores && scores.length > 0 && (
             <Button
