@@ -142,14 +142,15 @@ serve(async (req) => {
 
       instruction = `Beoordeel het werk van student "${student.naam}".
 
-Geef een score per DEELCRITERIUM (gebruik de namen LETTERLIJK):
+Geef een score per DEELCRITERIUM. Je MOET de volgende namen EXACT en LETTERLIJK gebruiken (kopieer ze precies):
 ${criteriaList}
 ${eindscoreInstructie}
 
-BELANGRIJK:
-- Lees de graderingstabel PDF grondig en volg de beschrijvingen erin.
+KRITISCH BELANGRIJK:
+- Gebruik de criterium-namen EXACT zoals hierboven vermeld. Gebruik NIET de namen uit de PDF-graderingstabel, maar ALLEEN de namen hierboven.
+- Als de graderingstabel andere namen gebruikt, vertaal je beoordeling naar het juiste criterium hierboven.
+- Je MOET ALLE ${subCriteria.length} criteria beoordelen. Sla er GEEN over.
 - Respecteer de max_score per criterium STRIKT.
-- Gebruik de criteria namen EXACT zoals hierboven.
 - Lees het studentwerk zorgvuldig en beoordeel op basis van de inhoud.`;
     } else {
       instruction = `Analyseer het werk van student "${student.naam}".
