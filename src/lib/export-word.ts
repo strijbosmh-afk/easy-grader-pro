@@ -278,12 +278,12 @@ function buildStudentDocument(
     children.push(new Paragraph({ children: [] }));
   }
 
-  // AI feedback
+  // Analyse (was AI feedback - rename to remove AI reference)
   if (student.ai_feedback) {
     children.push(
       new Paragraph({
         heading: HeadingLevel.HEADING_2,
-        children: [new TextRun({ text: "AI Feedback", bold: true, size: 28, font: "Arial" })],
+        children: [new TextRun({ text: "Analyse", bold: true, size: 28, font: "Arial" })],
       })
     );
     children.push(
