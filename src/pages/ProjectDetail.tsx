@@ -11,6 +11,7 @@ import { ArrowLeft, Upload, FileText, Pencil, Check, X, Loader2, Bot, Download, 
 import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { exportProjectToExcel } from "@/lib/export";
 
 type StudentStatus = "pending" | "analyzing" | "reviewed" | "graded";
