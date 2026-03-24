@@ -1,17 +1,36 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppLayout } from "@/components/AppLayout";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import Index from "./pages/Index";
 import ProjectDetail from "./pages/ProjectDetail";
 import StudentScorecard from "./pages/StudentScorecard";
 import Statistics from "./pages/Statistics";
 import ProjectOverview from "./pages/ProjectOverview";
+import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
+
+function ProtectedRoutes() {
+  const { isAuthenticated } = useAuth();
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  return (
+    <AppLayout>
+      <Routes>
+        <Route path="/" element={<Index />} />
+        <Route path="/project/:id" element={<ProjectDetail />} />
+        <Route path="/project/:id/student/:studentId" element={<StudentScorecard />} />
+        <Route path="/project/:id/overzicht" element={<ProjectOverview />} />
+        <Route path="/statistieken" element={<Statistics />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </AppLayout>
+  );
+}
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -19,19 +38,21 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <AppLayout>
+        <AuthProvider>
           <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/project/:id" element={<ProjectDetail />} />
-            <Route path="/project/:id/student/:studentId" element={<StudentScorecard />} />
-            <Route path="/project/:id/overzicht" element={<ProjectOverview />} />
-            <Route path="/statistieken" element={<Statistics />} />
-            <Route path="*" element={<NotFound />} />
+            <Route path="/login" element={<LoginRoute />} />
+            <Route path="/*" element={<ProtectedRoutes />} />
           </Routes>
-        </AppLayout>
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
 );
+
+function LoginRoute() {
+  const { isAuthenticated } = useAuth();
+  if (isAuthenticated) return <Navigate to="/" replace />;
+  return <Login />;
+}
 
 export default App;
