@@ -488,7 +488,12 @@ const ProjectDetail = () => {
               <CardTitle className="text-base">Graderingstabel PDF</CardTitle>
             </CardHeader>
             <CardContent>
-              {project.graderingstabel_pdf_url ? (
+              {parsingGrading ? (
+                <div className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                  <span className="text-sm text-muted-foreground">Graderingstabel wordt geanalyseerd...</span>
+                </div>
+              ) : project.graderingstabel_pdf_url ? (
                 <div className="flex items-center gap-2">
                   <FileText className="h-4 w-4 text-primary" />
                   <a href={project.graderingstabel_pdf_url} target="_blank" className="text-sm text-primary hover:underline truncate">
