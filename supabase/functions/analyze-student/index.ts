@@ -48,7 +48,7 @@ serve(async (req) => {
 Let specifiek op:
 - Pedagogisch-didactische onderbouwing: Is het werk theoretisch goed onderbouwd? Worden relevante ontwikkelingspsychologische theorieën correct toegepast?
 - Praktijkgerichtheid: Kan de student theorie vertalen naar de kleuterpraktijk? Zijn de voorbeelden en uitwerkingen realistisch en toepasbaar?
-- Taalgebruik en professionaliteit: Is het taalgebruik professioneel, helder en foutloos? Past het bij het niveau van een HBO-opleiding?
+- Taalgebruik en professionaliteit: Is het taalgebruik professioneel, helder en foutloos? Past het bij het niveau van een bacheloropleiding?
 - Reflectief vermogen: Toont de student zelfreflectie en kritisch denkvermogen?
 - Creativiteit en eigenheid: Toont het werk originaliteit of is het oppervlakkig en generiek?
 
