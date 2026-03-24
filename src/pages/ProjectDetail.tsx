@@ -370,7 +370,7 @@ const ProjectDetail = () => {
     toast.success("Student verwijderd");
   };
 
-
+  const getTotalScore = (student: any) => {
     const scores = student.student_scores || [];
     const finals = scores.map((s: any) => s.final_score).filter(Boolean);
     if (finals.length === 0) return null;
