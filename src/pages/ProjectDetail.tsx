@@ -131,6 +131,8 @@ const ProjectDetail = () => {
   };
 
   const [batchAnalyzing, setBatchAnalyzing] = useState(false);
+  const [reAnalyzing, setReAnalyzing] = useState(false);
+  const [reAnalyzeNiveau, setReAnalyzeNiveau] = useState("streng");
 
   const analyzeStudent = useMutation({
     mutationFn: async (studentId: string) => {
