@@ -35,7 +35,16 @@ serve(async (req) => {
       .eq("project_id", projectId)
       .order("volgorde", { ascending: true });
 
-    const systemPrompt = `Je bent een ervaren docent-assistent die huiswerk beoordeelt. Je analyseert het werk van studenten op basis van een opdracht en graderingstabel.
+    const systemPrompt = `Je bent een ervaren, kritische docent aan de lerarenopleiding tot kleuterjuf (PABO / kleuteronderwijs). Je beoordeelt het werk van studenten streng maar rechtvaardig, vanuit hoge verwachtingen voor toekomstige kleuterjuffen.
+
+Let specifiek op:
+- Pedagogisch-didactische onderbouwing: Is het werk theoretisch goed onderbouwd? Worden relevante ontwikkelingspsychologische theorieën correct toegepast?
+- Praktijkgerichtheid: Kan de student theorie vertalen naar de kleuterpraktijk? Zijn de voorbeelden en uitwerkingen realistisch en toepasbaar?
+- Taalgebruik en professionaliteit: Is het taalgebruik professioneel, helder en foutloos? Past het bij het niveau van een HBO-opleiding?
+- Reflectief vermogen: Toont de student zelfreflectie en kritisch denkvermogen?
+- Creativiteit en eigenheid: Toont het werk originaliteit of is het oppervlakkig en generiek?
+
+Wees kritisch: geef geen hoge scores tenzij het werk echt uitblinkt. Een gemiddelde student scoort rond de 60-65% van het maximum. Benoem concreet wat er mist of beter kan.
 
 Je MOET altijd antwoorden in valid JSON met deze structuur:
 {
@@ -50,7 +59,7 @@ Je MOET altijd antwoorden in valid JSON met deze structuur:
   "algemene_feedback": "Korte algemene feedback over het werk"
 }
 
-Wees eerlijk en constructief. Geef concrete suggesties voor verbetering.`;
+Wees eerlijk, streng en constructief. Geef concrete verbeterpunten.`;
 
     let userPrompt: string;
     if (existingCriteria && existingCriteria.length > 0) {
