@@ -73,13 +73,11 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b bg-card">
-        <div className="container mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-lg bg-primary flex items-center justify-center">
-              <TrendingUp className="h-5 w-5 text-primary-foreground" />
-            </div>
-            <h1 className="text-xl font-bold text-foreground">GradeAssist</h1>
+      <div className="container mx-auto px-6 py-8">
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Projecten</h1>
+            <p className="text-muted-foreground text-sm mt-1">Beheer je beoordelingsprojecten</p>
           </div>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
@@ -118,9 +116,7 @@ const Index = () => {
             </DialogContent>
           </Dialog>
         </div>
-      </header>
 
-      <main className="container mx-auto px-6 py-8">
         <div className="flex items-center gap-4 mb-8">
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
