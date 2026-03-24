@@ -175,6 +175,7 @@ const ProjectDetail = () => {
         criterium_naam: c.naam,
         max_score: c.max_score || 10,
         volgorde: i,
+        is_eindscore: c.is_eindscore || false,
       }));
       await supabase.from("grading_criteria").insert(criteriaToInsert);
 
