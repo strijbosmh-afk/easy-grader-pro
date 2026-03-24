@@ -403,6 +403,16 @@ const ProjectDetail = () => {
     return criteria.reduce((a, c) => a + Number(c.max_score), 0);
   };
 
+  const getMissingScores = (student: any) => {
+    if (!criteria || criteria.length === 0) return [];
+    const scores = student.student_scores || [];
+    return criteria.filter((c: any) => {
+      const sc = scores.find((s: any) => s.criterium_id === c.id);
+      if (!sc) return true;
+      return sc.ai_motivatie?.includes("Geen beoordeling ontvangen");
+    });
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -774,6 +784,7 @@ const ProjectDetail = () => {
                       .map((student) => {
                         const total = getTotalScore(student);
                         const max = getMaxTotal();
+                        const missing = getMissingScores(student);
                         const isEditing = editingStudentId === student.id;
                         return (
                           <TableRow key={student.id} className="cursor-pointer" onClick={() => !isEditing && navigate(`/project/${id}/student/${student.id}`)}>
@@ -818,7 +829,19 @@ const ProjectDetail = () => {
                               </Badge>
                             </TableCell>
                             <TableCell>
-                              {total !== null ? `${total}/${max}` : "—"}
+                              {total !== null ? (
+                                <div className="flex items-center gap-2">
+                                  <span className={missing.length > 0 ? "text-destructive font-semibold" : ""}>
+                                    {total}/{max}
+                                  </span>
+                                  {missing.length > 0 && (
+                                    <span className="inline-flex items-center gap-1 text-xs text-destructive bg-destructive/10 px-2 py-0.5 rounded-full">
+                                      <AlertTriangle className="h-3 w-3" />
+                                      {missing.length} ontbrekend
+                                    </span>
+                                  )}
+                                </div>
+                              ) : "—"}
                             </TableCell>
                             <TableCell className="text-right">
                               <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
