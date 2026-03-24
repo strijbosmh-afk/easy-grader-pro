@@ -19,28 +19,44 @@ async function fetchPdfAsBase64(url: string): Promise<string> {
 }
 
 function normalizeForMatch(s: string): string {
-  return s.toLowerCase().replace(/[^a-z0-9àáâãäåæçèéêëìíîïðñòóôõöùúûüýþÿ]/g, "").trim();
+  return s.toLowerCase().replace(/[^a-z0-9àáâãäåæçèéêëìíîïðñòóôõöùúûüýþÿ ]/g, "").trim();
 }
 
 function findBestMatch(aiName: string, criteria: any[]): any | null {
   const norm = normalizeForMatch(aiName);
+  
+  // Exact match
   let match = criteria.find(c => normalizeForMatch(c.criterium_naam) === norm);
   if (match) return match;
+  
+  // Substring match
   match = criteria.find(c => normalizeForMatch(c.criterium_naam).includes(norm) || norm.includes(normalizeForMatch(c.criterium_naam)));
   if (match) return match;
+  
+  // Word overlap match with lower threshold
   const aiWords = norm.split(/\s+/).filter(w => w.length > 2);
   let bestScore = 0;
   let bestMatch: any = null;
   for (const c of criteria) {
-    const cWords = normalizeForMatch(c.criterium_naam).split(/\s+/).filter((w: string) => w.length > 2);
+    const cNorm = normalizeForMatch(c.criterium_naam);
+    const cWords = cNorm.split(/\s+/).filter((w: string) => w.length > 2);
     const overlap = aiWords.filter(w => cWords.some((cw: string) => cw.includes(w) || w.includes(cw))).length;
     const score = overlap / Math.max(aiWords.length, cWords.length, 1);
-    if (score > bestScore && score >= 0.3) {
+    if (score > bestScore && score >= 0.2) {
       bestScore = score;
       bestMatch = c;
     }
   }
-  return bestMatch;
+  if (bestMatch) return bestMatch;
+
+  // Positional fallback: if AI returns criteria by index number prefix like "1." or "Criterium 1"
+  const indexMatch = aiName.match(/^(\d+)/);
+  if (indexMatch) {
+    const idx = parseInt(indexMatch[1]) - 1;
+    if (idx >= 0 && idx < criteria.length) return criteria[idx];
+  }
+
+  return null;
 }
 
 serve(async (req) => {
