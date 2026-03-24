@@ -47,6 +47,9 @@ const ProjectDetail = () => {
   const [newName, setNewName] = useState("");
   const [dragOver, setDragOver] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [pdfViewerUrl, setPdfViewerUrl] = useState<string | null>(null);
+  const [pdfViewerTitle, setPdfViewerTitle] = useState("");
 
   // Grading table parse state
   const [parsingGrading, setParsingGrading] = useState(false);
