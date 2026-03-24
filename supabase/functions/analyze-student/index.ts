@@ -54,6 +54,13 @@ Let specifiek op:
 
 ${niveauInstructies[niveau] || niveauInstructies["streng"]}
 
+SCORESCHAAL - KRITISCH BELANGRIJK:
+- Elke criterium heeft een eigen max_score. Dit kan 10, 20, 100, of elk ander getal zijn.
+- Je score MOET een getal zijn tussen 0 en de max_score van dat criterium.
+- Gebruik de VOLLEDIGE schaal. Als max_score 20 is, geef scores tussen 0 en 20.
+- Als max_score 10 is, geef scores tussen 0 en 10.
+- Geef NOOIT een score hoger dan de max_score.
+
 Je MOET altijd antwoorden in valid JSON met deze structuur:
 {
   "criteria": [
@@ -67,39 +74,36 @@ Je MOET altijd antwoorden in valid JSON met deze structuur:
   "algemene_feedback": "Korte algemene feedback over het werk"
 }
 
-BELANGRIJK:
-- Gebruik EXACT de max_score die bij elk criterium hoort (dit kan 10, 20, 100 of elk ander getal zijn).
-- De score MOET een getal zijn tussen 0 en de max_score van dat criterium.
-- Gebruik de VOLLEDIGE schaal: als max_score 20 is, geef dan scores tussen 0 en 20.
-
-Geef concrete verbeterpunten.\`;
+Geef concrete verbeterpunten.`;
 
     let userPrompt: string;
     if (existingCriteria && existingCriteria.length > 0) {
-      const criteriaList = existingCriteria.map(c => \`- \${c.criterium_naam} (max score: \${c.max_score}, scores moeten tussen 0 en \${c.max_score} liggen)\`).join("\\n");
-      userPrompt = \`Beoordeel het werk van student "\${student.naam}" op basis van de volgende criteria:
+      const criteriaList = existingCriteria.map(c => 
+        `- ${c.criterium_naam} (max score: ${c.max_score}, geef een score tussen 0 en ${c.max_score})`
+      ).join("\n");
+      userPrompt = `Beoordeel het werk van student "${student.naam}" op basis van de volgende criteria:
 
-\${criteriaList}
+${criteriaList}
 
-BELANGRIJK: Respecteer de max_score per criterium. Als een criterium max_score 20 heeft, geef dan een score tussen 0 en 20 (NIET tussen 0 en 10).
+BELANGRIJK: Respecteer de max_score per criterium STRIKT. Als een criterium max_score 20 heeft, geef dan een score tussen 0 en 20 (NIET tussen 0 en 10). De scoreschaal is NIET altijd 0-10!
 
-Opdracht PDF: \${project.opdracht_pdf_url}
-Graderingstabel PDF: \${project.graderingstabel_pdf_url}
-Student PDF: \${student.pdf_url}
+Opdracht PDF: ${project.opdracht_pdf_url}
+Graderingstabel PDF: ${project.graderingstabel_pdf_url}
+Student PDF: ${student.pdf_url}
 
-Analyseer de inhoud van de PDFs en geef scores per criterium. Gebruik de juiste scoreschaal!\`;
+Analyseer de inhoud van de PDFs en geef scores per criterium met de juiste scoreschaal.`;
     } else {
-      userPrompt = \`Analyseer de graderingstabel en het werk van student "\${student.naam}".
+      userPrompt = `Analyseer de graderingstabel en het werk van student "${student.naam}".
 
 1. Eerst: Haal de beoordelingscriteria uit de graderingstabel PDF
 2. Dan: Beoordeel het studentwerk per criterium
 3. BELANGRIJK: Gebruik exact de scoreschaal uit de graderingstabel (bijv. 0-20, 0-10, etc.)
 
-Opdracht PDF: \${project.opdracht_pdf_url}
-Graderingstabel PDF: \${project.graderingstabel_pdf_url}
-Student PDF: \${student.pdf_url}
+Opdracht PDF: ${project.opdracht_pdf_url}
+Graderingstabel PDF: ${project.graderingstabel_pdf_url}
+Student PDF: ${student.pdf_url}
 
-Geef je antwoord in het gevraagde JSON formaat met criteria, scores en motivatie.\`;
+Geef je antwoord in het gevraagde JSON formaat met criteria, scores en motivatie.`;
     }
 
     // Call Lovable AI with tool calling for structured output
@@ -120,7 +124,7 @@ Geef je antwoord in het gevraagde JSON formaat met criteria, scores en motivatie
             type: "function",
             function: {
               name: "submit_grading",
-              description: "Submit the grading results for a student",
+              description: "Submit the grading results for a student. IMPORTANT: score must be between 0 and max_score for each criterion.",
               parameters: {
                 type: "object",
                 properties: {
@@ -130,8 +134,8 @@ Geef je antwoord in het gevraagde JSON formaat met criteria, scores en motivatie
                       type: "object",
                       properties: {
                         naam: { type: "string", description: "Name of the criterion" },
-                        max_score: { type: "number", description: "Maximum score for this criterion" },
-                        score: { type: "number", description: "Suggested score" },
+                        max_score: { type: "number", description: "Maximum score for this criterion (from the grading table)" },
+                        score: { type: "number", description: "Suggested score (must be between 0 and max_score)" },
                         motivatie: { type: "string", description: "Justification for the score" },
                       },
                       required: ["naam", "max_score", "score", "motivatie"],
@@ -205,21 +209,23 @@ Geef je antwoord in het gevraagde JSON formaat met criteria, scores en motivatie
       existingCriteria = inserted;
     }
 
-    // Upsert scores
+    // Delete existing scores for this student first, then insert fresh
+    await supabase.from("student_scores").delete().eq("student_id", studentId);
+
+    // Insert new scores
     for (const aiCriterium of result.criteria) {
       const matchedCriterium = existingCriteria!.find(
         (c: any) => c.criterium_naam.toLowerCase() === aiCriterium.naam.toLowerCase()
       );
       if (matchedCriterium) {
-        await supabase.from("student_scores").upsert(
-          {
-            student_id: studentId,
-            criterium_id: matchedCriterium.id,
-            ai_suggested_score: aiCriterium.score,
-            ai_motivatie: aiCriterium.motivatie,
-          },
-          { onConflict: "student_id,criterium_id" }
-        );
+        // Clamp score to valid range
+        const clampedScore = Math.min(Math.max(0, aiCriterium.score), matchedCriterium.max_score);
+        await supabase.from("student_scores").insert({
+          student_id: studentId,
+          criterium_id: matchedCriterium.id,
+          ai_suggested_score: clampedScore,
+          ai_motivatie: aiCriterium.motivatie,
+        });
       }
     }
 
