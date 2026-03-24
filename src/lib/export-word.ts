@@ -14,7 +14,8 @@ import {
   PageBreak,
 } from "docx";
 import { saveAs } from "file-saver";
-import * as JSZip from "jszip";
+// @ts-ignore
+import JSZip from "jszip";
 
 interface ScoreData {
   final_score: number | null;
