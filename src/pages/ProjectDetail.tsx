@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, Upload, FileText, Pencil, Check, X, Loader2, Bot, Download, Settings, LayoutGrid, RefreshCw, AlertTriangle, Users, FolderOpen, Search, Eye, Trash2, FileDown, CheckCircle } from "lucide-react";
+import { ArrowLeft, Upload, FileText, Pencil, Check, X, Loader2, Bot, Download, Settings, LayoutGrid, RefreshCw, AlertTriangle, Users, FolderOpen, Search, Eye, Trash2, FileDown, CheckCircle, Circle } from "lucide-react";
 import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
@@ -775,6 +775,7 @@ const ProjectDetail = () => {
                       <TableHead>Student</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Score</TableHead>
+                      <TableHead>Voortgang</TableHead>
                       <TableHead className="text-right">Acties</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -830,20 +831,21 @@ const ProjectDetail = () => {
                             </TableCell>
                             <TableCell>
                               {total !== null ? (
-                                <div className="flex items-center gap-2">
-                                  <span className={missing.length > 0 ? "text-destructive font-semibold" : ""}>
-                                    {total}/{max}
-                                  </span>
-                                  {missing.length > 0 ? (
-                                    <span className="inline-flex items-center gap-1 text-xs text-destructive bg-destructive/10 px-2 py-0.5 rounded-full">
-                                      <AlertTriangle className="h-3 w-3" />
-                                      {missing.length} ontbrekend
-                                    </span>
-                                  ) : (
-                                    <CheckCircle className="h-4 w-4 text-green-600" />
-                                  )}
-                                </div>
+                                <span className={missing.length > 0 ? "text-destructive font-semibold" : ""}>
+                                  {total}/{max}
+                                </span>
                               ) : "—"}
+                            </TableCell>
+                            <TableCell>
+                              {student.status === "pending" ? (
+                                <Circle className="h-4 w-4 text-muted-foreground" />
+                              ) : student.status === "analyzing" ? (
+                                <Loader2 className="h-4 w-4 animate-spin text-yellow-500" />
+                              ) : missing.length > 0 ? (
+                                <AlertTriangle className="h-4 w-4 text-yellow-500" />
+                              ) : (
+                                <CheckCircle className="h-4 w-4 text-green-600" />
+                              )}
                             </TableCell>
                             <TableCell className="text-right">
                               <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
