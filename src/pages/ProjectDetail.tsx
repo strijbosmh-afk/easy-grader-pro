@@ -7,11 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, Upload, FileText, Pencil, Check, X, Loader2, Bot, Download, Settings, LayoutGrid, RefreshCw, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Upload, FileText, Pencil, Check, X, Loader2, Bot, Download, Settings, LayoutGrid, RefreshCw, AlertTriangle, Users, FolderOpen } from "lucide-react";
 import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 import { exportProjectToExcel } from "@/lib/export";
 import {
   Dialog,
@@ -372,105 +373,131 @@ const ProjectDetail = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Header */}
       <header className="border-b bg-card">
         <div className="container mx-auto px-6 py-4">
           <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="mb-3">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Terug
           </Button>
-          <div className="flex items-center gap-3">
-            {editingName ? (
-              <div className="flex items-center gap-2">
-                <Input
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleSaveName()}
-                  className="text-xl font-bold h-9"
-                  autoFocus
-                />
-                <Button size="icon" variant="ghost" onClick={handleSaveName}>
-                  <Check className="h-4 w-4" />
-                </Button>
-                <Button size="icon" variant="ghost" onClick={() => setEditingName(false)}>
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-bold text-foreground">{project.naam}</h1>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  onClick={() => {
-                    setNewName(project.naam);
-                    setEditingName(true);
-                  }}
-                >
-                  <Pencil className="h-4 w-4" />
-                </Button>
-              </div>
-            )}
-          </div>
-          {totalStudents > 0 && (
-            <div className="mt-3 max-w-md">
-              <div className="flex justify-between text-sm text-muted-foreground mb-1">
-                <span>Voortgang</span>
-                <span>{gradedCount}/{totalStudents} beoordeeld</span>
-              </div>
-              <Progress value={progress} className="h-2" />
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1">
+              {editingName ? (
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleSaveName()}
+                    className="text-xl font-bold h-9 max-w-sm"
+                    autoFocus
+                  />
+                  <Button size="icon" variant="ghost" onClick={handleSaveName}>
+                    <Check className="h-4 w-4" />
+                  </Button>
+                  <Button size="icon" variant="ghost" onClick={() => setEditingName(false)}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <h1 className="text-2xl font-bold text-foreground">{project.naam}</h1>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => {
+                      setNewName(project.naam);
+                      setEditingName(true);
+                    }}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+              {totalStudents > 0 && (
+                <div className="mt-3 max-w-xs">
+                  <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                    <span>Voortgang</span>
+                    <span>{gradedCount}/{totalStudents} beoordeeld</span>
+                  </div>
+                  <Progress value={progress} className="h-1.5" />
+                </div>
+              )}
             </div>
-          )}
+            {/* Header actions: export & overview */}
+            <div className="flex items-center gap-2 shrink-0 pt-1">
+              {students && students.length > 0 && criteria && criteria.length > 0 && (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate(`/project/${id}/overzicht`)}
+                  >
+                    <LayoutGrid className="h-4 w-4 mr-2" />
+                    Scoreoverzicht
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => exportProjectToExcel(project, students, criteria)}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Export
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
         </div>
       </header>
 
-      <main className="container mx-auto px-6 py-8 space-y-8">
-        {/* Settings row */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Settings className="h-4 w-4" />
-              Beoordelingsperspectief
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Select
-              value={(project as any).beoordelingsniveau || "streng"}
-              onValueChange={(value) => updateProject.mutateAsync({ beoordelingsniveau: value })}
-            >
-              <SelectTrigger className="w-[240px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="streng">Streng — kritisch, hoge lat</SelectItem>
-                <SelectItem value="neutraal">Neutraal — evenwichtig</SelectItem>
-                <SelectItem value="mild">Mild — stimulerend, positief</SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground mt-2">
-              Bepaalt hoe kritisch de AI studenten beoordeelt.
-            </p>
-          </CardContent>
-        </Card>
-
-        {/* PDF uploads */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <main className="container mx-auto px-6 py-8 space-y-6">
+        {/* Project configuratie: instellingen + documenten in één rij */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Beoordelingsperspectief */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Opdracht PDF</CardTitle>
+              <CardTitle className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
+                <Settings className="h-4 w-4" />
+                Beoordelingsperspectief
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Select
+                value={(project as any).beoordelingsniveau || "streng"}
+                onValueChange={(value) => updateProject.mutateAsync({ beoordelingsniveau: value })}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="streng">Streng — kritisch</SelectItem>
+                  <SelectItem value="neutraal">Neutraal — evenwichtig</SelectItem>
+                  <SelectItem value="mild">Mild — stimulerend</SelectItem>
+                </SelectContent>
+              </Select>
+            </CardContent>
+          </Card>
+
+          {/* Opdracht PDF */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
+                <FileText className="h-4 w-4" />
+                Opdracht PDF
+              </CardTitle>
             </CardHeader>
             <CardContent>
               {project.opdracht_pdf_url ? (
                 <div className="flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-primary" />
-                  <a href={project.opdracht_pdf_url} target="_blank" className="text-sm text-primary hover:underline truncate">
+                  <a href={project.opdracht_pdf_url} target="_blank" className="text-sm text-primary hover:underline truncate flex-1">
                     Bekijk opdracht
                   </a>
-                  <Label htmlFor="opdracht-upload" className="cursor-pointer text-xs text-muted-foreground hover:text-foreground ml-auto">
+                  <Label htmlFor="opdracht-upload" className="cursor-pointer text-xs text-muted-foreground hover:text-foreground">
                     Vervang
                   </Label>
                 </div>
               ) : (
-                <Label htmlFor="opdracht-upload" className="cursor-pointer text-sm text-muted-foreground hover:text-foreground">
+                <Label htmlFor="opdracht-upload" className="cursor-pointer text-sm text-muted-foreground hover:text-foreground block text-center py-2 border border-dashed rounded-md">
                   Klik om te uploaden
                 </Label>
               )}
@@ -483,28 +510,32 @@ const ProjectDetail = () => {
               />
             </CardContent>
           </Card>
+
+          {/* Graderingstabel PDF */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Graderingstabel PDF</CardTitle>
+              <CardTitle className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
+                <FolderOpen className="h-4 w-4" />
+                Graderingstabel PDF
+              </CardTitle>
             </CardHeader>
             <CardContent>
               {parsingGrading ? (
                 <div className="flex items-center gap-2">
                   <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                  <span className="text-sm text-muted-foreground">Graderingstabel wordt geanalyseerd...</span>
+                  <span className="text-sm text-muted-foreground">Wordt geanalyseerd...</span>
                 </div>
               ) : project.graderingstabel_pdf_url ? (
                 <div className="flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-primary" />
-                  <a href={project.graderingstabel_pdf_url} target="_blank" className="text-sm text-primary hover:underline truncate">
+                  <a href={project.graderingstabel_pdf_url} target="_blank" className="text-sm text-primary hover:underline truncate flex-1">
                     Bekijk graderingstabel
                   </a>
-                  <Label htmlFor="graderingstabel-upload" className="cursor-pointer text-xs text-muted-foreground hover:text-foreground ml-auto">
+                  <Label htmlFor="graderingstabel-upload" className="cursor-pointer text-xs text-muted-foreground hover:text-foreground">
                     Vervang
                   </Label>
                 </div>
               ) : (
-                <Label htmlFor="graderingstabel-upload" className="cursor-pointer text-sm text-muted-foreground hover:text-foreground">
+                <Label htmlFor="graderingstabel-upload" className="cursor-pointer text-sm text-muted-foreground hover:text-foreground block text-center py-2 border border-dashed rounded-md">
                   Klik om te uploaden
                 </Label>
               )}
@@ -519,74 +550,68 @@ const ProjectDetail = () => {
           </Card>
         </div>
 
-        {/* Drag & drop zone */}
+        {/* Studenten sectie */}
         <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base">Studenten</CardTitle>
-              <div className="flex gap-2">
-                {students && students.length > 0 && criteria && criteria.length > 0 && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => navigate(`/project/${id}/overzicht`)}
-                  >
-                    <LayoutGrid className="h-4 w-4 mr-2" />
-                    Scoreoverzicht
-                  </Button>
+          <CardHeader>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                Studenten
+                {totalStudents > 0 && (
+                  <Badge variant="secondary" className="ml-1 font-normal">{totalStudents}</Badge>
                 )}
-                {students && students.length > 0 && (
-                  <Button
-                    variant="default"
-                    size="sm"
-                    disabled={batchAnalyzing || reAnalyzing || !project.opdracht_pdf_url || !project.graderingstabel_pdf_url}
-                    onClick={batchAnalyze}
-                  >
-                    {batchAnalyzing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Bot className="h-4 w-4 mr-2" />}
-                    Analyseer Alle
-                  </Button>
-                )}
-                {students && students.some((s) => s.status === "reviewed" || s.status === "graded") && (
-                  <div className="flex items-center gap-1 border rounded-lg px-2 py-0.5 bg-card">
-                    <RefreshCw className="h-3.5 w-3.5 text-muted-foreground" />
-                    <Select value={reAnalyzeNiveau} onValueChange={setReAnalyzeNiveau}>
-                      <SelectTrigger className="w-[110px] h-7 border-0 shadow-none text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="streng">Streng</SelectItem>
-                        <SelectItem value="neutraal">Neutraal</SelectItem>
-                        <SelectItem value="mild">Mild</SelectItem>
-                      </SelectContent>
-                    </Select>
+              </CardTitle>
+
+              {/* Actieknoppen: logisch gegroepeerd */}
+              {students && students.length > 0 && (
+                <div className="flex flex-wrap items-center gap-3">
+                  {/* Groep 1: Analyse acties */}
+                  <div className="flex items-center gap-2">
                     <Button
-                      variant="secondary"
+                      variant="default"
                       size="sm"
-                      className="h-7 text-xs"
-                      disabled={reAnalyzing || batchAnalyzing}
-                      onClick={batchReAnalyze}
+                      disabled={batchAnalyzing || reAnalyzing || !project.opdracht_pdf_url || !project.graderingstabel_pdf_url}
+                      onClick={batchAnalyze}
                     >
-                      {reAnalyzing ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : null}
-                      Heranalyse
+                      {batchAnalyzing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Bot className="h-4 w-4 mr-2" />}
+                      Analyseer alle
                     </Button>
+
+                    {students.some((s) => s.status === "reviewed" || s.status === "graded") && (
+                      <>
+                        <Separator orientation="vertical" className="h-6" />
+                        <div className="flex items-center gap-1.5">
+                          <Select value={reAnalyzeNiveau} onValueChange={setReAnalyzeNiveau}>
+                            <SelectTrigger className="w-[100px] h-8 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="streng">Streng</SelectItem>
+                              <SelectItem value="neutraal">Neutraal</SelectItem>
+                              <SelectItem value="mild">Mild</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={reAnalyzing || batchAnalyzing}
+                            onClick={batchReAnalyze}
+                          >
+                            {reAnalyzing ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-1.5" />}
+                            Heranalyse
+                          </Button>
+                        </div>
+                      </>
+                    )}
                   </div>
-                )}
-                {students && students.length > 0 && criteria && criteria.length > 0 && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => exportProjectToExcel(project, students, criteria)}
-                  >
-                    <Download className="h-4 w-4 mr-2" />
-                    Export Excel
-                  </Button>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-6">
+            {/* Drag & drop zone */}
             <div
-              className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+              className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
                 dragOver ? "border-primary bg-primary/5" : "border-border"
               }`}
               onDragOver={(e) => {
@@ -603,8 +628,8 @@ const ProjectDetail = () => {
                 </div>
               ) : (
                 <>
-                  <Upload className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                  <p className="text-sm text-muted-foreground mb-2">
+                  <Upload className="h-6 w-6 text-muted-foreground mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">
                     Sleep student-PDFs hierheen of{" "}
                     <label htmlFor="student-upload" className="text-primary cursor-pointer hover:underline">
                       blader
@@ -622,8 +647,9 @@ const ProjectDetail = () => {
               )}
             </div>
 
+            {/* Studenten tabel */}
             {students && students.length > 0 && (
-              <Table className="mt-6">
+              <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Student</TableHead>
@@ -677,7 +703,7 @@ const ProjectDetail = () => {
         <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              <AlertTriangle className="h-5 w-5 text-destructive" />
               Nieuwe graderingstabel gedetecteerd
             </DialogTitle>
             <DialogDescription>
