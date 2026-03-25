@@ -54,6 +54,7 @@ export type Database = {
           ai_provider: string
           beoordelingsniveau: string
           created_at: string
+          custom_instructions: string | null
           graderingstabel_pdf_url: string | null
           id: string
           naam: string
@@ -64,6 +65,7 @@ export type Database = {
           ai_provider?: string
           beoordelingsniveau?: string
           created_at?: string
+          custom_instructions?: string | null
           graderingstabel_pdf_url?: string | null
           id?: string
           naam: string
@@ -74,6 +76,7 @@ export type Database = {
           ai_provider?: string
           beoordelingsniveau?: string
           created_at?: string
+          custom_instructions?: string | null
           graderingstabel_pdf_url?: string | null
           id?: string
           naam?: string

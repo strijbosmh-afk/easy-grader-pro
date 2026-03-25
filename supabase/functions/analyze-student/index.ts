@@ -55,7 +55,7 @@ function findBestMatch(aiName: string, criteria: any[]): any | null {
   return null;
 }
 
-function buildPromptParts(project: any, student: any, subCriteria: any[], eindscoreCriterium: any, niveau: string) {
+function buildPromptParts(project: any, student: any, subCriteria: any[], eindscoreCriterium: any, niveau: string, customInstructions?: string) {
   const niveauInstructies: Record<string, string> = {
     streng: `Wees zeer kritisch: geef geen hoge scores tenzij het werk echt uitblinkt. Een gemiddelde student scoort rond de 50-60% van het maximum per criterium.`,
     neutraal: `Beoordeel evenwichtig: benoem zowel sterke punten als verbeterpunten. Een gemiddelde student scoort rond de 60-70% van het maximum.`,
@@ -133,7 +133,11 @@ DETAIL FEEDBACK (BLAUWE TEKST INSTRUCTIES):
 - Formaat: beschrijf elk punt op een nieuwe regel, bijv: "Pagina 3, regel 12: spelfout 'beinvloed' moet 'beïnvloed' zijn."
 - BELANGRIJK: Geef voor IEDER criterium detail_feedback. Als er niets te verbeteren is, schrijf dan expliciet: "Geen verbeterpunten gevonden. Het werk voldoet aan alle vereisten voor dit criterium."
 - Laat detail_feedback NOOIT leeg. Elk criterium krijgt feedback.
-- Schrijf GEEN markdown in detail_feedback. Gewone tekst met regels.`;
+- Schrijf GEEN markdown in detail_feedback. Gewone tekst met regels.${customInstructions ? `
+
+AANGEPASTE INSTRUCTIES VAN DE DOCENT (VOLG DEZE STRIKT):
+${customInstructions}` : ""}`;
+
 
   return { instruction, systemPrompt };
 }
@@ -371,7 +375,8 @@ serve(async (req) => {
       });
     }
 
-    const { instruction, systemPrompt } = buildPromptParts(project, student, subCriteria, eindscoreCriterium, niveau);
+    const customInstructions = (project as any).custom_instructions || undefined;
+    const { instruction, systemPrompt } = buildPromptParts(project, student, subCriteria, eindscoreCriterium, niveau, customInstructions);
     contentParts.push({ type: "text", text: instruction });
 
     // Call the appropriate AI provider

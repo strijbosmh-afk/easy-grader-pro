@@ -16,6 +16,7 @@ import { Separator } from "@/components/ui/separator";
 import { exportProjectToExcel } from "@/lib/export";
 import { exportStudentsBatchToWord, extractStudentName } from "@/lib/export-word";
 import { Checkbox } from "@/components/ui/checkbox";
+import { GradingChat } from "@/components/GradingChat";
 import {
   Dialog,
   DialogContent,
@@ -719,6 +720,13 @@ const ProjectDetail = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* AI Chat */}
+        <GradingChat
+          projectId={id!}
+          onReAnalyzeRequested={() => doBatchReAnalyze()}
+          customInstructions={project?.custom_instructions}
+        />
 
         {/* Studenten sectie */}
         <Card>
