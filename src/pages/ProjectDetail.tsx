@@ -540,7 +540,31 @@ const ProjectDetail = () => {
 
       <main className="container mx-auto px-6 py-8 space-y-6">
         {/* Project configuratie: instellingen + documenten in één rij */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* AI Model */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
+                <Bot className="h-4 w-4" />
+                AI Model
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Select
+                value={(project as any).ai_provider || "lovable"}
+                onValueChange={(value) => updateProject.mutateAsync({ ai_provider: value })}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="lovable">Lovable AI (Gemini 2.5 Flash)</SelectItem>
+                  <SelectItem value="anthropic">Anthropic Claude Opus 4</SelectItem>
+                </SelectContent>
+              </Select>
+            </CardContent>
+          </Card>
+
           {/* Beoordelingsperspectief */}
           <Card>
             <CardHeader className="pb-3">
