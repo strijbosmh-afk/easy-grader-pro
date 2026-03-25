@@ -135,8 +135,12 @@ DETAIL FEEDBACK (BLAUWE TEKST INSTRUCTIES):
 - Laat detail_feedback NOOIT leeg. Elk criterium krijgt feedback.
 - Schrijf GEEN markdown in detail_feedback. Gewone tekst met regels.${customInstructions ? `
 
-AANGEPASTE INSTRUCTIES VAN DE DOCENT (VOLG DEZE STRIKT):
-${customInstructions}` : ""}`;
+AANGEPASTE INSTRUCTIES VAN DE DOCENT — DEZE HEBBEN ABSOLUTE VOORRANG:
+De docent heeft de volgende SPECIFIEKE instructies gegeven die je STRIKT moet opvolgen. Deze instructies overschrijven ALLE andere richtlijnen als er een conflict is. Volg ze LETTERLIJK:
+
+${customInstructions}
+
+HERHALING: Bovenstaande docent-instructies hebben VOORRANG boven alle andere regels in deze prompt. Als de docent zegt dat een criterium een specifieke score moet krijgen, volg dat dan EXACT.` : ""}`;
 
 
   return { instruction, systemPrompt };
