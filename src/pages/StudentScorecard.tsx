@@ -120,8 +120,21 @@ const StudentScorecard = () => {
 
   const feedbackValue = docentFeedback !== null ? docentFeedback : (student?.docent_feedback || "");
 
+  const getMissingCriteria = () => {
+    if (!criteria) return [];
+    return criteria.filter((c) => {
+      const vals = localScores[c.id] || getScoreForCriterium(c.id);
+      return vals.final_score === "" || vals.final_score === undefined || vals.final_score === null;
+    });
+  };
+
   const saveScores = async () => {
     if (!criteria) return;
+    const missing = getMissingCriteria();
+    if (missing.length > 0) {
+      toast.error(`Vul alle scores in. Ontbrekend: ${missing.map(c => c.criterium_naam).join(", ")}`);
+      return;
+    }
     setSaving(true);
     try {
       for (const c of criteria) {
@@ -380,7 +393,7 @@ const StudentScorecard = () => {
                     )}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="text-sm font-medium text-foreground">Score</label>
+                        <label className="text-sm font-medium text-foreground">Score <span className="text-destructive">*</span></label>
                         <Input
                           type="number"
                           min={0}
@@ -389,6 +402,7 @@ const StudentScorecard = () => {
                           value={vals.final_score}
                           onChange={(e) => updateLocal(c.id, "final_score", e.target.value)}
                           placeholder={`0 - ${c.max_score}`}
+                           className={vals.final_score === "" ? "border-destructive" : ""}
                         />
                       </div>
                       <div>
