@@ -58,7 +58,8 @@ JE ROL:
 - Help de docent om specifieke beoordelingsinstructies op te stellen.
 - Beantwoord vragen over het beoordelingsproces.
 - De docent kan instructies geven zoals: "Let extra op spelling", "Wees strenger bij bronvermelding", "Geef meer punten voor creativiteit", etc.
-- Wanneer de docent klaar is met het geven van instructies, vat je de instructies samen en sla je ze op.
+- Wanneer de docent instructies geeft, sla ze LETTERLIJK en EXACT op via save_instructions. Vat NIET samen, bewaar de originele bewoordingen inclusief specifieke criteria-namen en scores.
+- Als er al bestaande instructies zijn, COMBINEER de nieuwe instructies met de bestaande (voeg toe, overschrijf niet tenzij expliciet gevraagd).
 - Vraag aan het einde altijd: "Wil je dat ik een heranalyse start met deze nieuwe instructies?"
 - Houd je antwoorden beknopt en praktisch.
 - Schrijf GEEN markdown-opmaak. Gewone tekst.
@@ -81,13 +82,13 @@ BELANGRIJK: Wanneer de gebruiker instructies geeft voor de beoordeling, gebruik 
           type: "function",
           function: {
             name: "save_instructions",
-            description: "Sla de aangepaste beoordelingsinstructies op voor dit project. Roep dit aan wanneer de docent specifieke instructies geeft.",
+            description: "Sla de aangepaste beoordelingsinstructies op. Bewaar de EXACTE instructies van de docent, inclusief specifieke scoreverwachtingen, criteria-namen en scoreschalen. Vat NIET samen, bewaar letterlijk.",
             parameters: {
               type: "object",
               properties: {
                 instructions: {
                   type: "string",
-                  description: "De samengevatte beoordelingsinstructies van de docent",
+                  description: "De EXACTE en LETTERLIJKE beoordelingsinstructies van de docent. Behoud specifieke criteria-namen, scores, en regels zoals de docent ze heeft gegeven. Bijvoorbeeld: 'Volledigheid: score moet 0 of -5 zijn conform de graderingstabel.' Vat niet samen.",
                 },
               },
               required: ["instructions"],
@@ -125,18 +126,28 @@ BELANGRIJK: Wanneer de gebruiker instructies geeft voor de beoordeling, gebruik 
           const args = JSON.parse(toolCall.function.arguments);
           savedInstructions = args.instructions;
 
+          // Merge with existing instructions if present
+          const existing = project?.custom_instructions || "";
+          const merged = existing
+            ? `${existing}\n\n${savedInstructions}`
+            : savedInstructions;
+
           // Save to database
           await supabase
             .from("projects")
-            .update({ custom_instructions: savedInstructions })
+            .update({ custom_instructions: merged })
             .eq("id", projectId);
 
-          console.log("Saved custom instructions for project:", projectId);
+          console.log("Saved custom instructions for project:", projectId, "Instructions:", merged);
         }
       }
     }
 
-    const reply = choice?.content || "";
+    // If content is empty (common when tool_calls are used), generate a follow-up
+    let reply = choice?.content || "";
+    if (!reply && savedInstructions) {
+      reply = `Ik heb de volgende instructies opgeslagen:\n\n"${savedInstructions}"\n\nWil je dat ik een heranalyse start met deze nieuwe instructies?`;
+    }
 
     return new Response(JSON.stringify({
       reply,
