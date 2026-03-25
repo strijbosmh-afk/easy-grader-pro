@@ -304,7 +304,7 @@ SCHRIJFSTIJL MOTIVATIE:
       const matched = findBestMatch(aiCriterium.naam, existingCriteria!.filter((c: any) => !usedCriteria.has(c.id)));
       if (matched) {
         usedCriteria.add(matched.id);
-        const clampedScore = Math.min(Math.max(0, Number(aiCriterium.score) || 0), matched.max_score);
+        const score = Number(aiCriterium.score) || 0;
         await supabase.from("student_scores").insert({
           student_id: studentId,
           criterium_id: matched.id,
