@@ -148,10 +148,9 @@ ${eindscoreInstructie}
 
 KRITISCH BELANGRIJK — SCORES UIT DE GRADERINGSTABEL:
 - Bestudeer de graderingstabel ZEER NAUWKEURIG. De tabel definieert EXACT welke scores mogelijk zijn per criterium.
-- Sommige criteria gebruiken een AFTREK/STRAF-systeem: bijv. 0 = volledig/goed, -5 = onvolledig/slecht. In dat geval is 0 de BESTE score en een negatief getal de slechtste.
+- Sommige criteria gebruiken een AFTREK/STRAF-systeem. Bijvoorbeeld "Volledigheid & naleving opdracht" heeft ALLEEN twee mogelijke scores: 0 (alles aanwezig/volledig) of -5 (onvolledig). Er bestaan GEEN tussenwaarden. Kies EXACT 0 of -5.
 - Andere criteria gebruiken een POSITIEF systeem: bijv. 0 = slecht, 30 = uitstekend.
-- Lees per criterium in de graderingstabel welke waarden mogelijk zijn en wat ze betekenen.
-- Geef EXACT een van de scores die in de graderingstabel staan, niet een zelf verzonnen tussenwaarde.
+- Lees per criterium in de graderingstabel welke DISCRETE waarden mogelijk zijn en kies EXACT een van die waarden. Verzin NOOIT tussenwaarden.
 - Gebruik de criterium-namen EXACT zoals hierboven vermeld.
 - Je MOET ALLE ${subCriteria.length} criteria beoordelen. Sla er GEEN over.
 - Lees het studentwerk zorgvuldig en beoordeel op basis van de inhoud.`;
@@ -169,8 +168,8 @@ KRITISCH BELANGRIJK — SCORES UIT DE GRADERINGSTABEL:
 ${niveauInstructies[niveau] || niveauInstructies["streng"]}
 
 SCORESCHAAL — LEES DE GRADERINGSTABEL:
-- De graderingstabel bepaalt welke scores mogelijk zijn per criterium. Bestudeer dit ZEER zorgvuldig.
-- Sommige criteria werken met AFTREK (straf): bijv. "Volledigheid" = 0 als alles aanwezig is, -5 als er dingen ontbreken. Hier is 0 de BESTE score.
+- De graderingstabel bepaalt welke DISCRETE scores mogelijk zijn per criterium. Bestudeer dit ZEER zorgvuldig.
+- Sommige criteria werken met AFTREK (straf): bijv. "Volledigheid & naleving opdracht" heeft EXACT twee opties: 0 (volledig) of -5 (onvolledig). KIES ALLEEN 0 of -5, niets anders.
 - Andere criteria werken met POSITIEVE punten: bijv. 0 = onvoldoende, 30 = uitstekend.
 - Geef EXACT een score die overeenkomt met een niveau uit de graderingstabel. Verzin GEEN tussenwaarden.
 - Kijk naar de beschrijvingen bij elk niveau in de tabel en bepaal welk niveau het beste past bij het studentwerk.
@@ -196,7 +195,8 @@ DETAIL FEEDBACK (BLAUWE TEKST INSTRUCTIES):
 - Voorbeelden van zulke instructies: "geef een opsomming van de taalfouten", "geef aan welke ideeën niet duidelijk waren", "noem de ontbrekende onderdelen".
 - In de detail_feedback: geef ALTIJD concrete voorbeelden met paginanummer en regelnummer.
 - Formaat: beschrijf elk punt op een nieuwe regel, bijv: "Pagina 3, regel 12: spelfout 'beinvloed' moet 'beïnvloed' zijn."
-- Als er voor een criterium geen specifieke instructies in de graderingstabel staan, laat detail_feedback dan leeg.
+- BELANGRIJK: Geef voor IEDER criterium detail_feedback. Als er niets te verbeteren is, schrijf dan expliciet: "Geen verbeterpunten gevonden. Het werk voldoet aan alle vereisten voor dit criterium."
+- Laat detail_feedback NOOIT leeg. Elk criterium krijgt feedback.
 - Schrijf GEEN markdown in detail_feedback. Gewone tekst met regels.`;
 
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
