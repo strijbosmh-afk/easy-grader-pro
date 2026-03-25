@@ -105,6 +105,7 @@ const StudentScorecard = () => {
     return {
       ai_suggested_score: score?.ai_suggested_score,
       ai_motivatie: score?.ai_motivatie,
+      ai_detail_feedback: (score as any)?.ai_detail_feedback,
     };
   };
 
@@ -389,6 +390,17 @@ const StudentScorecard = () => {
                         {ai.ai_motivatie && (
                           <p className="text-xs text-muted-foreground">{ai.ai_motivatie}</p>
                         )}
+                      </div>
+                    )}
+                    {ai.ai_detail_feedback && (
+                      <div className="rounded-lg border-2 border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-800 p-3">
+                        <div className="flex items-center gap-2 mb-2">
+                          <FileText className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                          <span className="text-xs font-semibold text-blue-700 dark:text-blue-300">Gedetailleerde feedback (graderingstabel)</span>
+                        </div>
+                        <div className="text-xs text-blue-900 dark:text-blue-200 whitespace-pre-wrap leading-relaxed">
+                          {ai.ai_detail_feedback}
+                        </div>
                       </div>
                     )}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

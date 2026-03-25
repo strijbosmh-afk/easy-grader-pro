@@ -189,7 +189,15 @@ SCHRIJFSTIJL MOTIVATIE:
 - Gebruik GEEN markdown-opmaak: geen ** voor vet, geen * voor cursief, geen # voor kopjes, geen opsommingstekens met -.
 - Schrijf gewone, vloeiende zinnen en alinea's.
 - Vermijd AI-typische labels zoals "Aandachtspunten:", "Sterke punten:", "Samenvatting:" als kopjes.
-- Wees concreet en specifiek met verwijzingen naar paginanummers en regelnummers waar van toepassing.`;
+
+DETAIL FEEDBACK (BLAUWE TEKST INSTRUCTIES):
+- De graderingstabel bevat per criterium vaak specifieke instructies (vaak in blauw) over wat je moet rapporteren.
+- Volg deze instructies LETTERLIJK en plaats het resultaat in het veld "detail_feedback".
+- Voorbeelden van zulke instructies: "geef een opsomming van de taalfouten", "geef aan welke ideeën niet duidelijk waren", "noem de ontbrekende onderdelen".
+- In de detail_feedback: geef ALTIJD concrete voorbeelden met paginanummer en regelnummer.
+- Formaat: beschrijf elk punt op een nieuwe regel, bijv: "Pagina 3, regel 12: spelfout 'beinvloed' moet 'beïnvloed' zijn."
+- Als er voor een criterium geen specifieke instructies in de graderingstabel staan, laat detail_feedback dan leeg.
+- Schrijf GEEN markdown in detail_feedback. Gewone tekst met regels.`;
 
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -220,9 +228,10 @@ SCHRIJFSTIJL MOTIVATIE:
                         naam: { type: "string" },
                         max_score: { type: "number" },
                         score: { type: "number" },
-                        motivatie: { type: "string" },
+                        motivatie: { type: "string", description: "Korte motivatie voor de score" },
+                        detail_feedback: { type: "string", description: "Gedetailleerde feedback op basis van de instructies in de graderingstabel (blauwe tekst). Bevat concrete voorbeelden met paginanummers en regelnummers. Laat leeg als er geen specifieke instructies zijn voor dit criterium." },
                       },
-                      required: ["naam", "max_score", "score", "motivatie"],
+                      required: ["naam", "max_score", "score", "motivatie", "detail_feedback"],
                       additionalProperties: false,
                     },
                   },
@@ -310,6 +319,7 @@ SCHRIJFSTIJL MOTIVATIE:
           criterium_id: matched.id,
           ai_suggested_score: score,
           ai_motivatie: aiCriterium.motivatie,
+          ai_detail_feedback: aiCriterium.detail_feedback || null,
         });
         matchedCount++;
       } else {

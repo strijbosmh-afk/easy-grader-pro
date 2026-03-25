@@ -81,6 +81,7 @@ export type Database = {
       }
       student_scores: {
         Row: {
+          ai_detail_feedback: string | null
           ai_motivatie: string | null
           ai_suggested_score: number | null
           criterium_id: string
@@ -90,6 +91,7 @@ export type Database = {
           student_id: string
         }
         Insert: {
+          ai_detail_feedback?: string | null
           ai_motivatie?: string | null
           ai_suggested_score?: number | null
           criterium_id: string
@@ -99,6 +101,7 @@ export type Database = {
           student_id: string
         }
         Update: {
+          ai_detail_feedback?: string | null
           ai_motivatie?: string | null
           ai_suggested_score?: number | null
           criterium_id?: string
