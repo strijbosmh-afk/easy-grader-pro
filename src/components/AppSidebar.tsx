@@ -197,7 +197,7 @@ export function AppSidebar() {
           </SidebarGroup>
         </SidebarContent>
 
-        <SidebarFooter className="p-4">
+        <SidebarFooter className="p-4 space-y-2">
           {!collapsed && (
             <div className="rounded-lg bg-sidebar-accent p-3">
               <div className="flex items-center gap-2 text-xs text-sidebar-foreground/70">
@@ -206,6 +206,18 @@ export function AppSidebar() {
               </div>
             </div>
           )}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full justify-start text-sidebar-foreground/70 hover:text-destructive"
+            onClick={() => {
+              sessionStorage.removeItem("authenticated");
+              navigate("/login");
+            }}
+          >
+            <LogOut className="h-4 w-4 mr-2" />
+            {!collapsed && <span>Uitloggen</span>}
+          </Button>
         </SidebarFooter>
       </Sidebar>
 
