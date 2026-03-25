@@ -230,7 +230,7 @@ async function callAnthropicAI(systemPrompt: string, contentParts: any[]) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "claude-opus-4-20250514",
+      model: "claude-opus-4-6-20250205",
       max_tokens: 8192,
       system: systemPrompt,
       messages: [{ role: "user", content: anthropicContent }],
