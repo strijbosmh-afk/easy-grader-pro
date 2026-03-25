@@ -168,8 +168,9 @@ ${niveauInstructies[niveau] || niveauInstructies["streng"]}
 SCORESCHAAL:
 - Elke criterium heeft een eigen max_score.
 - Je score MOET tussen 0 en de max_score liggen.
-- Gebruik de VOLLEDIGE schaal.
-- Volg de graderingstabel: als daar beschreven staat wat nodig is voor een bepaalde score, pas dat strikt toe.
+- Gebruik de EFFECTIEVE SCORES die in de graderingstabel staan. De graderingstabel definieert exact welke score hoort bij welk niveau (bijv. "sterk", "voldoende", "onvoldoende"). Gebruik DEZE scores, niet zelf verzonnen waarden.
+- Als de graderingstabel bijv. zegt dat "voldoende" = 15/20, geef dan exact 15.
+- Volg de graderingstabel STRIKT voor het toekennen van scores.
 
 HEEL BELANGRIJK — INSTRUCTIES IN DE GRADERINGSTABEL:
 - De graderingstabel bevat vaak gekleurde tekst (blauw, rood, etc.) met SPECIFIEKE INSTRUCTIES voor de beoordeling.
@@ -180,7 +181,12 @@ HEEL BELANGRIJK — INSTRUCTIES IN DE GRADERINGSTABEL:
 - Lees ALLE tekst in de graderingstabel, inclusief kleine lettertjes, voetnoten, en gekleurde tekst.
 - Verwerk deze instructies concreet in je motivatie per criterium.
 
-Geef concrete, specifieke motivatie per criterium met verwijzingen naar paginanummers en regelnummers waar van toepassing.`;
+SCHRIJFSTIJL MOTIVATIE:
+- Schrijf als een menselijke docent, NIET als een AI.
+- Gebruik GEEN markdown-opmaak: geen ** voor vet, geen * voor cursief, geen # voor kopjes, geen opsommingstekens met -.
+- Schrijf gewone, vloeiende zinnen en alinea's.
+- Vermijd AI-typische labels zoals "Aandachtspunten:", "Sterke punten:", "Samenvatting:" als kopjes.
+- Wees concreet en specifiek met verwijzingen naar paginanummers en regelnummers waar van toepassing.`;
 
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
