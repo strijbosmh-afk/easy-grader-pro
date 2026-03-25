@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, Upload, FileText, Pencil, Check, X, Loader2, Bot, Download, Settings, LayoutGrid, RefreshCw, AlertTriangle, Users, FolderOpen, Search, Eye, Trash2, FileDown, CheckCircle, Circle } from "lucide-react";
+import { ArrowLeft, Upload, FileText, Pencil, Check, X, Loader2, Bot, Download, Settings, LayoutGrid, RefreshCw, AlertTriangle, Users, FolderOpen, Search, Eye, Trash2, FileDown, CheckCircle, Circle, Sparkles, Cpu } from "lucide-react";
 import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
@@ -66,6 +66,11 @@ const ProjectDetail = () => {
   const [showGradingDialog, setShowGradingDialog] = useState(false);
   const [applyingCriteria, setApplyingCriteria] = useState(false);
 
+  // AI model picker state
+  const [showModelPicker, setShowModelPicker] = useState(false);
+  const [modelPickerAction, setModelPickerAction] = useState<"grading" | "reanalyze" | "batch">("grading");
+  const [pendingGradingFile, setPendingGradingFile] = useState<File | null>(null);
+
   const { data: project, isLoading } = useQuery({
     queryKey: ["project", id],
     queryFn: async () => {
@@ -117,6 +122,17 @@ const ProjectDetail = () => {
   });
 
   const uploadPdf = async (file: File, type: "opdracht" | "graderingstabel") => {
+    if (type === "graderingstabel") {
+      // Show model picker first
+      setPendingGradingFile(file);
+      setModelPickerAction("grading");
+      setShowModelPicker(true);
+      return;
+    }
+    await doUploadPdf(file, type);
+  };
+
+  const doUploadPdf = async (file: File, type: "opdracht" | "graderingstabel") => {
     const path = `${id}/${type}_${Date.now()}.pdf`;
     const { error: uploadError } = await supabase.storage.from("pdfs").upload(path, file);
     if (uploadError) throw uploadError;
@@ -128,8 +144,9 @@ const ProjectDetail = () => {
       setPendingGradingUrl(publicUrl);
       setParsingGrading(true);
       try {
+        const aiProvider = (project as any)?.ai_provider || "lovable";
         const { data, error } = await supabase.functions.invoke("parse-grading-table", {
-          body: { graderingstabelUrl: publicUrl },
+          body: { graderingstabelUrl: publicUrl, aiProvider },
         });
         if (error) throw error;
         setParsedCriteria(data.criteria || []);
@@ -145,6 +162,23 @@ const ProjectDetail = () => {
     } else {
       await updateProject.mutateAsync({ opdracht_pdf_url: publicUrl });
       toast.success("Opdracht geüpload");
+    }
+  };
+
+  const handleModelPickerConfirm = async (provider: string) => {
+    setShowModelPicker(false);
+    // Save the selected provider to the project
+    await updateProject.mutateAsync({ ai_provider: provider });
+    queryClient.invalidateQueries({ queryKey: ["project", id] });
+
+    if (modelPickerAction === "grading" && pendingGradingFile) {
+      const file = pendingGradingFile;
+      setPendingGradingFile(null);
+      await doUploadPdf(file, "graderingstabel");
+    } else if (modelPickerAction === "reanalyze") {
+      doBatchReAnalyze();
+    } else if (modelPickerAction === "batch") {
+      doBatchAnalyze();
     }
   };
 
