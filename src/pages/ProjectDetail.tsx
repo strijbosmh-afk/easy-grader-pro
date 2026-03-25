@@ -235,6 +235,7 @@ const ProjectDetail = () => {
             if (error) throw error;
             success++;
           } catch {
+            await supabase.from("students").update({ status: "pending" as StudentStatus }).eq("id", student.id);
             failed++;
           }
           queryClient.invalidateQueries({ queryKey: ["students", id] });
@@ -311,7 +312,8 @@ const ProjectDetail = () => {
       queryClient.invalidateQueries({ queryKey: ["students", id] });
       toast.success("Analyse voltooid!");
     },
-    onError: (err: any) => {
+    onError: async (err: any, studentId: string) => {
+      await supabase.from("students").update({ status: "pending" as StudentStatus }).eq("id", studentId);
       queryClient.invalidateQueries({ queryKey: ["students", id] });
       toast.error(err?.message || "Analyse mislukt");
     },
@@ -342,6 +344,7 @@ const ProjectDetail = () => {
         if (error) throw error;
         success++;
       } catch {
+        await supabase.from("students").update({ status: "pending" as StudentStatus }).eq("id", student.id);
         failed++;
       }
       queryClient.invalidateQueries({ queryKey: ["students", id] });
@@ -376,6 +379,7 @@ const ProjectDetail = () => {
         if (error) throw error;
         success++;
       } catch {
+        await supabase.from("students").update({ status: "pending" as StudentStatus }).eq("id", student.id);
         failed++;
       }
       queryClient.invalidateQueries({ queryKey: ["students", id] });
