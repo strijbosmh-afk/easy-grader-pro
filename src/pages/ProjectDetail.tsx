@@ -559,7 +559,7 @@ const ProjectDetail = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="lovable">Lovable AI (Gemini 2.5 Flash)</SelectItem>
-                  <SelectItem value="anthropic">Anthropic Claude Opus 4</SelectItem>
+                  <SelectItem value="anthropic">Anthropic Claude Opus 4.6</SelectItem>
                 </SelectContent>
               </Select>
             </CardContent>
