@@ -78,7 +78,7 @@ export function GradingChat({ projectId, onReAnalyzeRequested, customInstruction
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
                 <Sparkles className="h-4 w-4 text-primary" />
-                AI Beoordelingsassistent
+                My Personal Assistant
                 {customInstructions && (
                   <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
                     Instructies actief
