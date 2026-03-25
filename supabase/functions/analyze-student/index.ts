@@ -308,7 +308,7 @@ SCHRIJFSTIJL MOTIVATIE:
         await supabase.from("student_scores").insert({
           student_id: studentId,
           criterium_id: matched.id,
-          ai_suggested_score: clampedScore,
+          ai_suggested_score: score,
           ai_motivatie: aiCriterium.motivatie,
         });
         matchedCount++;
