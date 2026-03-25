@@ -393,7 +393,7 @@ const StudentScorecard = () => {
                     )}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="text-sm font-medium text-foreground">Score</label>
+                        <label className="text-sm font-medium text-foreground">Score <span className="text-destructive">*</span></label>
                         <Input
                           type="number"
                           min={0}
@@ -402,6 +402,8 @@ const StudentScorecard = () => {
                           value={vals.final_score}
                           onChange={(e) => updateLocal(c.id, "final_score", e.target.value)}
                           placeholder={`0 - ${c.max_score}`}
+                          className={vals.final_score === "" ? "border-destructive" : ""}
+                        />
                         />
                       </div>
                       <div>
