@@ -1,0 +1,1 @@
+ALTER TABLE public.student_scores ADD COLUMN ai_detail_feedback text;
