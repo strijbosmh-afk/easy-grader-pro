@@ -25,15 +25,12 @@ function normalizeForMatch(s: string): string {
 function findBestMatch(aiName: string, criteria: any[]): any | null {
   const norm = normalizeForMatch(aiName);
   
-  // Exact match
   let match = criteria.find(c => normalizeForMatch(c.criterium_naam) === norm);
   if (match) return match;
   
-  // Substring match
   match = criteria.find(c => normalizeForMatch(c.criterium_naam).includes(norm) || norm.includes(normalizeForMatch(c.criterium_naam)));
   if (match) return match;
   
-  // Word overlap match with lower threshold
   const aiWords = norm.split(/\s+/).filter(w => w.length > 2);
   let bestScore = 0;
   let bestMatch: any = null;
@@ -49,7 +46,6 @@ function findBestMatch(aiName: string, criteria: any[]): any | null {
   }
   if (bestMatch) return bestMatch;
 
-  // Positional fallback: if AI returns criteria by index number prefix like "1." or "Criterium 1"
   const indexMatch = aiName.match(/^(\d+)/);
   if (indexMatch) {
     const idx = parseInt(indexMatch[1]) - 1;
@@ -59,88 +55,29 @@ function findBestMatch(aiName: string, criteria: any[]): any | null {
   return null;
 }
 
-serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+function buildPromptParts(project: any, student: any, subCriteria: any[], eindscoreCriterium: any, niveau: string) {
+  const niveauInstructies: Record<string, string> = {
+    streng: `Wees zeer kritisch: geef geen hoge scores tenzij het werk echt uitblinkt. Een gemiddelde student scoort rond de 50-60% van het maximum per criterium.`,
+    neutraal: `Beoordeel evenwichtig: benoem zowel sterke punten als verbeterpunten. Een gemiddelde student scoort rond de 60-70% van het maximum.`,
+    mild: `Beoordeel stimulerend en positief: benadruk wat goed gaat. Een gemiddelde student scoort rond de 70-80% van het maximum.`,
+  };
 
-  try {
-    const { studentId, projectId, niveauOverride } = await req.json();
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
+  let instruction: string;
+  if (subCriteria.length > 0) {
+    const criteriaList = subCriteria.map((c: any, idx: number) =>
+      `${idx + 1}. "${c.criterium_naam}" — max score: ${c.max_score}`
+    ).join("\n");
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    const { data: project } = await supabase.from("projects").select("*").eq("id", projectId).single();
-    const { data: student } = await supabase.from("students").select("*").eq("id", studentId).single();
-
-    if (!project || !student) throw new Error("Project of student niet gevonden");
-    if (!student.pdf_url) throw new Error("Student heeft geen PDF");
-
-    let { data: existingCriteria } = await supabase
-      .from("grading_criteria")
-      .select("*")
-      .eq("project_id", projectId)
-      .order("volgorde", { ascending: true });
-
-    const niveau = niveauOverride || (project as any).beoordelingsniveau || "streng";
-
-    const niveauInstructies: Record<string, string> = {
-      streng: `Wees zeer kritisch: geef geen hoge scores tenzij het werk echt uitblinkt. Een gemiddelde student scoort rond de 50-60% van het maximum per criterium.`,
-      neutraal: `Beoordeel evenwichtig: benoem zowel sterke punten als verbeterpunten. Een gemiddelde student scoort rond de 60-70% van het maximum.`,
-      mild: `Beoordeel stimulerend en positief: benadruk wat goed gaat. Een gemiddelde student scoort rond de 70-80% van het maximum.`,
-    };
-
-    // Separate sub-criteria from eindscore criterion
-    const subCriteria = existingCriteria?.filter((c: any) => !c.is_eindscore) || [];
-    const eindscoreCriterium = existingCriteria?.find((c: any) => c.is_eindscore);
-
-    // Download PDFs
-    console.log("Downloading PDFs...");
-    const pdfPromises: Promise<string>[] = [];
-    const pdfLabels: string[] = [];
-
-    if (project.graderingstabel_pdf_url) {
-      pdfPromises.push(fetchPdfAsBase64(project.graderingstabel_pdf_url));
-      pdfLabels.push("graderingstabel");
-    }
-    if (project.opdracht_pdf_url) {
-      pdfPromises.push(fetchPdfAsBase64(project.opdracht_pdf_url));
-      pdfLabels.push("opdracht");
-    }
-    pdfPromises.push(fetchPdfAsBase64(student.pdf_url));
-    pdfLabels.push("student");
-
-    const pdfBase64s = await Promise.all(pdfPromises);
-    console.log("PDFs downloaded:", pdfLabels.join(", "));
-
-    // Build multimodal content
-    const contentParts: any[] = [];
-    for (let i = 0; i < pdfBase64s.length; i++) {
-      contentParts.push({ type: "text", text: `--- ${pdfLabels[i].toUpperCase()} PDF ---` });
-      contentParts.push({
-        type: "image_url",
-        image_url: { url: `data:application/pdf;base64,${pdfBase64s[i]}` },
-      });
-    }
-
-    // Build instruction
-    let instruction: string;
-    if (subCriteria.length > 0) {
-      const criteriaList = subCriteria.map((c: any, idx: number) =>
-        `${idx + 1}. "${c.criterium_naam}" — max score: ${c.max_score}`
-      ).join("\n");
-
-      let eindscoreInstructie = "";
-      if (eindscoreCriterium) {
-        eindscoreInstructie = `\n\nDaarnaast moet je ook een EINDSCORE geven:
+    let eindscoreInstructie = "";
+    if (eindscoreCriterium) {
+      eindscoreInstructie = `\n\nDaarnaast moet je ook een EINDSCORE geven:
 - Criterium: "${eindscoreCriterium.criterium_naam}" — max score: ${eindscoreCriterium.max_score}
 - Dit is de uiteindelijke beoordeling van het werk als geheel op /${eindscoreCriterium.max_score}.
 - De eindscore is NIET simpelweg het gemiddelde van de deelscores, maar een holistische beoordeling.
 - Volg de graderingstabel om te bepalen welke score past.`;
-      }
+    }
 
-      instruction = `Beoordeel het werk van student "${student.naam}".
+    instruction = `Beoordeel het werk van student "${student.naam}".
 
 Geef een score per DEELCRITERIUM. Je MOET de volgende namen EXACT en LETTERLIJK gebruiken (kopieer ze precies):
 ${criteriaList}
@@ -154,16 +91,14 @@ KRITISCH BELANGRIJK — SCORES UIT DE GRADERINGSTABEL:
 - Gebruik de criterium-namen EXACT zoals hierboven vermeld.
 - Je MOET ALLE ${subCriteria.length} criteria beoordelen. Sla er GEEN over.
 - Lees het studentwerk zorgvuldig en beoordeel op basis van de inhoud.`;
-    } else {
-      instruction = `Analyseer het werk van student "${student.naam}".
+  } else {
+    instruction = `Analyseer het werk van student "${student.naam}".
 1. Lees de graderingstabel PDF en extraheer alle beoordelingscriteria.
 2. Beoordeel per criterium.
 3. Als er een eindcijfer/totaalscore in de tabel staat, geef dat ook.`;
-    }
+  }
 
-    contentParts.push({ type: "text", text: instruction });
-
-    const systemPrompt = `Je bent een ervaren docent die studentwerk beoordeelt. Je leest de documenten grondig.
+  const systemPrompt = `Je bent een ervaren docent die studentwerk beoordeelt. Je leest de documenten grondig.
 
 ${niveauInstructies[niveau] || niveauInstructies["streng"]}
 
@@ -199,87 +134,230 @@ DETAIL FEEDBACK (BLAUWE TEKST INSTRUCTIES):
 - Laat detail_feedback NOOIT leeg. Elk criterium krijgt feedback.
 - Schrijf GEEN markdown in detail_feedback. Gewone tekst met regels.`;
 
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: contentParts },
-        ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "submit_grading",
-              description: "Submit grading results. Use EXACT criteria names as provided. Include the eindscore criterion if present.",
-              parameters: {
-                type: "object",
-                properties: {
-                  criteria: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        naam: { type: "string" },
-                        max_score: { type: "number" },
-                        score: { type: "number" },
-                        motivatie: { type: "string", description: "Korte motivatie voor de score" },
-                        detail_feedback: { type: "string", description: "Gedetailleerde feedback op basis van de instructies in de graderingstabel (blauwe tekst). Bevat concrete voorbeelden met paginanummers en regelnummers. Laat leeg als er geen specifieke instructies zijn voor dit criterium." },
-                      },
-                      required: ["naam", "max_score", "score", "motivatie", "detail_feedback"],
-                      additionalProperties: false,
-                    },
-                  },
-                  algemene_feedback: { type: "string" },
-                },
-                required: ["criteria", "algemene_feedback"],
-                additionalProperties: false,
-              },
-            },
-          },
-        ],
-        tool_choice: { type: "function", function: { name: "submit_grading" } },
-      }),
-    });
+  return { instruction, systemPrompt };
+}
 
-    if (!aiResponse.ok) {
-      const errText = await aiResponse.text();
-      console.error("AI error:", aiResponse.status, errText);
-      if (aiResponse.status === 429) {
-        await supabase.from("students").update({ status: "pending" }).eq("id", studentId);
-        return new Response(JSON.stringify({ error: "AI is tijdelijk overbelast" }), {
-          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+const toolSchema = {
+  type: "function" as const,
+  function: {
+    name: "submit_grading",
+    description: "Submit grading results. Use EXACT criteria names as provided. Include the eindscore criterion if present.",
+    parameters: {
+      type: "object",
+      properties: {
+        criteria: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              naam: { type: "string" },
+              max_score: { type: "number" },
+              score: { type: "number" },
+              motivatie: { type: "string", description: "Korte motivatie voor de score" },
+              detail_feedback: { type: "string", description: "Gedetailleerde feedback op basis van de instructies in de graderingstabel (blauwe tekst). Bevat concrete voorbeelden met paginanummers en regelnummers. Laat leeg als er geen specifieke instructies zijn voor dit criterium." },
+            },
+            required: ["naam", "max_score", "score", "motivatie", "detail_feedback"],
+            additionalProperties: false,
+          },
+        },
+        algemene_feedback: { type: "string" },
+      },
+      required: ["criteria", "algemene_feedback"],
+      additionalProperties: false,
+    },
+  },
+};
+
+async function callLovableAI(systemPrompt: string, contentParts: any[]) {
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
+
+  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${LOVABLE_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "google/gemini-2.5-flash",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: contentParts },
+      ],
+      tools: [toolSchema],
+      tool_choice: { type: "function", function: { name: "submit_grading" } },
+    }),
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    console.error("Lovable AI error:", response.status, errText);
+    if (response.status === 429) throw { status: 429, message: "AI is tijdelijk overbelast" };
+    if (response.status === 402) throw { status: 402, message: "AI credits op" };
+    throw new Error(`AI analyse mislukt: ${response.status}`);
+  }
+
+  const data = await response.json();
+  return parseAIResponse(data);
+}
+
+async function callAnthropicAI(systemPrompt: string, contentParts: any[]) {
+  const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+  if (!ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY niet geconfigureerd");
+
+  // Convert contentParts to Anthropic format
+  const anthropicContent: any[] = [];
+  for (const part of contentParts) {
+    if (part.type === "text") {
+      anthropicContent.push({ type: "text", text: part.text });
+    } else if (part.type === "image_url") {
+      const url = part.image_url.url;
+      if (url.startsWith("data:application/pdf;base64,")) {
+        const base64 = url.replace("data:application/pdf;base64,", "");
+        anthropicContent.push({
+          type: "document",
+          source: { type: "base64", media_type: "application/pdf", data: base64 },
         });
       }
-      if (aiResponse.status === 402) {
-        await supabase.from("students").update({ status: "pending" }).eq("id", studentId);
-        return new Response(JSON.stringify({ error: "AI credits op" }), {
-          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      throw new Error(`AI analyse mislukt: ${aiResponse.status}`);
+    }
+  }
+
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "x-api-key": ANTHROPIC_API_KEY,
+      "anthropic-version": "2023-06-01",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "claude-opus-4-20250514",
+      max_tokens: 8192,
+      system: systemPrompt,
+      messages: [{ role: "user", content: anthropicContent }],
+      tools: [{
+        name: "submit_grading",
+        description: toolSchema.function.description,
+        input_schema: toolSchema.function.parameters,
+      }],
+      tool_choice: { type: "tool", name: "submit_grading" },
+    }),
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    console.error("Anthropic error:", response.status, errText);
+    if (response.status === 429) throw { status: 429, message: "Anthropic API is tijdelijk overbelast" };
+    if (response.status === 402 || response.status === 400) {
+      const parsed = JSON.parse(errText).error?.message || errText;
+      throw new Error(`Anthropic fout: ${parsed}`);
+    }
+    throw new Error(`Anthropic analyse mislukt: ${response.status}`);
+  }
+
+  const data = await response.json();
+  // Anthropic tool use response
+  const toolUse = data.content?.find((c: any) => c.type === "tool_use" && c.name === "submit_grading");
+  if (toolUse) {
+    return toolUse.input;
+  }
+  // Fallback: try to parse text
+  const textBlock = data.content?.find((c: any) => c.type === "text");
+  if (textBlock) {
+    const jsonMatch = textBlock.text.match(/\{[\s\S]*\}/);
+    if (jsonMatch) return JSON.parse(jsonMatch[0]);
+  }
+  throw new Error("Kon Anthropic antwoord niet verwerken");
+}
+
+function parseAIResponse(aiData: any) {
+  const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
+  if (toolCall?.function?.arguments) {
+    return JSON.parse(toolCall.function.arguments);
+  }
+  const content = aiData.choices?.[0]?.message?.content || "";
+  const jsonMatch = content.match(/\{[\s\S]*\}/);
+  if (jsonMatch) return JSON.parse(jsonMatch[0]);
+  console.error("Unexpected AI response:", JSON.stringify(aiData).substring(0, 500));
+  throw new Error("Kon AI antwoord niet verwerken");
+}
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  try {
+    const { studentId, projectId, niveauOverride } = await req.json();
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    const { data: project } = await supabase.from("projects").select("*").eq("id", projectId).single();
+    const { data: student } = await supabase.from("students").select("*").eq("id", studentId).single();
+
+    if (!project || !student) throw new Error("Project of student niet gevonden");
+    if (!student.pdf_url) throw new Error("Student heeft geen PDF");
+
+    let { data: existingCriteria } = await supabase
+      .from("grading_criteria")
+      .select("*")
+      .eq("project_id", projectId)
+      .order("volgorde", { ascending: true });
+
+    const niveau = niveauOverride || (project as any).beoordelingsniveau || "streng";
+    const aiProvider = (project as any).ai_provider || "lovable";
+
+    const subCriteria = existingCriteria?.filter((c: any) => !c.is_eindscore) || [];
+    const eindscoreCriterium = existingCriteria?.find((c: any) => c.is_eindscore);
+
+    // Download PDFs
+    console.log("Downloading PDFs...");
+    const pdfPromises: Promise<string>[] = [];
+    const pdfLabels: string[] = [];
+
+    if (project.graderingstabel_pdf_url) {
+      pdfPromises.push(fetchPdfAsBase64(project.graderingstabel_pdf_url));
+      pdfLabels.push("graderingstabel");
+    }
+    if (project.opdracht_pdf_url) {
+      pdfPromises.push(fetchPdfAsBase64(project.opdracht_pdf_url));
+      pdfLabels.push("opdracht");
+    }
+    pdfPromises.push(fetchPdfAsBase64(student.pdf_url));
+    pdfLabels.push("student");
+
+    const pdfBase64s = await Promise.all(pdfPromises);
+    console.log("PDFs downloaded:", pdfLabels.join(", "));
+
+    // Build multimodal content
+    const contentParts: any[] = [];
+    for (let i = 0; i < pdfBase64s.length; i++) {
+      contentParts.push({ type: "text", text: `--- ${pdfLabels[i].toUpperCase()} PDF ---` });
+      contentParts.push({
+        type: "image_url",
+        image_url: { url: `data:application/pdf;base64,${pdfBase64s[i]}` },
+      });
     }
 
-    const aiData = await aiResponse.json();
-    const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
+    const { instruction, systemPrompt } = buildPromptParts(project, student, subCriteria, eindscoreCriterium, niveau);
+    contentParts.push({ type: "text", text: instruction });
 
+    // Call the appropriate AI provider
+    console.log(`Using AI provider: ${aiProvider}`);
     let result;
-    if (toolCall?.function?.arguments) {
-      result = JSON.parse(toolCall.function.arguments);
-    } else {
-      const content = aiData.choices?.[0]?.message?.content || "";
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        result = JSON.parse(jsonMatch[0]);
+    try {
+      if (aiProvider === "anthropic") {
+        result = await callAnthropicAI(systemPrompt, contentParts);
       } else {
-        console.error("Unexpected AI response:", JSON.stringify(aiData).substring(0, 500));
-        throw new Error("Kon AI antwoord niet verwerken");
+        result = await callLovableAI(systemPrompt, contentParts);
       }
+    } catch (err: any) {
+      if (err.status === 429 || err.status === 402) {
+        await supabase.from("students").update({ status: "pending" }).eq("id", studentId);
+        return new Response(JSON.stringify({ error: err.message }), {
+          status: err.status, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      throw err;
     }
 
     console.log("AI returned criteria:", result.criteria?.length, "items");
