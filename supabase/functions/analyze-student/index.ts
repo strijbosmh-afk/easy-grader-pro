@@ -171,7 +171,16 @@ SCORESCHAAL:
 - Gebruik de VOLLEDIGE schaal.
 - Volg de graderingstabel: als daar beschreven staat wat nodig is voor een bepaalde score, pas dat strikt toe.
 
-Geef concrete, specifieke motivatie per criterium.`;
+HEEL BELANGRIJK — INSTRUCTIES IN DE GRADERINGSTABEL:
+- De graderingstabel bevat vaak gekleurde tekst (blauw, rood, etc.) met SPECIFIEKE INSTRUCTIES voor de beoordeling.
+- Deze instructies MOET je strikt opvolgen. Bijvoorbeeld:
+  - Als er staat "geef een opsomming van de taalfouten (met paginanummer en regelnummer)", dan MOET je dit letterlijk doen in je motivatie.
+  - Als er staat "geef aan welke ideeën of verwoording niet duidelijk was (met paginanummer en regelnummers)", doe dit dan ook.
+  - Als er condities staan zoals "Indien niet 'sterk':", volg dan de bijbehorende instructies wanneer de score niet het hoogste niveau bereikt.
+- Lees ALLE tekst in de graderingstabel, inclusief kleine lettertjes, voetnoten, en gekleurde tekst.
+- Verwerk deze instructies concreet in je motivatie per criterium.
+
+Geef concrete, specifieke motivatie per criterium met verwijzingen naar paginanummers en regelnummers waar van toepassing.`;
 
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
