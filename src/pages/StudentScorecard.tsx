@@ -402,8 +402,7 @@ const StudentScorecard = () => {
                           value={vals.final_score}
                           onChange={(e) => updateLocal(c.id, "final_score", e.target.value)}
                           placeholder={`0 - ${c.max_score}`}
-                          className={vals.final_score === "" ? "border-destructive" : ""}
-                        />
+                           className={vals.final_score === "" ? "border-destructive" : ""}
                         />
                       </div>
                       <div>
