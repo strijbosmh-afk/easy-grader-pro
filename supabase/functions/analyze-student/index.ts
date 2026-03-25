@@ -55,6 +55,45 @@ function findBestMatch(aiName: string, criteria: any[]): any | null {
   return null;
 }
 
+function parseScoreValue(rawScore: unknown, motivatie?: string, criteriumNaam?: string, customInstructions?: string): number {
+  if (typeof rawScore === "number" && Number.isFinite(rawScore)) return rawScore;
+
+  const rawText = typeof rawScore === "string" ? rawScore : String(rawScore ?? "");
+  const normalized = rawText.replace(/,/g, ".");
+  const matches = normalized.match(/-?\d+(?:\.\d+)?/g);
+
+  if (!matches || matches.length === 0) return 0;
+
+  const parsedNumbers = matches
+    .map((m) => Number(m))
+    .filter((n) => Number.isFinite(n));
+
+  if (parsedNumbers.length === 0) return 0;
+
+  const instructionsText = (customInstructions || "").toLowerCase();
+  const motivationText = (motivatie || "").toLowerCase();
+  const criterionText = (criteriumNaam || "").toLowerCase();
+
+  const isVolledigheidRule =
+    criterionText.includes("volledigheid") &&
+    instructionsText.includes("0") &&
+    instructionsText.includes("-5");
+
+  if (isVolledigheidRule) {
+    const looksComplete = /volledig|voldoet|alle onderdelen aanwezig|correct aangeleverd/.test(motivationText);
+    const looksIncomplete = /onvolledig|ontbreekt|mist|niet volledig|niet aangeleverd/.test(motivationText);
+
+    if (looksIncomplete) return -5;
+    if (looksComplete) return 0;
+
+    if (parsedNumbers.includes(-5) || parsedNumbers.includes(0)) {
+      return parsedNumbers.includes(-5) ? -5 : 0;
+    }
+  }
+
+  return parsedNumbers[0];
+}
+
 function buildPromptParts(project: any, student: any, subCriteria: any[], eindscoreCriterium: any, niveau: string, customInstructions?: string) {
   const niveauInstructies: Record<string, string> = {
     streng: `Wees zeer kritisch: geef geen hoge scores tenzij het werk echt uitblinkt. Een gemiddelde student scoort rond de 50-60% van het maximum per criterium.`,
@@ -91,7 +130,12 @@ KRITISCH BELANGRIJK — SCORES UIT DE GRADERINGSTABEL:
 - Hardcodeer GEEN aannames over scoreschalen. LEES de tabel en volg die EXACT.
 - Gebruik de criterium-namen EXACT zoals hierboven vermeld.
 - Je MOET ALLE ${subCriteria.length} criteria beoordelen. Sla er GEEN over.
-- Lees het studentwerk zorgvuldig en beoordeel op basis van de inhoud.`;
+- Lees het studentwerk zorgvuldig en beoordeel op basis van de inhoud.${customInstructions ? `
+
+DOCENT-INSTRUCTIES (ABSOLUTE VOORRANG, LETTERLIJK VOLGEN):
+${customInstructions}
+
+Als deze docent-instructies botsen met andere regels, volg ALTIJD de docent-instructies.` : ""}`;
   } else {
     instruction = `Analyseer het werk van student "${student.naam}".
 1. Lees de graderingstabel PDF en extraheer alle beoordelingscriteria.
@@ -433,7 +477,12 @@ serve(async (req) => {
       const matched = findBestMatch(aiCriterium.naam, existingCriteria!.filter((c: any) => !usedCriteria.has(c.id)));
       if (matched) {
         usedCriteria.add(matched.id);
-        const score = Number(aiCriterium.score) || 0;
+        const score = parseScoreValue(
+          aiCriterium.score,
+          aiCriterium.motivatie,
+          matched.criterium_naam,
+          customInstructions
+        );
         await supabase.from("student_scores").insert({
           student_id: studentId,
           criterium_id: matched.id,
