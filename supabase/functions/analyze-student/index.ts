@@ -477,7 +477,12 @@ serve(async (req) => {
       const matched = findBestMatch(aiCriterium.naam, existingCriteria!.filter((c: any) => !usedCriteria.has(c.id)));
       if (matched) {
         usedCriteria.add(matched.id);
-        const score = Number(aiCriterium.score) || 0;
+        const score = parseScoreValue(
+          aiCriterium.score,
+          aiCriterium.motivatie,
+          matched.criterium_naam,
+          customInstructions
+        );
         await supabase.from("student_scores").insert({
           student_id: studentId,
           criterium_id: matched.id,
