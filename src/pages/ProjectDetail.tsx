@@ -605,7 +605,7 @@ const ProjectDetail = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="lovable">Gemini 2.5 Flash</SelectItem>
-                  <SelectItem value="anthropic">Anthropic Claude Opus 4.6</SelectItem>
+                  <SelectItem value="anthropic">Anthropic Claude Sonnet 4</SelectItem>
                 </SelectContent>
               </Select>
             </CardContent>
@@ -1098,7 +1098,7 @@ const ProjectDetail = () => {
             >
               <div className="flex items-center gap-2 mb-2">
                 <Cpu className="h-5 w-5 text-primary" />
-                <span className="font-semibold text-foreground">Claude Opus 4.6</span>
+                <span className="font-semibold text-foreground">Claude Sonnet 4</span>
               </div>
               <ul className="text-xs text-muted-foreground space-y-1">
                 <li>✦ Diepgaande, genuanceerde analyse</li>

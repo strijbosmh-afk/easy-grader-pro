@@ -138,7 +138,7 @@ const Index = () => {
                     >
                       <div className="flex items-center gap-2 mb-2">
                         <Cpu className="h-4 w-4 text-primary" />
-                        <span className="font-semibold text-sm text-foreground">Claude Opus 4.6</span>
+                        <span className="font-semibold text-sm text-foreground">Claude Sonnet 4</span>
                       </div>
                       <p className="text-xs text-muted-foreground leading-relaxed">
                         Diepgaande analyse. Sterk in nuance, complexe teksten en gedetailleerde feedback.
