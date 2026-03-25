@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, FolderOpen, Users, TrendingUp } from "lucide-react";
+import { Plus, Search, FolderOpen, Users, TrendingUp, Sparkles, Cpu } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
@@ -16,6 +16,7 @@ const Index = () => {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [newProjectName, setNewProjectName] = useState("");
+  const [selectedProvider, setSelectedProvider] = useState<string>("lovable");
   const [dialogOpen, setDialogOpen] = useState(false);
 
   const { data: projects, isLoading } = useQuery({
@@ -34,7 +35,7 @@ const Index = () => {
     mutationFn: async (naam: string) => {
       const { data, error } = await supabase
         .from("projects")
-        .insert({ naam })
+        .insert({ naam, ai_provider: selectedProvider })
         .select()
         .single();
       if (error) throw error;
@@ -44,6 +45,7 @@ const Index = () => {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
       setDialogOpen(false);
       setNewProjectName("");
+      setSelectedProvider("lovable");
       toast.success("Project aangemaakt!");
       navigate(`/project/${data.id}`);
     },
@@ -86,11 +88,11 @@ const Index = () => {
                 Nieuw Project
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="sm:max-w-lg">
               <DialogHeader>
                 <DialogTitle>Nieuw Project Aanmaken</DialogTitle>
               </DialogHeader>
-              <div className="space-y-4 pt-4">
+              <div className="space-y-5 pt-4">
                 <div>
                   <Label htmlFor="projectName">Projectnaam</Label>
                   <Input
@@ -104,6 +106,45 @@ const Index = () => {
                       }
                     }}
                   />
+                </div>
+                <div>
+                  <Label className="mb-3 block">AI Model voor analyse</Label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedProvider("lovable")}
+                      className={`relative rounded-lg border-2 p-4 text-left transition-all ${
+                        selectedProvider === "lovable"
+                          ? "border-primary bg-primary/5"
+                          : "border-border hover:border-primary/40"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <Sparkles className="h-4 w-4 text-primary" />
+                        <span className="font-semibold text-sm text-foreground">Gemini 2.5 Flash</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        Snel & voordelig. Goed voor standaard beoordelingen en multimodale analyses.
+                      </p>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedProvider("anthropic")}
+                      className={`relative rounded-lg border-2 p-4 text-left transition-all ${
+                        selectedProvider === "anthropic"
+                          ? "border-primary bg-primary/5"
+                          : "border-border hover:border-primary/40"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <Cpu className="h-4 w-4 text-primary" />
+                        <span className="font-semibold text-sm text-foreground">Claude Opus 4.6</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        Diepgaande analyse. Sterk in nuance, complexe teksten en gedetailleerde feedback.
+                      </p>
+                    </button>
+                  </div>
                 </div>
                 <Button
                   className="w-full"
