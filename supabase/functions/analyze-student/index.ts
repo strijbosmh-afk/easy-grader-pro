@@ -130,7 +130,12 @@ KRITISCH BELANGRIJK — SCORES UIT DE GRADERINGSTABEL:
 - Hardcodeer GEEN aannames over scoreschalen. LEES de tabel en volg die EXACT.
 - Gebruik de criterium-namen EXACT zoals hierboven vermeld.
 - Je MOET ALLE ${subCriteria.length} criteria beoordelen. Sla er GEEN over.
-- Lees het studentwerk zorgvuldig en beoordeel op basis van de inhoud.`;
+- Lees het studentwerk zorgvuldig en beoordeel op basis van de inhoud.${customInstructions ? `
+
+DOCENT-INSTRUCTIES (ABSOLUTE VOORRANG, LETTERLIJK VOLGEN):
+${customInstructions}
+
+Als deze docent-instructies botsen met andere regels, volg ALTIJD de docent-instructies.` : ""}`;
   } else {
     instruction = `Analyseer het werk van student "${student.naam}".
 1. Lees de graderingstabel PDF en extraheer alle beoordelingscriteria.
