@@ -105,6 +105,7 @@ const StudentScorecard = () => {
     return {
       ai_suggested_score: score?.ai_suggested_score,
       ai_motivatie: score?.ai_motivatie,
+      ai_detail_feedback: (score as any)?.ai_detail_feedback,
     };
   };
 
