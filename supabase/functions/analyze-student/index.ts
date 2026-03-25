@@ -201,9 +201,12 @@ async function callLovableAI(systemPrompt: string, contentParts: any[]) {
   return parseAIResponse(data);
 }
 
-async function callAnthropicAI(systemPrompt: string, contentParts: any[]) {
+async function callAnthropicAI(systemPrompt: string, contentParts: any[], retryCount = 0): Promise<any> {
   const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
   if (!ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY niet geconfigureerd");
+
+  const MAX_RETRIES = 1;
+  const TIMEOUT_MS = 280_000; // 280 seconds
 
   // Convert contentParts to Anthropic format
   const anthropicContent: any[] = [];
@@ -222,51 +225,80 @@ async function callAnthropicAI(systemPrompt: string, contentParts: any[]) {
     }
   }
 
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "x-api-key": ANTHROPIC_API_KEY,
-      "anthropic-version": "2023-06-01",
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 8192,
-      system: systemPrompt,
-      messages: [{ role: "user", content: anthropicContent }],
-      tools: [{
-        name: "submit_grading",
-        description: toolSchema.function.description,
-        input_schema: toolSchema.function.parameters,
-      }],
-      tool_choice: { type: "tool", name: "submit_grading" },
-    }),
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
-  if (!response.ok) {
-    const errText = await response.text();
-    console.error("Anthropic error:", response.status, errText);
-    if (response.status === 429) throw { status: 429, message: "Anthropic API is tijdelijk overbelast" };
-    if (response.status === 402 || response.status === 400) {
-      const parsed = JSON.parse(errText).error?.message || errText;
-      throw new Error(`Anthropic fout: ${parsed}`);
+  try {
+    console.log(`Anthropic call attempt ${retryCount + 1}/${MAX_RETRIES + 1}...`);
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 8192,
+        system: systemPrompt,
+        messages: [{ role: "user", content: anthropicContent }],
+        tools: [{
+          name: "submit_grading",
+          description: toolSchema.function.description,
+          input_schema: toolSchema.function.parameters,
+        }],
+        tool_choice: { type: "tool", name: "submit_grading" },
+      }),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error("Anthropic error:", response.status, errText);
+      if (response.status === 429) {
+        if (retryCount < MAX_RETRIES) {
+          console.log("Rate limited, retrying in 10s...");
+          await new Promise(r => setTimeout(r, 10_000));
+          return callAnthropicAI(systemPrompt, contentParts, retryCount + 1);
+        }
+        throw { status: 429, message: "Anthropic API is tijdelijk overbelast" };
+      }
+      if (response.status === 529 && retryCount < MAX_RETRIES) {
+        console.log("Anthropic overloaded (529), retrying in 15s...");
+        await new Promise(r => setTimeout(r, 15_000));
+        return callAnthropicAI(systemPrompt, contentParts, retryCount + 1);
+      }
+      if (response.status === 402 || response.status === 400) {
+        const parsed = JSON.parse(errText).error?.message || errText;
+        throw new Error(`Anthropic fout: ${parsed}`);
+      }
+      throw new Error(`Anthropic analyse mislukt: ${response.status}`);
     }
-    throw new Error(`Anthropic analyse mislukt: ${response.status}`);
-  }
 
-  const data = await response.json();
-  // Anthropic tool use response
-  const toolUse = data.content?.find((c: any) => c.type === "tool_use" && c.name === "submit_grading");
-  if (toolUse) {
-    return toolUse.input;
+    const data = await response.json();
+    const toolUse = data.content?.find((c: any) => c.type === "tool_use" && c.name === "submit_grading");
+    if (toolUse) return toolUse.input;
+
+    const textBlock = data.content?.find((c: any) => c.type === "text");
+    if (textBlock) {
+      const jsonMatch = textBlock.text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) return JSON.parse(jsonMatch[0]);
+    }
+    throw new Error("Kon Anthropic antwoord niet verwerken");
+  } catch (err: any) {
+    clearTimeout(timeoutId);
+    if (err.name === "AbortError") {
+      console.error("Anthropic call timed out after", TIMEOUT_MS / 1000, "seconds");
+      if (retryCount < MAX_RETRIES) {
+        console.log("Retrying after timeout...");
+        return callAnthropicAI(systemPrompt, contentParts, retryCount + 1);
+      }
+      throw new Error("Claude analyse duurde te lang. Probeer het opnieuw of gebruik Gemini.");
+    }
+    throw err;
   }
-  // Fallback: try to parse text
-  const textBlock = data.content?.find((c: any) => c.type === "text");
-  if (textBlock) {
-    const jsonMatch = textBlock.text.match(/\{[\s\S]*\}/);
-    if (jsonMatch) return JSON.parse(jsonMatch[0]);
-  }
-  throw new Error("Kon Anthropic antwoord niet verwerken");
 }
 
 function parseAIResponse(aiData: any) {
