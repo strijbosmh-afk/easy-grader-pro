@@ -1045,7 +1045,74 @@ const ProjectDetail = () => {
         </DialogContent>
       </Dialog>
 
-      {/* PDF Viewer Dialog */}
+      {/* AI Model Picker Dialog */}
+      <Dialog open={showModelPicker} onOpenChange={(open) => {
+        if (!open) {
+          setShowModelPicker(false);
+          setPendingGradingFile(null);
+        }
+      }}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Bot className="h-5 w-5 text-primary" />
+              Kies AI Model
+            </DialogTitle>
+            <DialogDescription>
+              {modelPickerAction === "grading"
+                ? "Welk AI model wil je gebruiken om de graderingstabel te analyseren en het beoordelingsbeleid op te stellen?"
+                : "Welk AI model wil je gebruiken voor de analyse van de studenten?"}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-4 py-4">
+            <button
+              type="button"
+              onClick={() => handleModelPickerConfirm("lovable")}
+              className={`relative rounded-lg border-2 p-5 text-left transition-all hover:border-primary/60 ${
+                (project as any)?.ai_provider === "lovable" || !(project as any)?.ai_provider
+                  ? "border-primary bg-primary/5"
+                  : "border-border"
+              }`}
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <Sparkles className="h-5 w-5 text-primary" />
+                <span className="font-semibold text-foreground">Gemini 2.5 Flash</span>
+              </div>
+              <ul className="text-xs text-muted-foreground space-y-1">
+                <li>✦ Snel & voordelig</li>
+                <li>✦ Goed in multimodale PDF-analyse</li>
+                <li>✦ Geschikt voor standaard beoordelingen</li>
+              </ul>
+              {((project as any)?.ai_provider === "lovable" || !(project as any)?.ai_provider) && (
+                <span className="absolute top-2 right-2 text-[10px] bg-primary text-primary-foreground px-1.5 py-0.5 rounded">Huidig</span>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => handleModelPickerConfirm("anthropic")}
+              className={`relative rounded-lg border-2 p-5 text-left transition-all hover:border-primary/60 ${
+                (project as any)?.ai_provider === "anthropic"
+                  ? "border-primary bg-primary/5"
+                  : "border-border"
+              }`}
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <Cpu className="h-5 w-5 text-primary" />
+                <span className="font-semibold text-foreground">Claude Opus 4.6</span>
+              </div>
+              <ul className="text-xs text-muted-foreground space-y-1">
+                <li>✦ Diepgaande, genuanceerde analyse</li>
+                <li>✦ Sterk in complexe teksten</li>
+                <li>✦ Gedetailleerdere feedback</li>
+              </ul>
+              {(project as any)?.ai_provider === "anthropic" && (
+                <span className="absolute top-2 right-2 text-[10px] bg-primary text-primary-foreground px-1.5 py-0.5 rounded">Huidig</span>
+              )}
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={!!pdfViewerUrl} onOpenChange={(open) => !open && setPdfViewerUrl(null)}>
         <DialogContent className="max-w-4xl h-[85vh] p-0 flex flex-col">
           <DialogHeader className="px-6 pt-6 pb-3 shrink-0">
