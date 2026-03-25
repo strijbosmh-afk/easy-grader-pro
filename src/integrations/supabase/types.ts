@@ -51,6 +51,7 @@ export type Database = {
       }
       projects: {
         Row: {
+          ai_provider: string
           beoordelingsniveau: string
           created_at: string
           graderingstabel_pdf_url: string | null
@@ -60,6 +61,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          ai_provider?: string
           beoordelingsniveau?: string
           created_at?: string
           graderingstabel_pdf_url?: string | null
@@ -69,6 +71,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          ai_provider?: string
           beoordelingsniveau?: string
           created_at?: string
           graderingstabel_pdf_url?: string | null

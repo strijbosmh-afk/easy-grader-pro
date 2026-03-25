@@ -1,0 +1,1 @@
+ALTER TABLE public.projects ADD COLUMN ai_provider text NOT NULL DEFAULT 'lovable';
