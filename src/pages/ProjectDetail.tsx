@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, Upload, FileText, Pencil, Check, X, Loader2, Bot, Download, Settings, LayoutGrid, RefreshCw, AlertTriangle, Users, FolderOpen, Search, Eye, Trash2, FileDown, CheckCircle, Circle } from "lucide-react";
+import { ArrowLeft, Upload, FileText, Pencil, Check, X, Loader2, Bot, Download, Settings, LayoutGrid, RefreshCw, AlertTriangle, Users, FolderOpen, Search, Eye, Trash2, FileDown, CheckCircle, Circle, Sparkles, Cpu } from "lucide-react";
 import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
@@ -66,6 +66,11 @@ const ProjectDetail = () => {
   const [showGradingDialog, setShowGradingDialog] = useState(false);
   const [applyingCriteria, setApplyingCriteria] = useState(false);
 
+  // AI model picker state
+  const [showModelPicker, setShowModelPicker] = useState(false);
+  const [modelPickerAction, setModelPickerAction] = useState<"grading" | "reanalyze" | "batch">("grading");
+  const [pendingGradingFile, setPendingGradingFile] = useState<File | null>(null);
+
   const { data: project, isLoading } = useQuery({
     queryKey: ["project", id],
     queryFn: async () => {
@@ -117,6 +122,17 @@ const ProjectDetail = () => {
   });
 
   const uploadPdf = async (file: File, type: "opdracht" | "graderingstabel") => {
+    if (type === "graderingstabel") {
+      // Show model picker first
+      setPendingGradingFile(file);
+      setModelPickerAction("grading");
+      setShowModelPicker(true);
+      return;
+    }
+    await doUploadPdf(file, type);
+  };
+
+  const doUploadPdf = async (file: File, type: "opdracht" | "graderingstabel") => {
     const path = `${id}/${type}_${Date.now()}.pdf`;
     const { error: uploadError } = await supabase.storage.from("pdfs").upload(path, file);
     if (uploadError) throw uploadError;
@@ -128,8 +144,9 @@ const ProjectDetail = () => {
       setPendingGradingUrl(publicUrl);
       setParsingGrading(true);
       try {
+        const aiProvider = (project as any)?.ai_provider || "lovable";
         const { data, error } = await supabase.functions.invoke("parse-grading-table", {
-          body: { graderingstabelUrl: publicUrl },
+          body: { graderingstabelUrl: publicUrl, aiProvider },
         });
         if (error) throw error;
         setParsedCriteria(data.criteria || []);
@@ -145,6 +162,23 @@ const ProjectDetail = () => {
     } else {
       await updateProject.mutateAsync({ opdracht_pdf_url: publicUrl });
       toast.success("Opdracht geüpload");
+    }
+  };
+
+  const handleModelPickerConfirm = async (provider: string) => {
+    setShowModelPicker(false);
+    // Save the selected provider to the project
+    await updateProject.mutateAsync({ ai_provider: provider });
+    queryClient.invalidateQueries({ queryKey: ["project", id] });
+
+    if (modelPickerAction === "grading" && pendingGradingFile) {
+      const file = pendingGradingFile;
+      setPendingGradingFile(null);
+      await doUploadPdf(file, "graderingstabel");
+    } else if (modelPickerAction === "reanalyze") {
+      doBatchReAnalyze();
+    } else if (modelPickerAction === "batch") {
+      doBatchAnalyze();
     }
   };
 
@@ -283,12 +317,18 @@ const ProjectDetail = () => {
     },
   });
 
-  const batchAnalyze = async () => {
+  const batchAnalyze = () => {
     const pending = students?.filter((s) => s.status === "pending" || s.status === "reviewed") || [];
     if (pending.length === 0) {
       toast.info("Geen studenten om te analyseren");
       return;
     }
+    setModelPickerAction("batch");
+    setShowModelPicker(true);
+  };
+
+  const doBatchAnalyze = async () => {
+    const pending = students?.filter((s) => s.status === "pending" || s.status === "reviewed") || [];
     setBatchAnalyzing(true);
     let success = 0;
     let failed = 0;
@@ -311,12 +351,18 @@ const ProjectDetail = () => {
     toast.success(`Batch analyse klaar: ${success} geslaagd${failed > 0 ? `, ${failed} mislukt` : ""}`);
   };
 
-  const batchReAnalyze = async () => {
+  const batchReAnalyze = () => {
     const eligible = students?.filter((s) => s.status === "reviewed" || s.status === "graded") || [];
     if (eligible.length === 0) {
       toast.info("Geen geanalyseerde studenten om opnieuw te beoordelen");
       return;
     }
+    setModelPickerAction("reanalyze");
+    setShowModelPicker(true);
+  };
+
+  const doBatchReAnalyze = async () => {
+    const eligible = students?.filter((s) => s.status === "reviewed" || s.status === "graded") || [];
     setReAnalyzing(true);
     let success = 0;
     let failed = 0;
@@ -999,7 +1045,74 @@ const ProjectDetail = () => {
         </DialogContent>
       </Dialog>
 
-      {/* PDF Viewer Dialog */}
+      {/* AI Model Picker Dialog */}
+      <Dialog open={showModelPicker} onOpenChange={(open) => {
+        if (!open) {
+          setShowModelPicker(false);
+          setPendingGradingFile(null);
+        }
+      }}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Bot className="h-5 w-5 text-primary" />
+              Kies AI Model
+            </DialogTitle>
+            <DialogDescription>
+              {modelPickerAction === "grading"
+                ? "Welk AI model wil je gebruiken om de graderingstabel te analyseren en het beoordelingsbeleid op te stellen?"
+                : "Welk AI model wil je gebruiken voor de analyse van de studenten?"}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-4 py-4">
+            <button
+              type="button"
+              onClick={() => handleModelPickerConfirm("lovable")}
+              className={`relative rounded-lg border-2 p-5 text-left transition-all hover:border-primary/60 ${
+                (project as any)?.ai_provider === "lovable" || !(project as any)?.ai_provider
+                  ? "border-primary bg-primary/5"
+                  : "border-border"
+              }`}
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <Sparkles className="h-5 w-5 text-primary" />
+                <span className="font-semibold text-foreground">Gemini 2.5 Flash</span>
+              </div>
+              <ul className="text-xs text-muted-foreground space-y-1">
+                <li>✦ Snel & voordelig</li>
+                <li>✦ Goed in multimodale PDF-analyse</li>
+                <li>✦ Geschikt voor standaard beoordelingen</li>
+              </ul>
+              {((project as any)?.ai_provider === "lovable" || !(project as any)?.ai_provider) && (
+                <span className="absolute top-2 right-2 text-[10px] bg-primary text-primary-foreground px-1.5 py-0.5 rounded">Huidig</span>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => handleModelPickerConfirm("anthropic")}
+              className={`relative rounded-lg border-2 p-5 text-left transition-all hover:border-primary/60 ${
+                (project as any)?.ai_provider === "anthropic"
+                  ? "border-primary bg-primary/5"
+                  : "border-border"
+              }`}
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <Cpu className="h-5 w-5 text-primary" />
+                <span className="font-semibold text-foreground">Claude Opus 4.6</span>
+              </div>
+              <ul className="text-xs text-muted-foreground space-y-1">
+                <li>✦ Diepgaande, genuanceerde analyse</li>
+                <li>✦ Sterk in complexe teksten</li>
+                <li>✦ Gedetailleerdere feedback</li>
+              </ul>
+              {(project as any)?.ai_provider === "anthropic" && (
+                <span className="absolute top-2 right-2 text-[10px] bg-primary text-primary-foreground px-1.5 py-0.5 rounded">Huidig</span>
+              )}
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={!!pdfViewerUrl} onOpenChange={(open) => !open && setPdfViewerUrl(null)}>
         <DialogContent className="max-w-4xl h-[85vh] p-0 flex flex-col">
           <DialogHeader className="px-6 pt-6 pb-3 shrink-0">
