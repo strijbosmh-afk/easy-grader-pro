@@ -1,0 +1,1 @@
+UPDATE students SET status = 'pending' WHERE status = 'analyzing';
