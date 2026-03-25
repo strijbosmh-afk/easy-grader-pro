@@ -168,12 +168,12 @@ KRITISCH BELANGRIJK — SCORES UIT DE GRADERINGSTABEL:
 
 ${niveauInstructies[niveau] || niveauInstructies["streng"]}
 
-SCORESCHAAL:
-- Elke criterium heeft een eigen max_score.
-- Je score MOET tussen 0 en de max_score liggen.
-- Gebruik de EFFECTIEVE SCORES die in de graderingstabel staan. De graderingstabel definieert exact welke score hoort bij welk niveau (bijv. "sterk", "voldoende", "onvoldoende"). Gebruik DEZE scores, niet zelf verzonnen waarden.
-- Als de graderingstabel bijv. zegt dat "voldoende" = 15/20, geef dan exact 15.
-- Volg de graderingstabel STRIKT voor het toekennen van scores.
+SCORESCHAAL — LEES DE GRADERINGSTABEL:
+- De graderingstabel bepaalt welke scores mogelijk zijn per criterium. Bestudeer dit ZEER zorgvuldig.
+- Sommige criteria werken met AFTREK (straf): bijv. "Volledigheid" = 0 als alles aanwezig is, -5 als er dingen ontbreken. Hier is 0 de BESTE score.
+- Andere criteria werken met POSITIEVE punten: bijv. 0 = onvoldoende, 30 = uitstekend.
+- Geef EXACT een score die overeenkomt met een niveau uit de graderingstabel. Verzin GEEN tussenwaarden.
+- Kijk naar de beschrijvingen bij elk niveau in de tabel en bepaal welk niveau het beste past bij het studentwerk.
 
 HEEL BELANGRIJK — INSTRUCTIES IN DE GRADERINGSTABEL:
 - De graderingstabel bevat vaak gekleurde tekst (blauw, rood, etc.) met SPECIFIEKE INSTRUCTIES voor de beoordeling.
