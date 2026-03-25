@@ -128,7 +128,7 @@ serve(async (req) => {
     let instruction: string;
     if (subCriteria.length > 0) {
       const criteriaList = subCriteria.map((c: any, idx: number) =>
-        `${idx + 1}. "${c.criterium_naam}" — max score: ${c.max_score} (geef een score van 0 tot ${c.max_score})`
+        `${idx + 1}. "${c.criterium_naam}" — max score: ${c.max_score}`
       ).join("\n");
 
       let eindscoreInstructie = "";
@@ -146,11 +146,14 @@ Geef een score per DEELCRITERIUM. Je MOET de volgende namen EXACT en LETTERLIJK 
 ${criteriaList}
 ${eindscoreInstructie}
 
-KRITISCH BELANGRIJK:
-- Gebruik de criterium-namen EXACT zoals hierboven vermeld. Gebruik NIET de namen uit de PDF-graderingstabel, maar ALLEEN de namen hierboven.
-- Als de graderingstabel andere namen gebruikt, vertaal je beoordeling naar het juiste criterium hierboven.
+KRITISCH BELANGRIJK — SCORES UIT DE GRADERINGSTABEL:
+- Bestudeer de graderingstabel ZEER NAUWKEURIG. De tabel definieert EXACT welke scores mogelijk zijn per criterium.
+- Sommige criteria gebruiken een AFTREK/STRAF-systeem: bijv. 0 = volledig/goed, -5 = onvolledig/slecht. In dat geval is 0 de BESTE score en een negatief getal de slechtste.
+- Andere criteria gebruiken een POSITIEF systeem: bijv. 0 = slecht, 30 = uitstekend.
+- Lees per criterium in de graderingstabel welke waarden mogelijk zijn en wat ze betekenen.
+- Geef EXACT een van de scores die in de graderingstabel staan, niet een zelf verzonnen tussenwaarde.
+- Gebruik de criterium-namen EXACT zoals hierboven vermeld.
 - Je MOET ALLE ${subCriteria.length} criteria beoordelen. Sla er GEEN over.
-- Respecteer de max_score per criterium STRIKT.
 - Lees het studentwerk zorgvuldig en beoordeel op basis van de inhoud.`;
     } else {
       instruction = `Analyseer het werk van student "${student.naam}".
