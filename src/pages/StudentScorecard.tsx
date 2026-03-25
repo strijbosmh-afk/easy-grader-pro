@@ -120,8 +120,21 @@ const StudentScorecard = () => {
 
   const feedbackValue = docentFeedback !== null ? docentFeedback : (student?.docent_feedback || "");
 
+  const getMissingCriteria = () => {
+    if (!criteria) return [];
+    return criteria.filter((c) => {
+      const vals = localScores[c.id] || getScoreForCriterium(c.id);
+      return vals.final_score === "" || vals.final_score === undefined || vals.final_score === null;
+    });
+  };
+
   const saveScores = async () => {
     if (!criteria) return;
+    const missing = getMissingCriteria();
+    if (missing.length > 0) {
+      toast.error(`Vul alle scores in. Ontbrekend: ${missing.map(c => c.criterium_naam).join(", ")}`);
+      return;
+    }
     setSaving(true);
     try {
       for (const c of criteria) {
