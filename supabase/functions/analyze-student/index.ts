@@ -84,10 +84,11 @@ ${criteriaList}
 ${eindscoreInstructie}
 
 KRITISCH BELANGRIJK — SCORES UIT DE GRADERINGSTABEL:
-- Bestudeer de graderingstabel ZEER NAUWKEURIG. De tabel definieert EXACT welke scores mogelijk zijn per criterium.
-- Sommige criteria gebruiken een AFTREK/STRAF-systeem. Bijvoorbeeld "Volledigheid & naleving opdracht" heeft ALLEEN twee mogelijke scores: 0 (alles aanwezig/volledig) of -5 (onvolledig). Er bestaan GEEN tussenwaarden. Kies EXACT 0 of -5.
-- Andere criteria gebruiken een POSITIEF systeem: bijv. 0 = slecht, 30 = uitstekend.
-- Lees per criterium in de graderingstabel welke DISCRETE waarden mogelijk zijn en kies EXACT een van die waarden. Verzin NOOIT tussenwaarden.
+- Bestudeer de graderingstabel PDF ZEER NAUWKEURIG voordat je scores geeft.
+- De tabel definieert per criterium EXACT welke scores mogelijk zijn en wat elk scoreniveau betekent.
+- Sommige criteria kunnen een AFTREK/STRAF-systeem gebruiken (bijv. 0 bij volledig, negatieve score bij onvolledig). Andere gebruiken een POSITIEF systeem (bijv. 0 = slecht, max = uitstekend).
+- Lees per criterium in de graderingstabel welke DISCRETE waarden mogelijk zijn en kies EXACT een van die waarden. Verzin NOOIT tussenwaarden die niet in de tabel staan.
+- Hardcodeer GEEN aannames over scoreschalen. LEES de tabel en volg die EXACT.
 - Gebruik de criterium-namen EXACT zoals hierboven vermeld.
 - Je MOET ALLE ${subCriteria.length} criteria beoordelen. Sla er GEEN over.
 - Lees het studentwerk zorgvuldig en beoordeel op basis van de inhoud.`;
@@ -103,10 +104,10 @@ KRITISCH BELANGRIJK — SCORES UIT DE GRADERINGSTABEL:
 ${niveauInstructies[niveau] || niveauInstructies["streng"]}
 
 SCORESCHAAL — LEES DE GRADERINGSTABEL:
-- De graderingstabel bepaalt welke DISCRETE scores mogelijk zijn per criterium. Bestudeer dit ZEER zorgvuldig.
-- Sommige criteria werken met AFTREK (straf): bijv. "Volledigheid & naleving opdracht" heeft EXACT twee opties: 0 (volledig) of -5 (onvolledig). KIES ALLEEN 0 of -5, niets anders.
-- Andere criteria werken met POSITIEVE punten: bijv. 0 = onvoldoende, 30 = uitstekend.
-- Geef EXACT een score die overeenkomt met een niveau uit de graderingstabel. Verzin GEEN tussenwaarden.
+- De graderingstabel PDF bepaalt welke scores mogelijk zijn per criterium. Bestudeer dit ZEER zorgvuldig.
+- Elk criterium heeft zijn eigen scoreschaal. Lees de tabel om te bepalen welke waarden mogelijk zijn.
+- Sommige criteria kunnen een aftrek/strafsysteem hebben, andere een positief puntensysteem. Volg EXACT wat de tabel voorschrijft.
+- Geef EXACT een score die overeenkomt met een niveau uit de graderingstabel. Verzin GEEN tussenwaarden die niet in de tabel voorkomen.
 - Kijk naar de beschrijvingen bij elk niveau in de tabel en bepaal welk niveau het beste past bij het studentwerk.
 
 HEEL BELANGRIJK — INSTRUCTIES IN DE GRADERINGSTABEL:
