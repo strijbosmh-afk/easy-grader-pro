@@ -317,12 +317,18 @@ const ProjectDetail = () => {
     },
   });
 
-  const batchAnalyze = async () => {
+  const batchAnalyze = () => {
     const pending = students?.filter((s) => s.status === "pending" || s.status === "reviewed") || [];
     if (pending.length === 0) {
       toast.info("Geen studenten om te analyseren");
       return;
     }
+    setModelPickerAction("batch");
+    setShowModelPicker(true);
+  };
+
+  const doBatchAnalyze = async () => {
+    const pending = students?.filter((s) => s.status === "pending" || s.status === "reviewed") || [];
     setBatchAnalyzing(true);
     let success = 0;
     let failed = 0;
@@ -345,12 +351,18 @@ const ProjectDetail = () => {
     toast.success(`Batch analyse klaar: ${success} geslaagd${failed > 0 ? `, ${failed} mislukt` : ""}`);
   };
 
-  const batchReAnalyze = async () => {
+  const batchReAnalyze = () => {
     const eligible = students?.filter((s) => s.status === "reviewed" || s.status === "graded") || [];
     if (eligible.length === 0) {
       toast.info("Geen geanalyseerde studenten om opnieuw te beoordelen");
       return;
     }
+    setModelPickerAction("reanalyze");
+    setShowModelPicker(true);
+  };
+
+  const doBatchReAnalyze = async () => {
+    const eligible = students?.filter((s) => s.status === "reviewed" || s.status === "graded") || [];
     setReAnalyzing(true);
     let success = 0;
     let failed = 0;
