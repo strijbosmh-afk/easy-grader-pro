@@ -128,7 +128,7 @@ serve(async (req) => {
     let instruction: string;
     if (subCriteria.length > 0) {
       const criteriaList = subCriteria.map((c: any, idx: number) =>
-        `${idx + 1}. "${c.criterium_naam}" — max score: ${c.max_score} (geef een score van 0 tot ${c.max_score})`
+        `${idx + 1}. "${c.criterium_naam}" — max score: ${c.max_score}`
       ).join("\n");
 
       let eindscoreInstructie = "";
@@ -146,11 +146,14 @@ Geef een score per DEELCRITERIUM. Je MOET de volgende namen EXACT en LETTERLIJK 
 ${criteriaList}
 ${eindscoreInstructie}
 
-KRITISCH BELANGRIJK:
-- Gebruik de criterium-namen EXACT zoals hierboven vermeld. Gebruik NIET de namen uit de PDF-graderingstabel, maar ALLEEN de namen hierboven.
-- Als de graderingstabel andere namen gebruikt, vertaal je beoordeling naar het juiste criterium hierboven.
+KRITISCH BELANGRIJK — SCORES UIT DE GRADERINGSTABEL:
+- Bestudeer de graderingstabel ZEER NAUWKEURIG. De tabel definieert EXACT welke scores mogelijk zijn per criterium.
+- Sommige criteria gebruiken een AFTREK/STRAF-systeem: bijv. 0 = volledig/goed, -5 = onvolledig/slecht. In dat geval is 0 de BESTE score en een negatief getal de slechtste.
+- Andere criteria gebruiken een POSITIEF systeem: bijv. 0 = slecht, 30 = uitstekend.
+- Lees per criterium in de graderingstabel welke waarden mogelijk zijn en wat ze betekenen.
+- Geef EXACT een van de scores die in de graderingstabel staan, niet een zelf verzonnen tussenwaarde.
+- Gebruik de criterium-namen EXACT zoals hierboven vermeld.
 - Je MOET ALLE ${subCriteria.length} criteria beoordelen. Sla er GEEN over.
-- Respecteer de max_score per criterium STRIKT.
 - Lees het studentwerk zorgvuldig en beoordeel op basis van de inhoud.`;
     } else {
       instruction = `Analyseer het werk van student "${student.naam}".
@@ -165,12 +168,12 @@ KRITISCH BELANGRIJK:
 
 ${niveauInstructies[niveau] || niveauInstructies["streng"]}
 
-SCORESCHAAL:
-- Elke criterium heeft een eigen max_score.
-- Je score MOET tussen 0 en de max_score liggen.
-- Gebruik de EFFECTIEVE SCORES die in de graderingstabel staan. De graderingstabel definieert exact welke score hoort bij welk niveau (bijv. "sterk", "voldoende", "onvoldoende"). Gebruik DEZE scores, niet zelf verzonnen waarden.
-- Als de graderingstabel bijv. zegt dat "voldoende" = 15/20, geef dan exact 15.
-- Volg de graderingstabel STRIKT voor het toekennen van scores.
+SCORESCHAAL — LEES DE GRADERINGSTABEL:
+- De graderingstabel bepaalt welke scores mogelijk zijn per criterium. Bestudeer dit ZEER zorgvuldig.
+- Sommige criteria werken met AFTREK (straf): bijv. "Volledigheid" = 0 als alles aanwezig is, -5 als er dingen ontbreken. Hier is 0 de BESTE score.
+- Andere criteria werken met POSITIEVE punten: bijv. 0 = onvoldoende, 30 = uitstekend.
+- Geef EXACT een score die overeenkomt met een niveau uit de graderingstabel. Verzin GEEN tussenwaarden.
+- Kijk naar de beschrijvingen bij elk niveau in de tabel en bepaal welk niveau het beste past bij het studentwerk.
 
 HEEL BELANGRIJK — INSTRUCTIES IN DE GRADERINGSTABEL:
 - De graderingstabel bevat vaak gekleurde tekst (blauw, rood, etc.) met SPECIFIEKE INSTRUCTIES voor de beoordeling.
@@ -301,11 +304,11 @@ SCHRIJFSTIJL MOTIVATIE:
       const matched = findBestMatch(aiCriterium.naam, existingCriteria!.filter((c: any) => !usedCriteria.has(c.id)));
       if (matched) {
         usedCriteria.add(matched.id);
-        const clampedScore = Math.min(Math.max(0, Number(aiCriterium.score) || 0), matched.max_score);
+        const score = Number(aiCriterium.score) || 0;
         await supabase.from("student_scores").insert({
           student_id: studentId,
           criterium_id: matched.id,
-          ai_suggested_score: clampedScore,
+          ai_suggested_score: score,
           ai_motivatie: aiCriterium.motivatie,
         });
         matchedCount++;
