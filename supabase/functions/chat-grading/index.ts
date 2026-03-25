@@ -126,18 +126,28 @@ BELANGRIJK: Wanneer de gebruiker instructies geeft voor de beoordeling, gebruik 
           const args = JSON.parse(toolCall.function.arguments);
           savedInstructions = args.instructions;
 
+          // Merge with existing instructions if present
+          const existing = project?.custom_instructions || "";
+          const merged = existing
+            ? `${existing}\n\n${savedInstructions}`
+            : savedInstructions;
+
           // Save to database
           await supabase
             .from("projects")
-            .update({ custom_instructions: savedInstructions })
+            .update({ custom_instructions: merged })
             .eq("id", projectId);
 
-          console.log("Saved custom instructions for project:", projectId);
+          console.log("Saved custom instructions for project:", projectId, "Instructions:", merged);
         }
       }
     }
 
-    const reply = choice?.content || "";
+    // If content is empty (common when tool_calls are used), generate a follow-up
+    let reply = choice?.content || "";
+    if (!reply && savedInstructions) {
+      reply = `Ik heb de volgende instructies opgeslagen:\n\n"${savedInstructions}"\n\nWil je dat ik een heranalyse start met deze nieuwe instructies?`;
+    }
 
     return new Response(JSON.stringify({
       reply,
