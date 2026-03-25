@@ -319,6 +319,7 @@ DETAIL FEEDBACK (BLAUWE TEKST INSTRUCTIES):
           criterium_id: matched.id,
           ai_suggested_score: score,
           ai_motivatie: aiCriterium.motivatie,
+          ai_detail_feedback: aiCriterium.detail_feedback || null,
         });
         matchedCount++;
       } else {
