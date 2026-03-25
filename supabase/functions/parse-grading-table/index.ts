@@ -112,7 +112,7 @@ async function callAnthropicAI(pdfBase64: string) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "claude-opus-4-6-20250205",
+      model: "claude-sonnet-4-20250514",
       max_tokens: 8192,
       system: systemPrompt,
       messages: [{
