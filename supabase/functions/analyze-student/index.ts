@@ -375,7 +375,8 @@ serve(async (req) => {
       });
     }
 
-    const { instruction, systemPrompt } = buildPromptParts(project, student, subCriteria, eindscoreCriterium, niveau);
+    const customInstructions = (project as any).custom_instructions || undefined;
+    const { instruction, systemPrompt } = buildPromptParts(project, student, subCriteria, eindscoreCriterium, niveau, customInstructions);
     contentParts.push({ type: "text", text: instruction });
 
     // Call the appropriate AI provider
