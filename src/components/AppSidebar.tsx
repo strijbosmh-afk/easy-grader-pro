@@ -27,6 +27,8 @@ import {
   BookOpen,
   HelpCircle,
   LogOut,
+  Sparkles,
+  Cpu,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -44,6 +46,7 @@ export function AppSidebar() {
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [newProjectName, setNewProjectName] = useState("");
+  const [selectedProvider, setSelectedProvider] = useState<string>("lovable");
   const [projectsOpen, setProjectsOpen] = useState(true);
 
   const { data: projects } = useQuery({
@@ -60,7 +63,7 @@ export function AppSidebar() {
 
   const createProject = useMutation({
     mutationFn: async (naam: string) => {
-      const { data, error } = await supabase.from("projects").insert({ naam }).select().single();
+      const { data, error } = await supabase.from("projects").insert({ naam, ai_provider: selectedProvider }).select().single();
       if (error) throw error;
       return data;
     },
@@ -68,6 +71,7 @@ export function AppSidebar() {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
       setDialogOpen(false);
       setNewProjectName("");
+      setSelectedProvider("lovable");
       toast.success("Project aangemaakt!");
       navigate(`/project/${data.id}`);
     },
@@ -222,11 +226,11 @@ export function AppSidebar() {
       </Sidebar>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Nieuw Project Aanmaken</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 pt-4">
+          <div className="space-y-5 pt-4">
             <div>
               <Label htmlFor="sidebarProjectName">Projectnaam</Label>
               <Input
@@ -240,6 +244,45 @@ export function AppSidebar() {
                   }
                 }}
               />
+            </div>
+            <div>
+              <Label className="mb-3 block">AI Model voor analyse</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setSelectedProvider("lovable")}
+                  className={`relative rounded-lg border-2 p-4 text-left transition-all ${
+                    selectedProvider === "lovable"
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:border-primary/40"
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <Sparkles className="h-4 w-4 text-primary" />
+                    <span className="font-semibold text-sm text-foreground">Gemini 2.5 Flash</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Snel & voordelig. Goed voor standaard beoordelingen en multimodale analyses.
+                  </p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedProvider("anthropic")}
+                  className={`relative rounded-lg border-2 p-4 text-left transition-all ${
+                    selectedProvider === "anthropic"
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:border-primary/40"
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <Cpu className="h-4 w-4 text-primary" />
+                    <span className="font-semibold text-sm text-foreground">Claude Opus 4.6</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Diepgaande analyse. Sterk in nuance, complexe teksten en gedetailleerde feedback.
+                  </p>
+                </button>
+              </div>
             </div>
             <Button
               className="w-full"
