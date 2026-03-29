@@ -10,6 +10,8 @@ import ProjectDetail from "./pages/ProjectDetail";
 import StudentScorecard from "./pages/StudentScorecard";
 import Statistics from "./pages/Statistics";
 import ProjectOverview from "./pages/ProjectOverview";
+import Profile from "./pages/Profile";
+import AdminUsers from "./pages/AdminUsers";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 
@@ -36,6 +38,8 @@ function ProtectedRoutes() {
         <Route path="/project/:id/student/:studentId" element={<StudentScorecard />} />
         <Route path="/project/:id/overzicht" element={<ProjectOverview />} />
         <Route path="/statistieken" element={<Statistics />} />
+        <Route path="/profiel" element={<Profile />} />
+        <Route path="/admin/gebruikers" element={<AdminUsers />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </AppLayout>
