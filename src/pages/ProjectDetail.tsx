@@ -26,6 +26,7 @@ import { InviteReviewerDialog } from "@/components/InviteReviewerDialog";
 import { ModerationTab } from "@/components/ModerationTab";
 import { StudentReviewView } from "@/components/StudentReviewView";
 import { invokeEdgeFunction } from "@/lib/supabase-helpers";
+import { concurrencyPool } from "@/lib/concurrencyPool";
 import {
   Dialog,
   DialogContent,
@@ -339,6 +340,34 @@ const ProjectDetail = () => {
   const [finalizing, setFinalizing] = useState(false);
   const cancelRef = useRef(false);
 
+  // Retry wrapper for transient errors
+  const invokeWithRetry = async (
+    fnName: string,
+    options: { body: Record<string, unknown> },
+    maxRetries = 1
+  ) => {
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      const { error, data } = await invokeEdgeFunction(fnName, options);
+      if (!error) return { error: null, data };
+      const msg = typeof error === "string" ? error : (error as any)?.message || "";
+      const isTransient =
+        msg.includes("timeout") || msg.includes("503") || msg.includes("429") || msg.includes("FetchError") || msg.includes("Failed to fetch");
+      if (!isTransient || attempt === maxRetries) return { error, data: null };
+      await new Promise((r) => setTimeout(r, 2000));
+    }
+    return { error: new Error("Max retries exceeded"), data: null };
+  };
+
+  // Debounced query invalidation
+  const lastInvalidateRef = useRef(0);
+  const debouncedInvalidateStudents = () => {
+    const now = Date.now();
+    if (now - lastInvalidateRef.current > 500) {
+      lastInvalidateRef.current = now;
+      queryClient.invalidateQueries({ queryKey: ["students", id] });
+    }
+  };
+
   const runBatchSequential = async (
     studentList: any[],
     extraBody: Record<string, unknown> = {},
@@ -358,14 +387,19 @@ const ProjectDetail = () => {
     setRunning(true);
     cancelRef.current = false;
 
+    // Concurrency based on provider
+    const providerSetting = (project as any)?.ai_provider || "lovable";
+    const concurrency = providerSetting.includes("gemini") ? 5 : 3;
+
     const progress: BatchProgress = {
       total: eligible.length,
       completed: 0,
       failed: 0,
-      currentStudentName: eligible[0]?.naam || "",
+      currentStudentName: eligible.slice(0, concurrency).map((s) => s.naam).join(", "),
       failedNames: [],
       startTime: Date.now(),
       studentTimes: [],
+      concurrency,
     };
     setBatchProgress({ ...progress });
 
@@ -378,42 +412,61 @@ const ProjectDetail = () => {
     const failedNames: string[] = [];
     const times: number[] = [];
 
-    for (let i = 0; i < eligible.length; i++) {
-      if (cancelRef.current) break;
+    await concurrencyPool(
+      eligible,
+      concurrency,
+      async (student) => {
+        if (cancelRef.current) throw new Error("cancelled");
 
-      const student = eligible[i];
-      progress.currentStudentName = student.naam;
-      setBatchProgress({ ...progress });
+        // Mark analyzing
+        await supabase.from("students").update({ status: "analyzing" as StudentStatus, grading_status: "grading" } as any).eq("id", student.id);
+        debouncedInvalidateStudents();
 
-      // Mark analyzing
-      await supabase.from("students").update({ status: "analyzing" as StudentStatus, grading_status: "grading" } as any).eq("id", student.id);
-      queryClient.invalidateQueries({ queryKey: ["students", id] });
-
-      const t0 = Date.now();
-      try {
-        const { error } = await invokeEdgeFunction("analyze-student", {
+        const t0 = Date.now();
+        const { error } = await invokeWithRetry("analyze-student", {
           body: { studentId: student.id, projectId: id, ...extraBody },
         });
-        if (error) throw error;
-        successCount++;
-        await supabase.from("students").update({ grading_status: "completed" } as any).eq("id", student.id);
-      } catch {
-        failCount++;
-        failedNames.push(student.naam);
-        await supabase.from("students").update({ status: "pending" as StudentStatus, grading_status: "failed" } as any).eq("id", student.id);
-      }
+        const elapsed = Date.now() - t0;
 
-      times.push(Date.now() - t0);
-      progress.completed = successCount;
-      progress.failed = failCount;
-      progress.failedNames = [...failedNames];
-      progress.studentTimes = [...times];
-      setBatchProgress({ ...progress });
-      queryClient.invalidateQueries({ queryKey: ["students", id] });
-    }
+        if (error) {
+          await supabase.from("students").update({ status: "pending" as StudentStatus, grading_status: "failed" } as any).eq("id", student.id);
+          throw error;
+        }
+
+        await supabase.from("students").update({ grading_status: "completed" } as any).eq("id", student.id);
+        return { studentId: student.id, elapsed };
+      },
+      (_completed, _total, result, index) => {
+        if (result) {
+          successCount++;
+          times.push(result.elapsed);
+        } else {
+          failCount++;
+          failedNames.push(eligible[index].naam);
+        }
+
+        progress.completed = successCount;
+        progress.failed = failCount;
+        progress.failedNames = [...failedNames];
+        progress.studentTimes = [...times];
+        // Show names of students still in progress
+        const done = successCount + failCount;
+        const activeNames = eligible
+          .slice(done, done + concurrency)
+          .map((s) => s.naam)
+          .filter(Boolean);
+        progress.currentStudentName = activeNames.length > 0 ? activeNames.join(", ") : "Afronden...";
+        setBatchProgress({ ...progress });
+        debouncedInvalidateStudents();
+      },
+      () => cancelRef.current
+    );
 
     setBatchProgress(null);
     setRunning(false);
+
+    // Final invalidation
+    queryClient.invalidateQueries({ queryKey: ["students", id] });
 
     // Compute summary
     const updatedStudents = queryClient.getQueryData<any[]>(["students", id]) || students || [];
