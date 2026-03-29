@@ -12,6 +12,15 @@ import { useNavigate } from "react-router-dom";
 import { ShareProjectDialog } from "@/components/ShareProjectDialog";
 import { NewProjectWizard } from "@/components/NewProjectWizard";
 import { OnboardingOverlay } from "@/components/OnboardingOverlay";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 
 const Index = () => {
   const navigate = useNavigate();
