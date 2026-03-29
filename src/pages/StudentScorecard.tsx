@@ -65,7 +65,21 @@ const StudentScorecard = () => {
     },
   });
 
-  const { data: criteria } = useQuery({
+  // Generate signed URL for private PDF viewing
+  const { data: signedPdfUrl } = useQuery({
+    queryKey: ["signed-pdf", student?.pdf_url],
+    queryFn: async () => {
+      const url = student!.pdf_url!;
+      const storagePath = extractStoragePath(url);
+      if (!storagePath) return url; // fallback to original URL
+      const { data, error } = await supabase.storage.from("pdfs").createSignedUrl(storagePath, 3600);
+      if (error || !data?.signedUrl) return url;
+      return data.signedUrl;
+    },
+    enabled: !!student?.pdf_url,
+    staleTime: 30 * 60 * 1000, // 30 min
+  });
+
     queryKey: ["criteria", projectId],
     queryFn: async () => {
       const { data, error } = await supabase
