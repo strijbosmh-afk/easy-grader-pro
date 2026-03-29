@@ -6,16 +6,39 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-async function fetchPdfAsBase64(url: string): Promise<string> {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Failed to fetch PDF: ${res.status}`);
-  const buffer = await res.arrayBuffer();
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
   let binary = "";
   for (let i = 0; i < bytes.length; i++) {
     binary += String.fromCharCode(bytes[i]);
   }
   return btoa(binary);
+}
+
+function extractStoragePath(url: string): string | null {
+  const match = url.match(/\/storage\/v1\/object\/(?:public|sign)\/pdfs\/(.+?)(?:\?|$)/);
+  if (match) return match[1];
+  const match2 = url.match(/\/object\/(?:public|sign)\/pdfs\/(.+?)(?:\?|$)/);
+  if (match2) return match2[1];
+  return null;
+}
+
+async function fetchPdfAsBase64(url: string, supabaseClient?: any): Promise<string> {
+  if (supabaseClient) {
+    const storagePath = extractStoragePath(url);
+    if (storagePath) {
+      const { data, error } = await supabaseClient.storage.from("pdfs").download(decodeURIComponent(storagePath));
+      if (!error && data) {
+        const buffer = await data.arrayBuffer();
+        return arrayBufferToBase64(buffer);
+      }
+      console.warn(`Storage download failed for ${storagePath}, falling back to URL fetch:`, error?.message);
+    }
+  }
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Failed to fetch PDF: ${res.status}`);
+  const buffer = await res.arrayBuffer();
+  return arrayBufferToBase64(buffer);
 }
 
 const systemPrompt = `Je bent een expert in het analyseren van beoordelingstabellen voor het hoger onderwijs in België. Analyseer de graderingstabel PDF en extraheer ALLE beoordelingscriteria.
