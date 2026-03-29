@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
@@ -6,46 +7,56 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppLayout } from "@/components/AppLayout";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+
+// Eagerly load the landing page; lazy-load everything else
 import Index from "./pages/Index";
-import ProjectDetail from "./pages/ProjectDetail";
-import StudentScorecard from "./pages/StudentScorecard";
-import Statistics from "./pages/Statistics";
-import ProjectOverview from "./pages/ProjectOverview";
-import Profile from "./pages/Profile";
-import AdminUsers from "./pages/AdminUsers";
-import Guide from "./pages/Guide";
-import Login from "./pages/Login";
-import ResetPassword from "./pages/ResetPassword";
-import NotFound from "./pages/NotFound";
+
+const ProjectDetail = lazy(() => import("./pages/ProjectDetail"));
+const StudentScorecard = lazy(() => import("./pages/StudentScorecard"));
+const Statistics = lazy(() => import("./pages/Statistics"));
+const ProjectOverview = lazy(() => import("./pages/ProjectOverview"));
+const Profile = lazy(() => import("./pages/Profile"));
+const AdminUsers = lazy(() => import("./pages/AdminUsers"));
+const Guide = lazy(() => import("./pages/Guide"));
+const Login = lazy(() => import("./pages/Login"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      // Don't refetch data that's less than 60 seconds old — eliminates redundant
-      // Supabase round-trips when navigating between pages
       staleTime: 60_000,
-      // Keep unused query data in cache for 5 minutes
       gcTime: 5 * 60_000,
     },
   },
 });
+
+function PageLoader() {
+  return (
+    <div className="flex items-center justify-center min-h-[60vh]">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+    </div>
+  );
+}
 
 function ProtectedRoutes() {
   const { isAuthenticated } = useAuth();
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   return (
     <AppLayout>
-      <Routes>
-        <Route path="/" element={<Index />} />
-        <Route path="/project/:id" element={<ProjectDetail />} />
-        <Route path="/project/:id/student/:studentId" element={<StudentScorecard />} />
-        <Route path="/project/:id/overzicht" element={<ProjectOverview />} />
-        <Route path="/statistieken" element={<Statistics />} />
-        <Route path="/profiel" element={<Profile />} />
-        <Route path="/admin/gebruikers" element={<AdminUsers />} />
-        <Route path="/handleiding" element={<Guide />} />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          <Route path="/" element={<Index />} />
+          <Route path="/project/:id" element={<ProjectDetail />} />
+          <Route path="/project/:id/student/:studentId" element={<StudentScorecard />} />
+          <Route path="/project/:id/overzicht" element={<ProjectOverview />} />
+          <Route path="/statistieken" element={<Statistics />} />
+          <Route path="/profiel" element={<Profile />} />
+          <Route path="/admin/gebruikers" element={<AdminUsers />} />
+          <Route path="/handleiding" element={<Guide />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </Suspense>
     </AppLayout>
   );
 }
@@ -58,11 +69,13 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <AuthProvider>
-            <Routes>
-              <Route path="/login" element={<LoginRoute />} />
-              <Route path="/reset-password" element={<ResetPassword />} />
-              <Route path="/*" element={<ProtectedRoutes />} />
-            </Routes>
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
+                <Route path="/login" element={<LoginRoute />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/*" element={<ProtectedRoutes />} />
+              </Routes>
+            </Suspense>
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>
