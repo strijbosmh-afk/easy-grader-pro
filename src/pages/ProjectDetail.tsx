@@ -382,12 +382,18 @@ const ProjectDetail = () => {
   };
 
   const doBatchAnalyze = async () => {
-    const pending = students?.filter((s) => s.status === "pending" || s.status === "reviewed") || [];
-    await runBatchWithConcurrency(pending, {}, setBatchAnalyzing);
+    const allEligible = students?.filter((s) => s.status === "pending" || s.status === "reviewed") || [];
+    const toAnalyze = selectedStudents.size > 0
+      ? allEligible.filter((s) => selectedStudents.has(s.id))
+      : allEligible;
+    await runBatchWithConcurrency(toAnalyze, {}, setBatchAnalyzing);
   };
 
   const batchReAnalyze = () => {
-    const eligible = students?.filter((s) => s.status === "reviewed" || s.status === "graded") || [];
+    const allEligible = students?.filter((s) => s.status === "reviewed" || s.status === "graded") || [];
+    const eligible = selectedStudents.size > 0
+      ? allEligible.filter((s) => selectedStudents.has(s.id))
+      : allEligible;
     if (eligible.length === 0) {
       toast.info("Geen geanalyseerde studenten om opnieuw te beoordelen");
       return;
@@ -397,7 +403,10 @@ const ProjectDetail = () => {
   };
 
   const doBatchReAnalyze = async () => {
-    const eligible = students?.filter((s) => s.status === "reviewed" || s.status === "graded") || [];
+    const allEligible = students?.filter((s) => s.status === "reviewed" || s.status === "graded") || [];
+    const eligible = selectedStudents.size > 0
+      ? allEligible.filter((s) => selectedStudents.has(s.id))
+      : allEligible;
     await runBatchWithConcurrency(
       eligible,
       { niveauOverride: reAnalyzeNiveau },
@@ -793,7 +802,7 @@ const ProjectDetail = () => {
                       onClick={batchAnalyze}
                     >
                       {batchAnalyzing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Bot className="h-4 w-4 mr-2" />}
-                      Analyseer alle
+                      {selectedStudents.size > 0 ? `Analyseer (${selectedStudents.size})` : "Analyseer alle"}
                     </Button>
 
                     {students.some((s) => s.status === "reviewed" || s.status === "graded") && (
@@ -817,7 +826,7 @@ const ProjectDetail = () => {
                             onClick={batchReAnalyze}
                           >
                             {reAnalyzing ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-1.5" />}
-                            Heranalyse
+                            {selectedStudents.size > 0 ? `Heranalyse (${selectedStudents.size})` : "Heranalyse"}
                           </Button>
                         </div>
                       </>
