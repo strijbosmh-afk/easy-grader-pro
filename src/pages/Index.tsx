@@ -12,6 +12,15 @@ import { useNavigate } from "react-router-dom";
 import { ShareProjectDialog } from "@/components/ShareProjectDialog";
 import { NewProjectWizard } from "@/components/NewProjectWizard";
 import { OnboardingOverlay } from "@/components/OnboardingOverlay";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -22,14 +31,16 @@ const Index = () => {
   const [showArchived, setShowArchived] = useState(false);
   const [shareProject, setShareProject] = useState<{ id: string; naam: string } | null>(null);
   const [onboardingDismissed, setOnboardingDismissed] = useState(false);
+  const [nameInput, setNameInput] = useState("");
+  const [savingName, setSavingName] = useState(false);
 
-  // Check onboarding status
+  // Check onboarding status and display_name
   const { data: profile } = useQuery({
     queryKey: ["profile-onboarding", user?.id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("onboarding_completed")
+        .select("onboarding_completed, display_name")
         .eq("id", user!.id)
         .single();
       if (error) throw error;
@@ -37,6 +48,25 @@ const Index = () => {
     },
     enabled: !!user,
   });
+
+  const needsName = !!profile && !profile.display_name;
+
+  const saveName = async () => {
+    if (!nameInput.trim() || !user) return;
+    setSavingName(true);
+    const { error } = await supabase
+      .from("profiles")
+      .update({ display_name: nameInput.trim() })
+      .eq("id", user.id);
+    setSavingName(false);
+    if (error) {
+      toast.error("Kon naam niet opslaan");
+    } else {
+      queryClient.invalidateQueries({ queryKey: ["profile-onboarding", user.id] });
+      queryClient.invalidateQueries({ queryKey: ["profile", user.id] });
+      toast.success("Welkom, " + nameInput.trim() + "!");
+    }
+  };
 
   useEffect(() => {
     if (!user) return;
@@ -102,7 +132,9 @@ const Index = () => {
       <div className="container mx-auto px-6 py-8">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Projecten</h1>
+            <h1 className="text-2xl font-bold text-foreground">
+              {profile?.display_name ? `Welkom, ${profile.display_name}` : "Projecten"}
+            </h1>
             <p className="text-muted-foreground text-sm mt-1">Beheer je beoordelingsprojecten</p>
           </div>
           <Button onClick={() => setWizardOpen(true)}>
@@ -258,6 +290,34 @@ const Index = () => {
       )}
 
       <NewProjectWizard open={wizardOpen} onOpenChange={setWizardOpen} />
+
+      {/* Name prompt dialog for first-time users */}
+      <Dialog open={needsName} onOpenChange={() => {}}>
+        <DialogContent className="sm:max-w-md" onPointerDownOutside={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle>Welkom bij GradeAssist!</DialogTitle>
+            <DialogDescription>
+              Hoe mogen we je noemen? Deze naam wordt getoond in de app en bij gedeelde projecten.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="display-name">Je naam</Label>
+            <Input
+              id="display-name"
+              placeholder="Bv: Michiel Strijbos"
+              value={nameInput}
+              onChange={(e) => setNameInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && saveName()}
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button onClick={saveName} disabled={!nameInput.trim() || savingName}>
+              {savingName ? "Opslaan..." : "Doorgaan"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
