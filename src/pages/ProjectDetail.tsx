@@ -79,6 +79,8 @@ const ProjectDetail = () => {
 
   // AI model picker state
   const [showModelPicker, setShowModelPicker] = useState(false);
+  const [showInviteReviewer, setShowInviteReviewer] = useState(false);
+  const [reviewStudentId, setReviewStudentId] = useState<string | null>(null);
   const [modelPickerAction, setModelPickerAction] = useState<"grading" | "reanalyze" | "batch">("grading");
   const [pendingGradingFile, setPendingGradingFile] = useState<File | null>(null);
 
