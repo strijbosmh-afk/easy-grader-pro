@@ -339,6 +339,7 @@ const ProjectDetail = () => {
   const [batchSummary, setBatchSummary] = useState<BatchSummary | null>(null);
   const [finalizing, setFinalizing] = useState(false);
   const cancelRef = useRef(false);
+  const activeStudentsRef = useRef<Set<string>>(new Set());
 
   // Retry wrapper for transient errors
   const invokeWithRetry = async (
