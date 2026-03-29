@@ -517,7 +517,7 @@ const StudentScorecard = () => {
                 <CardHeader className="py-2 px-3 flex flex-row items-center justify-between">
                   <CardTitle className="text-sm font-medium flex items-center gap-2">
                     <FileText className="h-4 w-4" />
-                    {student.naam} — PDF
+                    {student.naam} — Document
                   </CardTitle>
                   <Button variant="ghost" size="sm" onClick={() => setShowPdfPanel(false)}>
                     <X className="h-4 w-4" />
