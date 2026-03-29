@@ -28,14 +28,14 @@ Deno.serve(async (req) => {
     // Verify custom header
     const requestedBy = req.headers.get("x-requested-by");
     if (requestedBy !== "GradeAssist") {
-      return new Response(JSON.stringify({ error: "Forbidden" }), {
+      return new Response(JSON.stringify({ error: "Geen toegang" }), {
         status: 403,
         headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
       });
     }
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      return new Response(JSON.stringify({ error: "Niet ingelogd" }), {
         status: 401,
         headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
       });
@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
     const token = authHeader.replace("Bearer ", "");
     const { data: { user }, error: userError } = await anonClient.auth.getUser(token);
     if (userError || !user) {
-      return new Response(JSON.stringify({ error: "Invalid token" }), {
+      return new Response(JSON.stringify({ error: "Ongeldige sessie" }), {
         status: 401,
         headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
       });
