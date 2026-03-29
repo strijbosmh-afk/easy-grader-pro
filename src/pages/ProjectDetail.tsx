@@ -1115,7 +1115,7 @@ const ProjectDetail = () => {
                                   size="sm"
                                   variant="outline"
                                   disabled={!project.opdracht_pdf_url || !project.graderingstabel_pdf_url || student.status === "analyzing"}
-                                  onClick={() => analyzeStudent.mutate(student.id)}
+                                  onClick={() => runBatchSequential([student], {}, setBatchAnalyzing)}
                                 >
                                   <Bot className="h-4 w-4 mr-1" />
                                   Analyseer
