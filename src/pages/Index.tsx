@@ -290,6 +290,34 @@ const Index = () => {
       )}
 
       <NewProjectWizard open={wizardOpen} onOpenChange={setWizardOpen} />
+
+      {/* Name prompt dialog for first-time users */}
+      <Dialog open={needsName} onOpenChange={() => {}}>
+        <DialogContent className="sm:max-w-md" onPointerDownOutside={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle>Welkom bij GradeAssist!</DialogTitle>
+            <DialogDescription>
+              Hoe mogen we je noemen? Deze naam wordt getoond in de app en bij gedeelde projecten.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="display-name">Je naam</Label>
+            <Input
+              id="display-name"
+              placeholder="Bv: Michiel Strijbos"
+              value={nameInput}
+              onChange={(e) => setNameInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && saveName()}
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button onClick={saveName} disabled={!nameInput.trim() || savingName}>
+              {savingName ? "Opslaan..." : "Doorgaan"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
