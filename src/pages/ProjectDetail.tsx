@@ -992,15 +992,9 @@ const ProjectDetail = () => {
               <input
                 id="opdracht-upload"
                 type="file"
-  const ACCEPTED_DOC_TYPES = ["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/msword"];
-  const ACCEPTED_EXTENSIONS = ".pdf,.docx,.doc";
-
-  const uploadStudentPdfs = async (files: FileList | File[]) => {
-    setUploading(true);
-    try {
-      for (const file of Array.from(files)) {
-        if (!ACCEPTED_DOC_TYPES.includes(file.type) && !file.name.match(/\.(pdf|docx|doc)$/i)) {
-          toast.error(`${file.name} is geen PDF of Word-bestand`);
+                accept=".pdf,.docx,.doc"
+                className="hidden"
+                onChange={(e) => e.target.files?.[0] && uploadPdf(e.target.files[0], "opdracht")}
           continue;
         }
               />
