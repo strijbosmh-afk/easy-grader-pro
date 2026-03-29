@@ -6,11 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, FolderOpen, Users, TrendingUp, Archive, ArchiveRestore, Share2 } from "lucide-react";
+import { Plus, Search, FolderOpen, Users, TrendingUp, Archive, ArchiveRestore, Share2, Beaker } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { ShareProjectDialog } from "@/components/ShareProjectDialog";
 import { NewProjectWizard } from "@/components/NewProjectWizard";
+import { OnboardingOverlay } from "@/components/OnboardingOverlay";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -20,6 +21,22 @@ const Index = () => {
   const [wizardOpen, setWizardOpen] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
   const [shareProject, setShareProject] = useState<{ id: string; naam: string } | null>(null);
+  const [onboardingDismissed, setOnboardingDismissed] = useState(false);
+
+  // Check onboarding status
+  const { data: profile } = useQuery({
+    queryKey: ["profile-onboarding", user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("onboarding_completed")
+        .eq("id", user!.id)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
 
   useEffect(() => {
     if (!user) return;
@@ -126,6 +143,8 @@ const Index = () => {
               </Card>
             ))}
           </div>
+        ) : filtered.length === 0 && !search && !showArchived && !profile?.onboarding_completed && !onboardingDismissed ? (
+          <OnboardingOverlay onDismiss={() => setOnboardingDismissed(true)} />
         ) : filtered.length === 0 ? (
           <div className="text-center py-20">
             <FolderOpen className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
@@ -157,9 +176,14 @@ const Index = () => {
                     <div className="flex items-start justify-between">
                       <div className="min-w-0 flex-1">
                         <CardTitle className="text-lg truncate">{project.naam}</CardTitle>
-                        {!owned && (
-                          <Badge variant="outline" className="mt-1 text-[10px]">Gedeeld</Badge>
-                        )}
+                        <div className="flex gap-1 mt-1">
+                          {(project as any).is_demo && (
+                            <Badge variant="outline" className="text-[10px]"><Beaker className="h-2.5 w-2.5 mr-0.5" />Demo</Badge>
+                          )}
+                          {!owned && (
+                            <Badge variant="outline" className="text-[10px]">Gedeeld</Badge>
+                          )}
+                        </div>
                       </div>
                       <Badge variant={getStatusColor(stats.graded, stats.total)}>
                         {stats.graded}/{stats.total}
