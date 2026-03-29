@@ -153,6 +153,10 @@ const ProjectDetail = () => {
         if (error) throw error;
         setParsedCriteria(data.criteria || []);
         setParsedSamenvatting(data.samenvatting || "");
+        // Save scoring system summary if returned
+        if (data.scoring_system_summary) {
+          await supabase.from("projects").update({ scoring_system_summary: data.scoring_system_summary } as any).eq("id", id!);
+        }
         setShowGradingDialog(true);
       } catch (err: any) {
         toast.error("Kon graderingstabel niet analyseren: " + (err?.message || "onbekende fout"));

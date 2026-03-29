@@ -6,7 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, ArrowRight, Loader2, Bot, Check, Download, RefreshCw, FileText, FileDown, ChevronLeft, ChevronRight, Eye, X } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { ArrowLeft, ArrowRight, Loader2, Bot, Check, Download, RefreshCw, FileText, FileDown, ChevronLeft, ChevronRight, Eye, X, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { useState, useEffect, useCallback } from "react";
 import { exportStudentToPdf } from "@/lib/export";
@@ -165,6 +167,7 @@ const StudentScorecard = () => {
       ai_suggested_score: score?.ai_suggested_score,
       ai_motivatie: score?.ai_motivatie,
       ai_detail_feedback: (score as any)?.ai_detail_feedback,
+      ai_confidence: (score as any)?.ai_confidence,
     };
   };
 
