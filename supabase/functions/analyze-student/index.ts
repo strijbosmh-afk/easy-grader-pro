@@ -449,7 +449,7 @@ serve(async (req) => {
       pdfPromises.push(
         cachedGraderingstabelBase64
           ? Promise.resolve(cachedGraderingstabelBase64)
-          : fetchPdfAsBase64(project.graderingstabel_pdf_url)
+          : fetchPdfAsBase64(project.graderingstabel_pdf_url, supabase)
       );
       pdfLabels.push("graderingstabel");
     }
@@ -457,11 +457,11 @@ serve(async (req) => {
       pdfPromises.push(
         cachedOpdrachtBase64
           ? Promise.resolve(cachedOpdrachtBase64)
-          : fetchPdfAsBase64(project.opdracht_pdf_url)
+          : fetchPdfAsBase64(project.opdracht_pdf_url, supabase)
       );
       pdfLabels.push("opdracht");
     }
-    pdfPromises.push(fetchPdfAsBase64(student.pdf_url));
+    pdfPromises.push(fetchPdfAsBase64(student.pdf_url, supabase));
     pdfLabels.push("student");
 
     const pdfBase64s = await Promise.all(pdfPromises);
