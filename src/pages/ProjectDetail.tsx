@@ -25,8 +25,8 @@ import { BatchProgressOverlay, type BatchProgress, type BatchSummary } from "@/c
 import { InviteReviewerDialog } from "@/components/InviteReviewerDialog";
 import { ModerationTab } from "@/components/ModerationTab";
 import { StudentReviewView } from "@/components/StudentReviewView";
-import {
 import { invokeEdgeFunction } from "@/lib/supabase-helpers";
+import {
   Dialog,
   DialogContent,
   DialogDescription,

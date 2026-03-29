@@ -718,6 +718,25 @@ serve(async (req) => {
       });
     }
 
+    // Rate limiting: max 60 AI calls per hour per user
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const { count: usageCount } = await supabase
+      .from('api_usage')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .eq('function_name', 'analyze-student')
+      .gte('created_at', oneHourAgo);
+
+    if (usageCount && usageCount >= 60) {
+      return new Response(
+        JSON.stringify({ error: 'Rate limit bereikt. Je kunt maximaal 60 beoordelingen per uur uitvoeren. Probeer het later opnieuw.' }),
+        { status: 429, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+      );
+    }
+
+    // Log this API call
+    await supabase.from('api_usage').insert({ user_id: user.id, function_name: 'analyze-student' });
+
     // Check ownership OR shared access
     const { data: project } = await supabase.from("projects").select("*").eq("id", projectId).single();
     if (!project) {
