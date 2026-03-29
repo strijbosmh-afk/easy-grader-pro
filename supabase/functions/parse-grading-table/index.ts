@@ -126,7 +126,7 @@ const toolDef = {
   },
 };
 
-async function callLovableAI(pdfBase64: string) {
+async function callLovableAI(docBase64: string, mimeType: string) {
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
   if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
@@ -170,7 +170,7 @@ async function callLovableAI(pdfBase64: string) {
   throw new Error("Kon AI antwoord niet verwerken");
 }
 
-async function callAnthropicAI(pdfBase64: string) {
+async function callAnthropicAI(docBase64: string, mimeType: string) {
   const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
   if (!ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY niet geconfigureerd");
 
@@ -251,18 +251,19 @@ serve(async (req) => {
 
     if (!graderingstabelUrl) throw new Error("Geen graderingstabel URL opgegeven");
 
-    console.log("Downloading grading table PDF...");
-    const pdfBase64 = await fetchPdfAsBase64(graderingstabelUrl, supabase);
-    console.log("PDF downloaded, size:", Math.round(pdfBase64.length / 1024), "KB base64");
+    console.log("Downloading grading table document...");
+    const mimeType = detectMimeType(graderingstabelUrl);
+    const docBase64 = await fetchDocAsBase64(graderingstabelUrl, supabase);
+    console.log("Document downloaded, size:", Math.round(docBase64.length / 1024), "KB base64");
 
     const provider = aiProvider || "lovable";
     console.log(`Using AI provider: ${provider}`);
 
     let result;
     if (provider === "anthropic") {
-      result = await callAnthropicAI(pdfBase64);
+      result = await callAnthropicAI(docBase64, mimeType);
     } else {
-      result = await callLovableAI(pdfBase64);
+      result = await callLovableAI(docBase64, mimeType);
     }
 
     console.log("Parsed criteria:", result.criteria?.length, "items");
