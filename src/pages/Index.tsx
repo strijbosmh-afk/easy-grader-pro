@@ -132,7 +132,9 @@ const Index = () => {
       <div className="container mx-auto px-6 py-8">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Projecten</h1>
+            <h1 className="text-2xl font-bold text-foreground">
+              {profile?.display_name ? `Welkom, ${profile.display_name}` : "Projecten"}
+            </h1>
             <p className="text-muted-foreground text-sm mt-1">Beheer je beoordelingsprojecten</p>
           </div>
           <Button onClick={() => setWizardOpen(true)}>
