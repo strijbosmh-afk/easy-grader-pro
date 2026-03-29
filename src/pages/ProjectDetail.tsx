@@ -449,6 +449,7 @@ const ProjectDetail = () => {
 
         // Track active student
         activeStudentsRef.current.add(student.naam);
+        studentStartTimesRef.current.set(student.id, Date.now());
         progress.currentStudentName = Array.from(activeStudentsRef.current).join(", ");
         setBatchProgress({ ...progress });
 
