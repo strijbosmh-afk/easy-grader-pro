@@ -1,5 +1,7 @@
-import { BookOpen, Brain, ShieldCheck, Sparkles, Target, AlertTriangle, RotateCcw, MessageSquare, TrendingUp, CheckCircle } from "lucide-react";
+import { BookOpen, Brain, ShieldCheck, Sparkles, Target, AlertTriangle, RotateCcw, MessageSquare, TrendingUp, CheckCircle, X } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
 
 const strengths = [
   {
@@ -97,8 +99,19 @@ const workflowSteps = [
 ];
 
 export default function Guide() {
+  const navigate = useNavigate();
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8 space-y-10">
+    <div className="max-w-4xl mx-auto px-4 py-8 space-y-10 relative">
+      {/* Close button */}
+      <Button
+        variant="ghost"
+        size="icon"
+        className="absolute top-8 right-4 h-8 w-8"
+        onClick={() => navigate(-1)}
+      >
+        <X className="h-4 w-4" />
+      </Button>
+
       {/* Header */}
       <div className="space-y-3">
         <div className="flex items-center gap-3">
