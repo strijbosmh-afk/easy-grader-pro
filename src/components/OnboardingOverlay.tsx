@@ -64,8 +64,8 @@ export function OnboardingOverlay({ onDismiss }: OnboardingOverlayProps) {
       <h2 className="text-2xl font-bold text-foreground text-center">Hoe het werkt</h2>
       <div className="grid grid-cols-3 gap-6">
         {[
-          { icon: Upload, title: "Upload rubric", desc: "Upload je beoordelingstabel als PDF" },
-          { icon: FileText, title: "Upload studentwerk", desc: "Voeg de PDF-verslagen van studenten toe" },
+          { icon: Upload, title: "Upload rubric", desc: "Upload je beoordelingstabel als PDF of Word" },
+          { icon: FileText, title: "Upload studentwerk", desc: "Voeg de verslagen van studenten toe (PDF of Word)" },
           { icon: Bot, title: "AI beoordeelt", desc: "Ontvang scores, feedback en motivatie per criterium" },
         ].map((item, i) => (
           <div key={i} className="text-center space-y-3">
