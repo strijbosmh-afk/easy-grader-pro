@@ -309,6 +309,7 @@ export type Database = {
           ai_validation_warnings: Json | null
           created_at: string
           docent_feedback: string | null
+          grading_status: string
           id: string
           naam: string
           pdf_url: string | null
@@ -321,6 +322,7 @@ export type Database = {
           ai_validation_warnings?: Json | null
           created_at?: string
           docent_feedback?: string | null
+          grading_status?: string
           id?: string
           naam: string
           pdf_url?: string | null
@@ -333,6 +335,7 @@ export type Database = {
           ai_validation_warnings?: Json | null
           created_at?: string
           docent_feedback?: string | null
+          grading_status?: string
           id?: string
           naam?: string
           pdf_url?: string | null

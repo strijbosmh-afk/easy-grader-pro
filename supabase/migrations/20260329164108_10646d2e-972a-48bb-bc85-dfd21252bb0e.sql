@@ -1,0 +1,1 @@
+ALTER TABLE students ADD COLUMN IF NOT EXISTS grading_status text NOT NULL DEFAULT 'pending';
