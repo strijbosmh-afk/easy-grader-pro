@@ -6,21 +6,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, FolderOpen, Users, TrendingUp, Sparkles, Cpu, Archive, ArchiveRestore, Share2 } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
+import { Plus, Search, FolderOpen, Users, TrendingUp, Archive, ArchiveRestore, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { ShareProjectDialog } from "@/components/ShareProjectDialog";
+import { NewProjectWizard } from "@/components/NewProjectWizard";
 
 const Index = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const [search, setSearch] = useState("");
-  const [newProjectName, setNewProjectName] = useState("");
-  const [selectedProvider, setSelectedProvider] = useState<string>("lovable");
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [wizardOpen, setWizardOpen] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
   const [shareProject, setShareProject] = useState<{ id: string; naam: string } | null>(null);
 
