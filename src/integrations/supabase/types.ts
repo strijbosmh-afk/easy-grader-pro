@@ -21,6 +21,7 @@ export type Database = {
           is_eindscore: boolean
           max_score: number
           project_id: string
+          rubric_levels: Json | null
           volgorde: number
         }
         Insert: {
@@ -29,6 +30,7 @@ export type Database = {
           is_eindscore?: boolean
           max_score?: number
           project_id: string
+          rubric_levels?: Json | null
           volgorde?: number
         }
         Update: {
@@ -37,6 +39,7 @@ export type Database = {
           is_eindscore?: boolean
           max_score?: number
           project_id?: string
+          rubric_levels?: Json | null
           volgorde?: number
         }
         Relationships: [
@@ -60,6 +63,7 @@ export type Database = {
           naam: string
           opdracht_pdf_url: string | null
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           ai_provider?: string
@@ -71,6 +75,7 @@ export type Database = {
           naam: string
           opdracht_pdf_url?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           ai_provider?: string
@@ -82,8 +87,63 @@ export type Database = {
           naam?: string
           opdracht_pdf_url?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
+      }
+      score_audit_log: {
+        Row: {
+          change_type: string
+          created_at: string
+          criterium_id: string
+          id: string
+          new_opmerkingen: string | null
+          new_score: number | null
+          old_opmerkingen: string | null
+          old_score: number | null
+          student_id: string
+          user_id: string | null
+        }
+        Insert: {
+          change_type?: string
+          created_at?: string
+          criterium_id: string
+          id?: string
+          new_opmerkingen?: string | null
+          new_score?: number | null
+          old_opmerkingen?: string | null
+          old_score?: number | null
+          student_id: string
+          user_id?: string | null
+        }
+        Update: {
+          change_type?: string
+          created_at?: string
+          criterium_id?: string
+          id?: string
+          new_opmerkingen?: string | null
+          new_score?: number | null
+          old_opmerkingen?: string | null
+          old_score?: number | null
+          student_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "score_audit_log_criterium_id_fkey"
+            columns: ["criterium_id"]
+            isOneToOne: false
+            referencedRelation: "grading_criteria"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "score_audit_log_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       student_scores: {
         Row: {
