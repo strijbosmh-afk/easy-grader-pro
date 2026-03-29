@@ -255,6 +255,7 @@ export function AppSidebar() {
               </SidebarGroupContent>
             </SidebarGroup>
           )}
+        </SidebarContent>
 
         <SidebarFooter className="p-4">
           {!collapsed && (
