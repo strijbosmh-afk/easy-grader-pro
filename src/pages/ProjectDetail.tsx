@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -51,6 +51,55 @@ const statusVariants: Record<StudentStatus, "secondary" | "outline" | "default" 
   reviewed: "outline",
   graded: "default",
 };
+
+function StudentAnalyzingProgress({ studentId, startTimesRef, avgTime }: {
+  studentId: string;
+  startTimesRef: React.RefObject<Map<string, number>>;
+  avgTime: number;
+}) {
+  const [elapsed, setElapsed] = useState(0);
+  const startTime = startTimesRef.current?.get(studentId) || Date.now();
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setElapsed(Date.now() - startTime);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [startTime]);
+
+  const elapsedSec = Math.floor(elapsed / 1000);
+  const elapsedMin = Math.floor(elapsedSec / 60);
+  const elapsedStr = elapsedMin > 0 ? `${elapsedMin}m ${elapsedSec % 60}s` : `${elapsedSec}s`;
+
+  const pct = avgTime > 0 ? Math.min((elapsed / avgTime) * 100, 95) : 0;
+  const remainingMs = avgTime > 0 ? Math.max(avgTime - elapsed, 0) : 0;
+  const remainingSec = Math.floor(remainingMs / 1000);
+  const remainingStr = remainingSec > 60 ? `~${Math.ceil(remainingSec / 60)}m` : `~${remainingSec}s`;
+
+  return (
+    <div className="space-y-1 min-w-[140px]">
+      <div className="flex items-center justify-between gap-1.5">
+        <div className="flex items-center gap-1.5">
+          <Loader2 className="h-3 w-3 animate-spin text-primary" />
+          <span className="text-xs font-medium text-primary">{elapsedStr}</span>
+        </div>
+        {avgTime > 0 && remainingMs > 0 && (
+          <span className="text-[10px] text-muted-foreground">nog {remainingStr}</span>
+        )}
+      </div>
+      <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+        {avgTime > 0 ? (
+          <div
+            className="h-full rounded-full bg-primary transition-all duration-1000 ease-linear"
+            style={{ width: `${pct}%` }}
+          />
+        ) : (
+          <div className="h-full rounded-full bg-primary animate-progress-indeterminate" />
+        )}
+      </div>
+    </div>
+  );
+}
 
 const ProjectDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -365,6 +414,7 @@ const ProjectDetail = () => {
   const [finalizing, setFinalizing] = useState(false);
   const cancelRef = useRef(false);
   const activeStudentsRef = useRef<Set<string>>(new Set());
+  const studentStartTimesRef = useRef<Map<string, number>>(new Map());
 
   // Retry wrapper for transient errors
   const invokeWithRetry = async (
@@ -413,6 +463,7 @@ const ProjectDetail = () => {
     setRunning(true);
     cancelRef.current = false;
     activeStudentsRef.current.clear();
+    studentStartTimesRef.current.clear();
 
     // Concurrency based on provider
     const providerSetting = (project as any)?.ai_provider || "lovable";
@@ -447,6 +498,7 @@ const ProjectDetail = () => {
 
         // Track active student
         activeStudentsRef.current.add(student.naam);
+        studentStartTimesRef.current.set(student.id, Date.now());
         progress.currentStudentName = Array.from(activeStudentsRef.current).join(", ");
         setBatchProgress({ ...progress });
 
@@ -470,6 +522,7 @@ const ProjectDetail = () => {
           return { studentId: student.id, elapsed };
         } finally {
           activeStudentsRef.current.delete(student.naam);
+          studentStartTimesRef.current.delete(student.id);
           progress.currentStudentName = Array.from(activeStudentsRef.current).join(", ") || "Afronden...";
           setBatchProgress({ ...progress });
         }
@@ -1390,15 +1443,13 @@ const ProjectDetail = () => {
                             </TableCell>
                             <TableCell>
                               {student.status === "analyzing" ? (
-                                <div className="space-y-1 min-w-[120px]">
-                                  <div className="flex items-center gap-1.5">
-                                    <Loader2 className="h-3 w-3 animate-spin text-primary" />
-                                    <span className="text-xs font-medium text-primary">Analyseren...</span>
-                                  </div>
-                                  <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-                                    <div className="h-full rounded-full bg-primary animate-progress-indeterminate" />
-                                  </div>
-                                </div>
+                                <StudentAnalyzingProgress
+                                  studentId={student.id}
+                                  startTimesRef={studentStartTimesRef}
+                                  avgTime={batchProgress?.studentTimes && batchProgress.studentTimes.length > 0
+                                    ? batchProgress.studentTimes.reduce((a, b) => a + b, 0) / batchProgress.studentTimes.length
+                                    : 0}
+                                />
                               ) : (
                                 <Badge variant={statusVariants[student.status as StudentStatus]}>
                                   {statusLabels[student.status as StudentStatus]}
