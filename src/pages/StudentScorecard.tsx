@@ -524,12 +524,20 @@ const StudentScorecard = () => {
                   </Button>
                 </CardHeader>
                 <CardContent className="flex-1 p-0 overflow-hidden">
-                  {pdfBlobUrl ? (
+                  {pdfBlobUrl && student.pdf_url && !student.pdf_url.match(/\.(docx?)/i) ? (
                     <iframe
                       src={`${pdfBlobUrl}#toolbar=1&navpanes=0`}
                       className="w-full h-full border-0"
-                      title="Student PDF"
+                      title="Student document"
                     />
+                  ) : pdfBlobUrl && student.pdf_url?.match(/\.(docx?)/i) ? (
+                    <div className="flex flex-col items-center justify-center h-full gap-3">
+                      <FileText className="h-10 w-10 text-muted-foreground" />
+                      <p className="text-sm text-muted-foreground">Word-bestanden kunnen niet inline worden weergegeven</p>
+                      <a href={pdfBlobUrl} download={`${student.naam}.docx`} className="text-sm text-primary hover:underline">
+                        Download bestand
+                      </a>
+                    </div>
                   ) : (
                     <div className="flex items-center justify-center h-full">
                       <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
