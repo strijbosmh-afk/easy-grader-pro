@@ -99,8 +99,9 @@ const workflowSteps = [
 ];
 
 export default function Guide() {
+  const navigate = useNavigate();
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8 space-y-10">
+    <div className="max-w-4xl mx-auto px-4 py-8 space-y-10 relative">
       {/* Header */}
       <div className="space-y-3">
         <div className="flex items-center gap-3">
