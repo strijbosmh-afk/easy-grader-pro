@@ -512,9 +512,9 @@ const StudentScorecard = () => {
                   </Button>
                 </CardHeader>
                 <CardContent className="flex-1 p-0 overflow-hidden">
-                  {signedPdfUrl ? (
+                  {pdfBlobUrl ? (
                     <iframe
-                      src={`${signedPdfUrl}#toolbar=1&navpanes=0`}
+                      src={`${pdfBlobUrl}#toolbar=1&navpanes=0`}
                       className="w-full h-full border-0"
                       title="Student PDF"
                     />
