@@ -28,6 +28,7 @@ import {
   HelpCircle,
   Sparkles,
   Cpu,
+  Share2,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -61,6 +62,28 @@ export function AppSidebar() {
     },
   });
 
+  // Fetch shared projects
+  const { data: sharedProjects } = useQuery({
+    queryKey: ["shared-projects", user?.id],
+    queryFn: async () => {
+      const { data: shares, error: sharesError } = await supabase
+        .from("project_shares")
+        .select("project_id")
+        .eq("shared_with_user_id", user!.id);
+      if (sharesError) throw sharesError;
+      if (!shares || shares.length === 0) return [];
+      const projectIds = shares.map((s: any) => s.project_id);
+      const { data, error } = await supabase
+        .from("projects")
+        .select("*, students(id, status)")
+        .in("id", projectIds)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user?.id,
+  });
+
   const createProject = useMutation({
     mutationFn: async (naam: string) => {
       const { data, error } = await supabase.from("projects").insert({ naam, ai_provider: selectedProvider, user_id: user?.id }).select().single();
@@ -81,6 +104,7 @@ export function AppSidebar() {
   const isActive = (path: string) => location.pathname === path;
 
   const recentProjects = projects?.filter((p: any) => !p.archived).slice(0, 8) || [];
+  const recentShared = sharedProjects?.filter((p: any) => !p.archived).slice(0, 5) || [];
 
   return (
     <>
@@ -199,6 +223,38 @@ export function AppSidebar() {
               </CollapsibleContent>
             </Collapsible>
           </SidebarGroup>
+
+          {/* Shared projects */}
+          {recentShared.length > 0 && (
+            <SidebarGroup>
+              <SidebarGroupLabel className="flex items-center gap-2">
+                <Share2 className="h-3.5 w-3.5" />
+                Gedeeld met mij
+              </SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {recentShared.map((project: any) => {
+                    const projectPath = `/project/${project.id}`;
+                    const active = location.pathname.startsWith(projectPath);
+                    return (
+                      <SidebarMenuItem key={project.id}>
+                        <SidebarMenuButton
+                          onClick={() => navigate(projectPath)}
+                          className={active ? "bg-sidebar-accent text-sidebar-primary font-medium" : ""}
+                          title={project.naam}
+                        >
+                          <Share2 className="h-4 w-4 mr-2 shrink-0 text-sidebar-foreground/50" />
+                          {!collapsed && (
+                            <span className="truncate text-sm">{project.naam}</span>
+                          )}
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          )}
         </SidebarContent>
 
         <SidebarFooter className="p-4">
