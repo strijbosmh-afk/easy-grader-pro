@@ -50,10 +50,33 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { action, targetUserId } = await req.json();
+    const body = await req.json();
+    const { action, targetUserId } = body;
 
-    if (!targetUserId || !action) {
-      return new Response(JSON.stringify({ error: "Missing action or targetUserId" }), {
+    if (!action) {
+      return new Response(JSON.stringify({ error: "Missing action" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // List all users with their ban status
+    if (action === "list") {
+      const { data: { users }, error } = await adminClient.auth.admin.listUsers({ perPage: 1000 });
+      if (error) throw error;
+      const statuses = users.map((u) => ({
+        id: u.id,
+        banned: !!u.banned_until && new Date(u.banned_until) > new Date(),
+        banned_until: u.banned_until,
+        last_sign_in: u.last_sign_in_at,
+      }));
+      return new Response(JSON.stringify({ users: statuses }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (!targetUserId) {
+      return new Response(JSON.stringify({ error: "Missing targetUserId" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
