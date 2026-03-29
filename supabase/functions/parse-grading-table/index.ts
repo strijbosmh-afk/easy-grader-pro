@@ -64,7 +64,7 @@ SCORENIVEAUS (rubric_levels):
 
 const toolDef = {
   name: "submit_criteria",
-  description: "Submit the extracted grading criteria from the PDF, including score level descriptions",
+  description: "Submit the extracted grading criteria from the PDF, including score level descriptions and a scoring system summary",
   parameters: {
     type: "object",
     properties: {
@@ -96,8 +96,12 @@ const toolDef = {
         },
       },
       samenvatting: { type: "string" },
+      scoring_system_summary: {
+        type: "string",
+        description: "Korte samenvatting van het scoringssysteem: Gebruikt de tabel positieve punten, aftrekpunten, of een combinatie? Wat is de maximale totaalscore? Zijn er speciale rekenregels of gewichten? Zijn er conditionele instructies (bijv. 'indien niet sterk, dan...')?"
+      },
     },
-    required: ["criteria", "samenvatting"],
+    required: ["criteria", "samenvatting", "scoring_system_summary"],
     additionalProperties: false,
   },
 };
@@ -119,7 +123,7 @@ async function callLovableAI(pdfBase64: string) {
         {
           role: "user",
           content: [
-            { type: "text", text: "Analyseer deze graderingstabel PDF. Extraheer alle deelcriteria EN identificeer het eindcijfer (totaalscore):" },
+            { type: "text", text: "Analyseer deze graderingstabel PDF. Extraheer alle deelcriteria EN identificeer het eindcijfer (totaalscore). Geef ook een samenvatting van het scoringssysteem:" },
             { type: "image_url", image_url: { url: `data:application/pdf;base64,${pdfBase64}` } },
           ],
         },
@@ -164,7 +168,7 @@ async function callAnthropicAI(pdfBase64: string) {
       messages: [{
         role: "user",
         content: [
-          { type: "text", text: "Analyseer deze graderingstabel PDF. Extraheer alle deelcriteria EN identificeer het eindcijfer (totaalscore):" },
+          { type: "text", text: "Analyseer deze graderingstabel PDF. Extraheer alle deelcriteria EN identificeer het eindcijfer (totaalscore). Geef ook een samenvatting van het scoringssysteem:" },
           { type: "document", source: { type: "base64", media_type: "application/pdf", data: pdfBase64 } },
         ],
       }],
@@ -197,7 +201,6 @@ serve(async (req) => {
   try {
     const { graderingstabelUrl, aiProvider } = await req.json();
 
-    // Extract user from Authorization header
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Niet ingelogd" }), {
@@ -209,7 +212,6 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Verify JWT
     const token = authHeader.replace("Bearer ", "");
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !user) {
@@ -238,6 +240,9 @@ serve(async (req) => {
     const eindscore = result.criteria?.find((c: any) => c.is_eindscore);
     if (eindscore) {
       console.log("Eindscore found:", eindscore.naam, "max:", eindscore.max_score);
+    }
+    if (result.scoring_system_summary) {
+      console.log("Scoring system summary:", result.scoring_system_summary.substring(0, 100));
     }
 
     return new Response(JSON.stringify(result), {
