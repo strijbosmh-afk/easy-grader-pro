@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, ArrowRight, Loader2, Bot, Check, Download, RefreshCw, FileText, FileDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, ArrowRight, Loader2, Bot, Check, Download, RefreshCw, FileText, FileDown, ChevronLeft, ChevronRight, Eye, X } from "lucide-react";
 import { toast } from "sonner";
 import { useState, useEffect, useCallback } from "react";
 import { exportStudentToPdf } from "@/lib/export";
@@ -21,6 +21,7 @@ const StudentScorecard = () => {
   const [docentFeedback, setDocentFeedback] = useState<string | null>(null);
   const [reAnalyzeNiveau, setReAnalyzeNiveau] = useState("streng");
   const [generatingReport, setGeneratingReport] = useState(false);
+  const [showPdfPanel, setShowPdfPanel] = useState(true);
 
   const [isDirty, setIsDirty] = useState(false);
 
@@ -176,6 +177,31 @@ const StudentScorecard = () => {
             return;
           }
         }
+      }
+
+      // Log score changes to audit trail
+      const auditRows = criteria
+        .filter((c) => {
+          const oldScore = scores?.find((s) => s.criterium_id === c.id);
+          const oldVal = oldScore?.final_score ?? oldScore?.ai_suggested_score;
+          const newVal = localScores[c.id]?.final_score;
+          return newVal !== "" && parseFloat(newVal) !== oldVal;
+        })
+        .map((c) => {
+          const oldScore = scores?.find((s) => s.criterium_id === c.id);
+          const vals = localScores[c.id] || getScoreForCriterium(c.id);
+          return {
+            student_id: studentId!,
+            criterium_id: c.id,
+            old_score: oldScore?.final_score ?? oldScore?.ai_suggested_score ?? null,
+            new_score: vals.final_score !== "" ? parseFloat(vals.final_score) : null,
+            old_opmerkingen: oldScore?.opmerkingen ?? null,
+            new_opmerkingen: vals.opmerkingen || null,
+            change_type: "manual",
+          };
+        });
+      if (auditRows.length > 0) {
+        await supabase.from("score_audit_log").insert(auditRows);
       }
 
       // Batch upsert all scores in one call
@@ -341,8 +367,9 @@ const StudentScorecard = () => {
         </div>
       </header>
 
-      <main className="container mx-auto px-6 py-8 space-y-6">
-        <div className="flex flex-wrap gap-3">
+      <main className="container mx-auto px-6 py-4">
+        {/* Action buttons row - full width above the split */}
+        <div className="flex flex-wrap gap-3 mb-4">
           <Button
             variant="outline"
             onClick={() => analyzeStudent.mutate(undefined)}
@@ -351,7 +378,7 @@ const StudentScorecard = () => {
             {analyzeStudent.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Bot className="h-4 w-4 mr-2" />}
             {scores?.length ? "Opnieuw analyseren" : "AI Analyse starten"}
           </Button>
-          
+
           {/* Re-analyze with custom norm */}
           {scores && scores.length > 0 && (
             <div className="flex items-center gap-2 border rounded-lg px-3 py-1 bg-card">
@@ -378,8 +405,12 @@ const StudentScorecard = () => {
           )}
 
           {student.pdf_url && (
-            <Button variant="outline" asChild>
-              <a href={student.pdf_url} target="_blank">Bekijk PDF</a>
+            <Button
+              variant={showPdfPanel ? "default" : "outline"}
+              onClick={() => setShowPdfPanel(!showPdfPanel)}
+            >
+              {showPdfPanel ? <X className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+              {showPdfPanel ? "Sluit PDF" : "Bekijk PDF"}
             </Button>
           )}
           {criteria && criteria.length > 0 && (
@@ -433,138 +464,168 @@ const StudentScorecard = () => {
           )}
         </div>
 
-        {/* Verslag */}
-        {(student as any).verslag && (
-          <Card className="border-primary/20 bg-primary/5">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base flex items-center gap-2">
-                <FileText className="h-4 w-4 text-primary" />
-                Eindverslag
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="prose prose-sm max-w-none text-foreground">
-                {(student as any).verslag.split('\n').map((line: string, i: number) => {
-                  if (line.startsWith('## ')) return <h2 key={i} className="text-lg font-bold mt-4 mb-2 text-foreground">{line.replace('## ', '')}</h2>;
-                  if (line.startsWith('**') && line.endsWith('**')) return <h3 key={i} className="text-base font-semibold mt-3 mb-1 text-foreground">{line.replace(/\*\*/g, '')}</h3>;
-                  if (line.startsWith('- ')) return <li key={i} className="ml-4 text-sm text-foreground/90">{line.replace('- ', '')}</li>;
-                  if (line.trim() === '') return <br key={i} />;
-                  return <p key={i} className="text-sm text-foreground/90 mb-1">{line}</p>;
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+        {/* Split pane */}
+        <div className="flex flex-col lg:flex-row gap-6">
+          {/* Left: PDF viewer (when showPdfPanel && student.pdf_url) */}
+          {showPdfPanel && student.pdf_url && (
+            <div className="w-full lg:w-1/2 shrink-0 lg:sticky lg:top-4 lg:self-start" style={{ height: 'calc(100vh - 180px)' }}>
+              <Card className="h-full flex flex-col">
+                <CardHeader className="py-2 px-3 flex flex-row items-center justify-between">
+                  <CardTitle className="text-sm font-medium flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    {student.naam} — PDF
+                  </CardTitle>
+                  <Button variant="ghost" size="sm" onClick={() => setShowPdfPanel(false)}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </CardHeader>
+                <CardContent className="flex-1 p-0 overflow-hidden">
+                  <iframe
+                    src={`${student.pdf_url}#toolbar=1&navpanes=0`}
+                    className="w-full h-full border-0"
+                    title="Student PDF"
+                  />
+                </CardContent>
+              </Card>
+            </div>
+          )}
 
-        {student.ai_feedback && (
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Bot className="h-4 w-4" />
-                AI Feedback
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground whitespace-pre-wrap">{student.ai_feedback}</p>
-            </CardContent>
-          </Card>
-        )}
+          {/* Right: Score cards */}
+          <div className={`${showPdfPanel && student.pdf_url ? 'w-full lg:w-1/2' : 'w-full max-w-4xl mx-auto'} space-y-6`}>
+            {/* Verslag */}
+            {(student as any).verslag && (
+              <Card className="border-primary/20 bg-primary/5">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-primary" />
+                    Eindverslag
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="prose prose-sm max-w-none text-foreground">
+                    {(student as any).verslag.split('\n').map((line: string, i: number) => {
+                      if (line.startsWith('## ')) return <h2 key={i} className="text-lg font-bold mt-4 mb-2 text-foreground">{line.replace('## ', '')}</h2>;
+                      if (line.startsWith('**') && line.endsWith('**')) return <h3 key={i} className="text-base font-semibold mt-3 mb-1 text-foreground">{line.replace(/\*\*/g, '')}</h3>;
+                      if (line.startsWith('- ')) return <li key={i} className="ml-4 text-sm text-foreground/90">{line.replace('- ', '')}</li>;
+                      if (line.trim() === '') return <br key={i} />;
+                      return <p key={i} className="text-sm text-foreground/90 mb-1">{line}</p>;
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
-        {criteria && criteria.length > 0 ? (
-          <>
-            {criteria.map((c) => {
-              const ai = getAiData(c.id);
-              const vals = getScoreForCriterium(c.id);
-              return (
-                <Card key={c.id}>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-base">{c.criterium_naam}</CardTitle>
-                      <span className="text-sm text-muted-foreground">Max: {c.max_score}</span>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {ai.ai_suggested_score !== null && ai.ai_suggested_score !== undefined && (
-                      <div className="bg-muted rounded-lg p-3">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Bot className="h-3 w-3 text-muted-foreground" />
-                          <span className="text-xs font-medium text-muted-foreground">AI Suggestie: {ai.ai_suggested_score}/{c.max_score}</span>
+            {student.ai_feedback && (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Bot className="h-4 w-4" />
+                    AI Feedback
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">{student.ai_feedback}</p>
+                </CardContent>
+              </Card>
+            )}
+
+            {criteria && criteria.length > 0 ? (
+              <>
+                {criteria.map((c) => {
+                  const ai = getAiData(c.id);
+                  const vals = getScoreForCriterium(c.id);
+                  return (
+                    <Card key={c.id}>
+                      <CardHeader className="pb-3">
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="text-base">{c.criterium_naam}</CardTitle>
+                          <span className="text-sm text-muted-foreground">Max: {c.max_score}</span>
                         </div>
-                        {ai.ai_motivatie && (
-                          <p className="text-xs text-muted-foreground">{ai.ai_motivatie}</p>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        {ai.ai_suggested_score !== null && ai.ai_suggested_score !== undefined && (
+                          <div className="bg-muted rounded-lg p-3">
+                            <div className="flex items-center gap-2 mb-1">
+                              <Bot className="h-3 w-3 text-muted-foreground" />
+                              <span className="text-xs font-medium text-muted-foreground">AI Suggestie: {ai.ai_suggested_score}/{c.max_score}</span>
+                            </div>
+                            {ai.ai_motivatie && (
+                              <p className="text-xs text-muted-foreground">{ai.ai_motivatie}</p>
+                            )}
+                          </div>
                         )}
-                      </div>
-                    )}
-                    {ai.ai_detail_feedback && (
-                      <div className="rounded-lg border-2 border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-800 p-3">
-                        <div className="flex items-center gap-2 mb-2">
-                          <FileText className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
-                          <span className="text-xs font-semibold text-blue-700 dark:text-blue-300">Gedetailleerde feedback (graderingstabel)</span>
+                        {ai.ai_detail_feedback && (
+                          <div className="rounded-lg border-2 border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-800 p-3">
+                            <div className="flex items-center gap-2 mb-2">
+                              <FileText className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                              <span className="text-xs font-semibold text-blue-700 dark:text-blue-300">Gedetailleerde feedback (graderingstabel)</span>
+                            </div>
+                            <div className="text-xs text-blue-900 dark:text-blue-200 whitespace-pre-wrap leading-relaxed">
+                              {ai.ai_detail_feedback}
+                            </div>
+                          </div>
+                        )}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-sm font-medium text-foreground">Score <span className="text-destructive">*</span></label>
+                            <Input
+                              type="number"
+                              min={0}
+                              max={Number(c.max_score)}
+                              step={0.5}
+                              value={vals.final_score}
+                              onChange={(e) => updateLocal(c.id, "final_score", e.target.value)}
+                              placeholder={`0 - ${c.max_score}`}
+                               className={vals.final_score === "" ? "border-destructive" : ""}
+                            />
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium text-foreground">Opmerkingen</label>
+                            <Textarea
+                              value={vals.opmerkingen}
+                              onChange={(e) => updateLocal(c.id, "opmerkingen", e.target.value)}
+                              placeholder="Optionele opmerkingen..."
+                              rows={2}
+                            />
+                          </div>
                         </div>
-                        <div className="text-xs text-blue-900 dark:text-blue-200 whitespace-pre-wrap leading-relaxed">
-                          {ai.ai_detail_feedback}
-                        </div>
-                      </div>
-                    )}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-sm font-medium text-foreground">Score <span className="text-destructive">*</span></label>
-                        <Input
-                          type="number"
-                          min={0}
-                          max={Number(c.max_score)}
-                          step={0.5}
-                          value={vals.final_score}
-                          onChange={(e) => updateLocal(c.id, "final_score", e.target.value)}
-                          placeholder={`0 - ${c.max_score}`}
-                           className={vals.final_score === "" ? "border-destructive" : ""}
-                        />
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-foreground">Opmerkingen</label>
-                        <Textarea
-                          value={vals.opmerkingen}
-                          onChange={(e) => updateLocal(c.id, "opmerkingen", e.target.value)}
-                          placeholder="Optionele opmerkingen..."
-                          rows={2}
-                        />
-                      </div>
-                    </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base">Docent Feedback</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <Textarea
+                      value={feedbackValue}
+                      onChange={(e) => setDocentFeedback(e.target.value)}
+                      placeholder="Schrijf hier je persoonlijke feedback voor de student..."
+                      rows={4}
+                    />
                   </CardContent>
                 </Card>
-              );
-            })}
 
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">Docent Feedback</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Textarea
-                  value={feedbackValue}
-                  onChange={(e) => setDocentFeedback(e.target.value)}
-                  placeholder="Schrijf hier je persoonlijke feedback voor de student..."
-                  rows={4}
-                />
-              </CardContent>
-            </Card>
-
-            <div className="flex justify-end">
-              <Button onClick={saveScores} disabled={saving} size="lg">
-                {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Check className="h-4 w-4 mr-2" />}
-                Scores Opslaan
-              </Button>
-            </div>
-          </>
-        ) : (
-          <Card>
-            <CardContent className="py-8 text-center">
-              <p className="text-muted-foreground">
-                Nog geen beoordelingscriteria. Start eerst een AI analyse om criteria uit de graderingstabel te halen.
-              </p>
-            </CardContent>
-          </Card>
-        )}
+                <div className="flex justify-end">
+                  <Button onClick={saveScores} disabled={saving} size="lg">
+                    {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Check className="h-4 w-4 mr-2" />}
+                    Scores Opslaan
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <Card>
+                <CardContent className="py-8 text-center">
+                  <p className="text-muted-foreground">
+                    Nog geen beoordelingscriteria. Start eerst een AI analyse om criteria uit de graderingstabel te halen.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </div>
       </main>
     </div>
   );

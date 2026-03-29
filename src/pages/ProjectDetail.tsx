@@ -283,6 +283,8 @@ const ProjectDetail = () => {
   const [batchAnalyzing, setBatchAnalyzing] = useState(false);
   const [reAnalyzing, setReAnalyzing] = useState(false);
   const [reAnalyzeNiveau, setReAnalyzeNiveau] = useState("streng");
+  const [batchProgress, setBatchProgress] = useState<{ done: number; total: number; current: string; failed: string[] } | null>(null);
+  const [finalizing, setFinalizing] = useState(false);
 
   const analyzeStudent = useMutation({
     mutationFn: async (studentId: string) => {
@@ -348,6 +350,8 @@ const ProjectDetail = () => {
     let success = 0;
     let failed = 0;
     let index = 0;
+    const failedNames: string[] = [];
+    setBatchProgress({ done: 0, total: eligible.length, current: "", failed: [] });
 
     const runNext = async (): Promise<void> => {
       if (index >= eligible.length) return;
@@ -361,7 +365,9 @@ const ProjectDetail = () => {
       } catch {
         await supabase.from("students").update({ status: "pending" as StudentStatus }).eq("id", student.id);
         failed++;
+        failedNames.push(student.naam);
       }
+      setBatchProgress(prev => prev ? { ...prev, done: prev.done + 1, current: eligible[index]?.naam || "", failed: failedNames } : null);
       queryClient.invalidateQueries({ queryKey: ["students", id] });
       return runNext();
     };
@@ -369,6 +375,7 @@ const ProjectDetail = () => {
     // Launch up to CONCURRENCY workers
     await Promise.all(Array.from({ length: Math.min(CONCURRENCY, eligible.length) }, runNext));
 
+    setBatchProgress(null);
     setRunning(false);
     queryClient.invalidateQueries({ queryKey: ["students", id] });
     toast.success(`Klaar: ${success} geslaagd${failed > 0 ? `, ${failed} mislukt` : ""}`);
@@ -472,6 +479,29 @@ const ProjectDetail = () => {
       if (sc.ai_suggested_score === null && sc.final_score === null) return true;
       return sc.ai_motivatie?.includes("Geen beoordeling ontvangen") || sc.ai_motivatie?.startsWith("⚠️");
     });
+  };
+
+  const finalizeSelected = async () => {
+    const toFinalize = students?.filter(s =>
+      selectedStudents.has(s.id) && (s.status === "reviewed")
+    ) || [];
+    if (toFinalize.length === 0) {
+      toast.info("Selecteer studenten met status 'Te beoordelen' om te finaliseren");
+      return;
+    }
+    setFinalizing(true);
+    try {
+      await supabase.from("students")
+        .update({ status: "graded" as any })
+        .in("id", toFinalize.map(s => s.id));
+      queryClient.invalidateQueries({ queryKey: ["students", id] });
+      toast.success(`${toFinalize.length} student(en) gefinaliseerd`);
+      setSelectedStudents(new Set());
+    } catch {
+      toast.error("Finaliseren mislukt");
+    } finally {
+      setFinalizing(false);
+    }
   };
 
   if (isLoading) {
@@ -793,10 +823,52 @@ const ProjectDetail = () => {
                       </>
                     )}
                   </div>
+
+                  {/* Finaliseer button */}
+                  {selectedStudents.size > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={finalizeSelected}
+                      disabled={finalizing}
+                      className="border-green-300 text-green-700 hover:bg-green-50"
+                    >
+                      {finalizing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />}
+                      Finaliseer ({selectedStudents.size})
+                    </Button>
+                  )}
                 </div>
               )}
             </div>
           </CardHeader>
+
+          {/* Batch progress indicator */}
+          {batchProgress && (
+            <Card className="mx-6 mt-4 border-primary/30 bg-primary/5">
+              <CardContent className="py-4">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                    <span className="text-sm font-medium">
+                      Analyse bezig: {batchProgress.done}/{batchProgress.total}
+                    </span>
+                  </div>
+                  {batchProgress.current && (
+                    <span className="text-xs text-muted-foreground">
+                      Huidige student: {batchProgress.current}
+                    </span>
+                  )}
+                </div>
+                <Progress value={(batchProgress.done / batchProgress.total) * 100} className="h-2" />
+                {batchProgress.failed.length > 0 && (
+                  <p className="text-xs text-destructive mt-2">
+                    Mislukt: {batchProgress.failed.join(", ")}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           <CardContent className="space-y-6">
             {/* Drag & drop zone */}
             <div
@@ -881,7 +953,7 @@ const ProjectDetail = () => {
                         const missing = getMissingScores(student);
                         const isEditing = editingStudentId === student.id;
                         return (
-                          <TableRow key={student.id} className="cursor-pointer" onClick={() => !isEditing && navigate(`/project/${id}/student/${student.id}`)}>
+                          <TableRow key={student.id} className={`cursor-pointer ${student.status === "graded" ? "bg-green-50/50 dark:bg-green-950/20" : ""}`} onClick={() => !isEditing && navigate(`/project/${id}/student/${student.id}`)}>
                             <TableCell onClick={(e) => e.stopPropagation()}>
                               <Checkbox
                                 checked={selectedStudents.has(student.id)}

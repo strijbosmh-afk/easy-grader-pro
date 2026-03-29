@@ -494,7 +494,14 @@ serve(async (req) => {
       existingCriteria = inserted;
     }
 
-    // Delete existing scores, then batch-insert new ones in a single round-trip
+    // Fetch old scores before deletion for audit logging
+    const { data: oldScores } = await supabase
+      .from("student_scores")
+      .select("criterium_id, ai_suggested_score, final_score, opmerkingen")
+      .eq("student_id", studentId);
+    const oldScoreMap = new Map((oldScores || []).map((s: any) => [s.criterium_id, s]));
+
+    // Delete existing scores, then batch-insert new ones
     await supabase.from("student_scores").delete().eq("student_id", studentId);
 
     let matchedCount = 0;
@@ -556,6 +563,26 @@ serve(async (req) => {
     // Single batch insert for all scores
     if (scoresToInsert.length > 0) {
       await supabase.from("student_scores").insert(scoresToInsert);
+    }
+
+    // Log score changes to audit trail
+    const auditRows = scoresToInsert
+      .filter((s: any) => s.ai_suggested_score !== null)
+      .map((s: any) => {
+        const old = oldScoreMap.get(s.criterium_id);
+        return {
+          student_id: studentId,
+          criterium_id: s.criterium_id,
+          user_id: user.id,
+          old_score: old?.final_score ?? old?.ai_suggested_score ?? null,
+          new_score: s.ai_suggested_score,
+          old_opmerkingen: old?.opmerkingen ?? null,
+          new_opmerkingen: null,
+          change_type: "ai_analysis",
+        };
+      });
+    if (auditRows.length > 0) {
+      await supabase.from("score_audit_log").insert(auditRows);
     }
 
     console.log(`Matched ${matchedCount}/${result.criteria.length} AI criteria to ${existingCriteria!.length} DB criteria`);

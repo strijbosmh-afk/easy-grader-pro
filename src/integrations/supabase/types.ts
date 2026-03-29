@@ -139,6 +139,60 @@ export type Database = {
           },
         ]
       }
+      score_audit_log: {
+        Row: {
+          id: string
+          student_id: string
+          criterium_id: string
+          user_id: string | null
+          old_score: number | null
+          new_score: number | null
+          old_opmerkingen: string | null
+          new_opmerkingen: string | null
+          change_type: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          student_id: string
+          criterium_id: string
+          user_id?: string | null
+          old_score?: number | null
+          new_score?: number | null
+          old_opmerkingen?: string | null
+          new_opmerkingen?: string | null
+          change_type?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          student_id?: string
+          criterium_id?: string
+          user_id?: string | null
+          old_score?: number | null
+          new_score?: number | null
+          old_opmerkingen?: string | null
+          new_opmerkingen?: string | null
+          change_type?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "score_audit_log_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "score_audit_log_criterium_id_fkey"
+            columns: ["criterium_id"]
+            isOneToOne: false
+            referencedRelation: "grading_criteria"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       students: {
         Row: {
           ai_feedback: string | null
