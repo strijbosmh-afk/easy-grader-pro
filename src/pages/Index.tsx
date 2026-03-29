@@ -232,6 +232,8 @@ const Index = () => {
           onOpenChange={(open) => !open && setShareProject(null)}
         />
       )}
+
+      <NewProjectWizard open={wizardOpen} onOpenChange={setWizardOpen} />
     </div>
   );
 };
