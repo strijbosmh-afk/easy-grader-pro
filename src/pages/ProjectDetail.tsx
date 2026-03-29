@@ -1394,15 +1394,13 @@ const ProjectDetail = () => {
                             </TableCell>
                             <TableCell>
                               {student.status === "analyzing" ? (
-                                <div className="space-y-1 min-w-[120px]">
-                                  <div className="flex items-center gap-1.5">
-                                    <Loader2 className="h-3 w-3 animate-spin text-primary" />
-                                    <span className="text-xs font-medium text-primary">Analyseren...</span>
-                                  </div>
-                                  <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-                                    <div className="h-full rounded-full bg-primary animate-progress-indeterminate" />
-                                  </div>
-                                </div>
+                                <StudentAnalyzingProgress
+                                  studentId={student.id}
+                                  startTimesRef={studentStartTimesRef}
+                                  avgTime={batchProgress?.studentTimes && batchProgress.studentTimes.length > 0
+                                    ? batchProgress.studentTimes.reduce((a, b) => a + b, 0) / batchProgress.studentTimes.length
+                                    : 0}
+                                />
                               ) : (
                                 <Badge variant={statusVariants[student.status as StudentStatus]}>
                                   {statusLabels[student.status as StudentStatus]}
