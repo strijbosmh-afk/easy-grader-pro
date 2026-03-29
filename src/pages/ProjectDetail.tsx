@@ -339,6 +339,7 @@ const ProjectDetail = () => {
   const [batchSummary, setBatchSummary] = useState<BatchSummary | null>(null);
   const [finalizing, setFinalizing] = useState(false);
   const cancelRef = useRef(false);
+  const activeStudentsRef = useRef<Set<string>>(new Set());
 
   // Retry wrapper for transient errors
   const invokeWithRetry = async (
@@ -386,6 +387,7 @@ const ProjectDetail = () => {
 
     setRunning(true);
     cancelRef.current = false;
+    activeStudentsRef.current.clear();
 
     // Concurrency based on provider
     const providerSetting = (project as any)?.ai_provider || "lovable";
@@ -418,23 +420,34 @@ const ProjectDetail = () => {
       async (student) => {
         if (cancelRef.current) throw new Error("cancelled");
 
+        // Track active student
+        activeStudentsRef.current.add(student.naam);
+        progress.currentStudentName = Array.from(activeStudentsRef.current).join(", ");
+        setBatchProgress({ ...progress });
+
         // Mark analyzing
         await supabase.from("students").update({ status: "analyzing" as StudentStatus, grading_status: "grading" } as any).eq("id", student.id);
         debouncedInvalidateStudents();
 
         const t0 = Date.now();
-        const { error } = await invokeWithRetry("analyze-student", {
-          body: { studentId: student.id, projectId: id, ...extraBody },
-        });
-        const elapsed = Date.now() - t0;
+        try {
+          const { error } = await invokeWithRetry("analyze-student", {
+            body: { studentId: student.id, projectId: id, ...extraBody },
+          });
+          const elapsed = Date.now() - t0;
 
-        if (error) {
-          await supabase.from("students").update({ status: "pending" as StudentStatus, grading_status: "failed" } as any).eq("id", student.id);
-          throw error;
+          if (error) {
+            await supabase.from("students").update({ status: "pending" as StudentStatus, grading_status: "failed" } as any).eq("id", student.id);
+            throw error;
+          }
+
+          await supabase.from("students").update({ grading_status: "completed" } as any).eq("id", student.id);
+          return { studentId: student.id, elapsed };
+        } finally {
+          activeStudentsRef.current.delete(student.naam);
+          progress.currentStudentName = Array.from(activeStudentsRef.current).join(", ") || "Afronden...";
+          setBatchProgress({ ...progress });
         }
-
-        await supabase.from("students").update({ grading_status: "completed" } as any).eq("id", student.id);
-        return { studentId: student.id, elapsed };
       },
       (_completed, _total, result, index) => {
         if (result) {
@@ -449,13 +462,7 @@ const ProjectDetail = () => {
         progress.failed = failCount;
         progress.failedNames = [...failedNames];
         progress.studentTimes = [...times];
-        // Show names of students still in progress
-        const done = successCount + failCount;
-        const activeNames = eligible
-          .slice(done, done + concurrency)
-          .map((s) => s.naam)
-          .filter(Boolean);
-        progress.currentStudentName = activeNames.length > 0 ? activeNames.join(", ") : "Afronden...";
+        // currentStudentName is managed by activeStudentsRef in the worker
         setBatchProgress({ ...progress });
         debouncedInvalidateStudents();
       },

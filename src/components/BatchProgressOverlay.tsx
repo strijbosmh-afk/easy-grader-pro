@@ -100,7 +100,7 @@ export function BatchProgressOverlay({ progress, onCancel, summary, onCloseSumma
   const avgTime = progress.studentTimes.length > 0
     ? progress.studentTimes.reduce((a, b) => a + b, 0) / progress.studentTimes.length
     : 0;
-  const eta = remaining > 0 && avgTime > 0 ? remaining * avgTime : 0;
+  const eta = remaining > 0 && avgTime > 0 ? (remaining * avgTime) / (progress.concurrency || 1) : 0;
 
   return (
     <Dialog open>
