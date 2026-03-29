@@ -80,7 +80,7 @@ export function AppSidebar() {
 
   const isActive = (path: string) => location.pathname === path;
 
-  const recentProjects = projects?.slice(0, 8) || [];
+  const recentProjects = projects?.filter((p: any) => !p.archived).slice(0, 8) || [];
 
   return (
     <>
