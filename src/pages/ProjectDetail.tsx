@@ -14,6 +14,7 @@ import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { exportProjectToExcel } from "@/lib/export";
+import { downloadBatchReportsZip } from "@/lib/export-pdf";
 import { exportStudentsBatchToWord, extractStudentName } from "@/lib/export-word";
 import { Checkbox } from "@/components/ui/checkbox";
 import { GradingChat } from "@/components/GradingChat";
