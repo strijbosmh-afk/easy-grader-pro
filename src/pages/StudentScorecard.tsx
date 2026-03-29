@@ -65,19 +65,28 @@ const StudentScorecard = () => {
     },
   });
 
-  // Generate signed URL for private PDF viewing
-  const { data: signedPdfUrl } = useQuery({
-    queryKey: ["signed-pdf", student?.pdf_url],
+  // Download PDF as blob URL for inline viewing (avoids Chrome iframe restrictions)
+  const { data: pdfBlobUrl } = useQuery({
+    queryKey: ["pdf-blob", student?.pdf_url],
     queryFn: async () => {
       const url = student!.pdf_url!;
       const storagePath = extractStoragePath(url);
-      if (!storagePath) return url; // fallback to original URL
-      const { data, error } = await supabase.storage.from("pdfs").createSignedUrl(storagePath, 3600);
-      if (error || !data?.signedUrl) return url;
-      return data.signedUrl;
+      if (storagePath) {
+        const { data, error } = await supabase.storage.from("pdfs").download(storagePath);
+        if (!error && data) {
+          return URL.createObjectURL(data);
+        }
+      }
+      // Fallback: try fetching URL directly
+      const res = await fetch(url);
+      if (res.ok) {
+        const blob = await res.blob();
+        return URL.createObjectURL(blob);
+      }
+      return null;
     },
     enabled: !!student?.pdf_url,
-    staleTime: 30 * 60 * 1000, // 30 min
+    staleTime: 30 * 60 * 1000,
   });
 
   const { data: criteria } = useQuery({
@@ -503,9 +512,9 @@ const StudentScorecard = () => {
                   </Button>
                 </CardHeader>
                 <CardContent className="flex-1 p-0 overflow-hidden">
-                  {signedPdfUrl ? (
+                  {pdfBlobUrl ? (
                     <iframe
-                      src={`${signedPdfUrl}#toolbar=1&navpanes=0`}
+                      src={`${pdfBlobUrl}#toolbar=1&navpanes=0`}
                       className="w-full h-full border-0"
                       title="Student PDF"
                     />
