@@ -81,7 +81,7 @@ export default function AdminUsers() {
       // Insert new role
       const { error: insError } = await supabase
         .from("user_roles")
-        .insert({ user_id: userId, role: newRole });
+        .insert({ user_id: userId, role: newRole } as any);
       if (insError) throw insError;
     },
     onSuccess: () => {
