@@ -646,10 +646,18 @@ const ProjectDetail = () => {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => exportProjectToExcel(project, students, criteria)}
+                    onClick={() => {
+                      const hasScores = students.some((s: any) => s.student_scores?.some((sc: any) => sc.final_score !== null || sc.ai_suggested_score !== null));
+                      if (!hasScores) {
+                        toast.info("Nog geen scores om te exporteren. Analyseer eerst minstens één student.");
+                        return;
+                      }
+                      exportProjectToExcel(project, students, criteria);
+                      toast.success("Excel geëxporteerd!");
+                    }}
                   >
                     <Download className="h-4 w-4 mr-2" />
-                    Export Scores
+                    Exporteer naar Excel
                   </Button>
                   <Button
                     variant="outline"

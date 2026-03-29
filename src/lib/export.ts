@@ -3,50 +3,115 @@ import { saveAs } from "file-saver";
 import jsPDF from "jspdf";
 
 export function exportProjectToExcel(project: any, students: any[], criteria: any[]) {
-  // Split criteria into sub-criteria and the holistic eindscore (if present)
   const subCriteria = criteria.filter((c) => !c.is_eindscore);
   const eindscoreCriterium = criteria.find((c) => c.is_eindscore);
+  const allCriteria = [...subCriteria, ...(eindscoreCriterium ? [eindscoreCriterium] : [])];
+  const today = new Date().toISOString().slice(0, 10);
+  const wb = XLSX.utils.book_new();
 
-  // Build header: Student | <sub-criteria...> | Deeltotaal | Deelmax | [Eindscore | Eindmax]
-  const header = [
-    "Student",
-    ...subCriteria.map((c) => c.criterium_naam),
-    "Deeltotaal",
-    "Deelmax",
-    ...(eindscoreCriterium ? [eindscoreCriterium.criterium_naam, `Max (${eindscoreCriterium.max_score})`] : []),
-  ];
-
-  const rows = students.map((s) => {
-    const subScores = subCriteria.map((c) => {
+  // ── Sheet 1: Overzicht ──
+  const ovHeader = ["Student", ...allCriteria.map(c => c.criterium_naam), "Eindscore", "AI Confidence"];
+  const ovRows = students.map(s => {
+    const scores = allCriteria.map(c => {
       const sc = s.student_scores?.find((ss: any) => ss.criterium_id === c.id);
       return sc?.final_score ?? sc?.ai_suggested_score ?? "";
     });
-
-    // Sum only sub-criteria, not the eindscore
-    const subTotal = subScores.reduce((sum: number, v: any) => sum + (Number(v) || 0), 0);
-    const subMax = subCriteria.reduce((sum: number, c: any) => sum + Number(c.max_score), 0);
-
-    const eindscoreVal = eindscoreCriterium
-      ? (() => {
-          const sc = s.student_scores?.find((ss: any) => ss.criterium_id === eindscoreCriterium.id);
-          return sc?.final_score ?? sc?.ai_suggested_score ?? "";
-        })()
-      : undefined;
-
-    return [
-      s.naam,
-      ...subScores,
-      subTotal,
-      subMax,
-      ...(eindscoreCriterium ? [eindscoreVal, eindscoreCriterium.max_score] : []),
-    ];
+    const total = scores.reduce((sum: number, v: any) => sum + (Number(v) || 0), 0);
+    // Lowest confidence among criteria
+    const confidences = allCriteria.map(c => {
+      const sc = s.student_scores?.find((ss: any) => ss.criterium_id === c.id);
+      return sc?.ai_confidence || "";
+    });
+    const hasLow = confidences.includes("low");
+    const confLabel = hasLow ? "low" : confidences.includes("medium") ? "medium" : "high";
+    return [s.naam, ...scores, total, confLabel];
   });
 
-  const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Resultaten");
+  const ovData = [
+    [project.naam, `Export: ${today}`],
+    [],
+    ovHeader,
+    ...ovRows,
+  ];
+  const wsOv = XLSX.utils.aoa_to_sheet(ovData);
+
+  // Styling: column widths
+  const ovColCount = ovHeader.length;
+  wsOv["!cols"] = Array.from({ length: ovColCount }, (_, i) => ({ wch: i === 0 ? 25 : 16 }));
+
+  XLSX.utils.book_append_sheet(wb, wsOv, "Overzicht");
+
+  // ── Sheet 2: Feedback ──
+  const fbHeader = ["Student", "Criterium", "Score", "Max", "Confidence", "Feedback"];
+  const fbRows: any[][] = [];
+  students.forEach(s => {
+    allCriteria.forEach(c => {
+      const sc = s.student_scores?.find((ss: any) => ss.criterium_id === c.id);
+      fbRows.push([
+        s.naam,
+        c.criterium_naam,
+        sc?.final_score ?? sc?.ai_suggested_score ?? "",
+        c.max_score,
+        sc?.ai_confidence || "",
+        sc?.ai_detail_feedback || sc?.ai_motivatie || "",
+      ]);
+    });
+  });
+  const wsFb = XLSX.utils.aoa_to_sheet([fbHeader, ...fbRows]);
+  wsFb["!cols"] = [
+    { wch: 25 }, { wch: 25 }, { wch: 8 }, { wch: 8 }, { wch: 12 }, { wch: 60 },
+  ];
+  XLSX.utils.book_append_sheet(wb, wsFb, "Feedback");
+
+  // ── Sheet 3: Statistieken ──
+  const statHeader = ["Criterium", "Gemiddelde", "Mediaan", "Min", "Max", "Standaardafwijking"];
+  const statRows = allCriteria.map(c => {
+    const vals = students
+      .map(s => {
+        const sc = s.student_scores?.find((ss: any) => ss.criterium_id === c.id);
+        return sc?.final_score ?? sc?.ai_suggested_score ?? null;
+      })
+      .filter((v): v is number => v !== null && v !== "")
+      .map(Number);
+
+    if (vals.length === 0) return [c.criterium_naam, "", "", "", "", ""];
+    const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+    const sorted = [...vals].sort((a, b) => a - b);
+    const median = sorted.length % 2 === 0
+      ? (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2
+      : sorted[Math.floor(sorted.length / 2)];
+    const min = sorted[0];
+    const max = sorted[sorted.length - 1];
+    const stddev = Math.sqrt(vals.reduce((sum, v) => sum + (v - avg) ** 2, 0) / vals.length);
+    return [c.criterium_naam, +avg.toFixed(2), +median.toFixed(2), min, max, +stddev.toFixed(2)];
+  });
+
+  // Overall distribution row
+  const allScores = students.flatMap(s =>
+    allCriteria.map(c => {
+      const sc = s.student_scores?.find((ss: any) => ss.criterium_id === c.id);
+      return sc?.final_score ?? sc?.ai_suggested_score ?? null;
+    }).filter((v): v is number => v !== null && v !== "").map(Number)
+  );
+  let overallRow: any[] = ["Alle scores"];
+  if (allScores.length > 0) {
+    const avg = allScores.reduce((a, b) => a + b, 0) / allScores.length;
+    const sorted = [...allScores].sort((a, b) => a - b);
+    const median = sorted.length % 2 === 0
+      ? (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2
+      : sorted[Math.floor(sorted.length / 2)];
+    const stddev = Math.sqrt(allScores.reduce((sum, v) => sum + (v - avg) ** 2, 0) / allScores.length);
+    overallRow = ["Alle scores", +avg.toFixed(2), +median.toFixed(2), sorted[0], sorted[sorted.length - 1], +stddev.toFixed(2)];
+  }
+
+  const wsStat = XLSX.utils.aoa_to_sheet([statHeader, ...statRows, [], overallRow]);
+  wsStat["!cols"] = [{ wch: 30 }, { wch: 14 }, { wch: 14 }, { wch: 10 }, { wch: 10 }, { wch: 18 }];
+  XLSX.utils.book_append_sheet(wb, wsStat, "Statistieken");
+
+  // Write & download
   const buf = XLSX.write(wb, { bookType: "xlsx", type: "array" });
-  saveAs(new Blob([buf], { type: "application/octet-stream" }), `${project.naam}_resultaten.xlsx`);
+  const filename = `${project.naam.replace(/[^a-zA-Z0-9\u00C0-\u024F ]/g, "").trim()}-resultaten-${today}.xlsx`;
+  saveAs(new Blob([buf], { type: "application/octet-stream" }), filename);
 }
 
 export function exportStudentToPdf(
