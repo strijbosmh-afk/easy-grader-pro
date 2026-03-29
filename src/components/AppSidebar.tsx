@@ -22,7 +22,6 @@ import {
   Plus,
   FolderOpen,
   BarChart3,
-  Download,
   TrendingUp,
   ChevronDown,
   BookOpen,
@@ -30,6 +29,8 @@ import {
   LogOut,
   Sparkles,
   Cpu,
+  User,
+  Shield,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -38,6 +39,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export function AppSidebar() {
   const { state } = useSidebar();
