@@ -92,6 +92,7 @@ export type Database = {
           display_name: string | null
           email: string | null
           id: string
+          onboarding_completed: boolean
           updated_at: string
         }
         Insert: {
@@ -100,6 +101,7 @@ export type Database = {
           display_name?: string | null
           email?: string | null
           id: string
+          onboarding_completed?: boolean
           updated_at?: string
         }
         Update: {
@@ -108,6 +110,7 @@ export type Database = {
           display_name?: string | null
           email?: string | null
           id?: string
+          onboarding_completed?: boolean
           updated_at?: string
         }
         Relationships: []
@@ -154,6 +157,7 @@ export type Database = {
           education_context: string | null
           graderingstabel_pdf_url: string | null
           id: string
+          is_demo: boolean
           naam: string
           opdracht_pdf_url: string | null
           scoring_system_summary: string | null
@@ -169,6 +173,7 @@ export type Database = {
           education_context?: string | null
           graderingstabel_pdf_url?: string | null
           id?: string
+          is_demo?: boolean
           naam: string
           opdracht_pdf_url?: string | null
           scoring_system_summary?: string | null
@@ -184,6 +189,7 @@ export type Database = {
           education_context?: string | null
           graderingstabel_pdf_url?: string | null
           id?: string
+          is_demo?: boolean
           naam?: string
           opdracht_pdf_url?: string | null
           scoring_system_summary?: string | null
