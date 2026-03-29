@@ -640,6 +640,52 @@ const ProjectDetail = () => {
           </div>
         </div>
       )}
+      {/* Reviewer pending banner */}
+      {isReviewerPending && (
+        <div className="bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200 dark:border-amber-800">
+          <div className="container mx-auto px-6 py-2 flex items-center justify-between">
+            <p className="text-sm text-amber-800 dark:text-amber-200">
+              Je bent uitgenodigd als reviewer voor dit project.
+            </p>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                onClick={async () => {
+                  await supabase.from("project_reviewers").update({ status: "accepted", accepted_at: new Date().toISOString() } as any)
+                    .eq("project_id", id!).eq("reviewer_id", user!.id);
+                  queryClient.invalidateQueries({ queryKey: ["my-reviewer-status", id] });
+                  toast.success("Uitnodiging geaccepteerd!");
+                }}
+              >
+                Accepteren
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={async () => {
+                  await supabase.from("project_reviewers").update({ status: "declined" } as any)
+                    .eq("project_id", id!).eq("reviewer_id", user!.id);
+                  queryClient.invalidateQueries({ queryKey: ["my-reviewer-status", id] });
+                  toast.info("Uitnodiging geweigerd");
+                }}
+              >
+                Weigeren
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Reviewer badge */}
+      {isReviewer && (
+        <div className="bg-blue-50 dark:bg-blue-950/30 border-b border-blue-200 dark:border-blue-800">
+          <div className="container mx-auto px-6 py-2">
+            <p className="text-sm text-blue-800 dark:text-blue-200 flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4" />
+              Je bent reviewer voor dit project. Klik op een student om te reviewen.
+            </p>
+          </div>
+        </div>
+      )}
       {/* Header */}
       <header className="border-b bg-card">
         <div className="container mx-auto px-6 py-4">
