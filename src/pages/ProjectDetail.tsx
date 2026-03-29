@@ -214,6 +214,11 @@ const ProjectDetail = () => {
     } else {
       await updateProject.mutateAsync({ opdracht_pdf_url: signedUrl });
       toast.success("Opdracht geüpload");
+
+      // Auto-extract education context if not yet set
+      if (!(project as any).education_context) {
+        extractEducationContext(signedUrl);
+      }
     }
   };
 
