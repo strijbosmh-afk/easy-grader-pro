@@ -221,7 +221,7 @@ serve(async (req) => {
     if (!graderingstabelUrl) throw new Error("Geen graderingstabel URL opgegeven");
 
     console.log("Downloading grading table PDF...");
-    const pdfBase64 = await fetchPdfAsBase64(graderingstabelUrl);
+    const pdfBase64 = await fetchPdfAsBase64(graderingstabelUrl, supabase);
     console.log("PDF downloaded, size:", Math.round(pdfBase64.length / 1024), "KB base64");
 
     const provider = aiProvider || "lovable";
