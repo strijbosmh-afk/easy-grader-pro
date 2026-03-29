@@ -21,6 +21,7 @@ export type Database = {
           is_eindscore: boolean
           max_score: number
           project_id: string
+          rubric_levels: Json | null
           volgorde: number
         }
         Insert: {
@@ -29,6 +30,7 @@ export type Database = {
           is_eindscore?: boolean
           max_score?: number
           project_id: string
+          rubric_levels?: Json | null
           volgorde?: number
         }
         Update: {
@@ -37,6 +39,7 @@ export type Database = {
           is_eindscore?: boolean
           max_score?: number
           project_id?: string
+          rubric_levels?: Json | null
           volgorde?: number
         }
         Relationships: [
@@ -60,6 +63,7 @@ export type Database = {
           naam: string
           opdracht_pdf_url: string | null
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           ai_provider?: string
@@ -71,6 +75,7 @@ export type Database = {
           naam: string
           opdracht_pdf_url?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           ai_provider?: string
@@ -82,6 +87,7 @@ export type Database = {
           naam?: string
           opdracht_pdf_url?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }

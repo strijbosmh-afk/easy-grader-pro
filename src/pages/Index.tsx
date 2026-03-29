@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,6 +15,7 @@ import { useNavigate } from "react-router-dom";
 const Index = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const [search, setSearch] = useState("");
   const [newProjectName, setNewProjectName] = useState("");
   const [selectedProvider, setSelectedProvider] = useState<string>("lovable");
@@ -35,7 +37,7 @@ const Index = () => {
     mutationFn: async (naam: string) => {
       const { data, error } = await supabase
         .from("projects")
-        .insert({ naam, ai_provider: selectedProvider })
+        .insert({ naam, ai_provider: selectedProvider, user_id: user?.id })
         .select()
         .single();
       if (error) throw error;

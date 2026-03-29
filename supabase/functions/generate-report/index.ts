@@ -12,12 +12,33 @@ serve(async (req) => {
   try {
     const { studentId, projectId } = await req.json();
 
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
+    // Extract user from Authorization header
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Niet ingelogd" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
-    const { data: project } = await supabase.from("projects").select("*").eq("id", projectId).single();
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Verify JWT
+    const token = authHeader.replace("Bearer ", "");
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: "Ongeldige sessie" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { data: project } = await supabase.from("projects").select("*").eq("id", projectId).eq("user_id", user.id).single();
+    if (!project) {
+      return new Response(JSON.stringify({ error: "Project niet gevonden of geen toegang" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     const { data: student } = await supabase.from("students").select("*").eq("id", studentId).single();
     const { data: criteria } = await supabase
       .from("grading_criteria")
@@ -29,7 +50,7 @@ serve(async (req) => {
       .select("*, grading_criteria(*)")
       .eq("student_id", studentId);
 
-    if (!project || !student) throw new Error("Project of student niet gevonden");
+    if (!student) throw new Error("Student niet gevonden");
     if (!criteria || criteria.length === 0) throw new Error("Geen beoordelingscriteria gevonden");
 
     const aiProvider = project.ai_provider || "lovable";

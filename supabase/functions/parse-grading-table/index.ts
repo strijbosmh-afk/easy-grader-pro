@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -19,6 +20,8 @@ async function fetchPdfAsBase64(url: string): Promise<string> {
 
 const systemPrompt = `Je bent een expert in het analyseren van beoordelingstabellen voor het hoger onderwijs in België. Analyseer de graderingstabel PDF en extraheer ALLE beoordelingscriteria.
 
+Per criterium moet je ook de SCORENIVEAUS extraheren. Dit zijn de discrete scores die in de tabel staan met hun beschrijvingen. Bijvoorbeeld als een criterium scores 0, 4, 7, 10 heeft met elk een beschrijving van wanneer die score geldt, extraheer al deze niveaus.
+
 HEEL BELANGRIJK:
 - Zoek naar de DEELCRITERIA (de individuele beoordelingspunten) met hun max scores.
 - Zoek ook naar het EINDCIJFER — dit is de uiteindelijke totaalscore (vaak "Cijfer", "Totaal", "Eindscore", "Score op /20", etc.).
@@ -27,11 +30,18 @@ HEEL BELANGRIJK:
 - Neem de max_scores EXACT over.
 - Markeer welk criterium het eindcijfer is (is_eindscore: true).
 - Als er geen apart eindcijfer staat, markeer geen enkel criterium als eindscore.
-- Bestudeer de graderingstabel ZEER ZORGVULDIG. Let op alle details, gekleurde tekst, voetnoten, instructies, en bijzondere scoreregels (bijv. aftrek/straf-systemen vs positieve punten).`;
+- Bestudeer de graderingstabel ZEER ZORGVULDIG. Let op alle details, gekleurde tekst, voetnoten, instructies, en bijzondere scoreregels (bijv. aftrek/straf-systemen vs positieve punten).
+
+SCORENIVEAUS (rubric_levels):
+- Lees de graderingstabel ZEER zorgvuldig en extraheer per criterium ALLE mogelijke scores met hun beschrijvingen.
+- Dit zijn de discrete waarden die de docent kan toekennen, met uitleg over wanneer elk niveau geldt.
+- Als een criterium een aftrek/straf-systeem heeft (bijv. 0 = geen fouten, -1 per fout), noteer dan de niveaus zoals ze in de tabel staan.
+- Als er geen expliciete scoreniveaus in de tabel staan voor een criterium, geef dan een leeg array [].
+- De beschrijvingen moeten EXACT overeenkomen met wat in het document staat.`;
 
 const toolDef = {
   name: "submit_criteria",
-  description: "Submit the extracted grading criteria from the PDF",
+  description: "Submit the extracted grading criteria from the PDF, including score level descriptions",
   parameters: {
     type: "object",
     properties: {
@@ -44,8 +54,21 @@ const toolDef = {
             max_score: { type: "number", description: "Maximum score for this criterion" },
             beschrijving: { type: "string", description: "Description of the criterion" },
             is_eindscore: { type: "boolean", description: "True if this is the final/total grade (Cijfer, Totaal, Eindscore), false for sub-criteria" },
+            rubric_levels: {
+              type: "array",
+              description: "The discrete score levels defined in the grading table for this criterion. Extract ALL possible scores with their descriptions.",
+              items: {
+                type: "object",
+                properties: {
+                  score: { type: "number", description: "The score value for this level" },
+                  description: { type: "string", description: "What this score level means / when to award it" },
+                },
+                required: ["score", "description"],
+                additionalProperties: false,
+              },
+            },
           },
-          required: ["naam", "max_score", "is_eindscore"],
+          required: ["naam", "max_score", "is_eindscore", "rubric_levels"],
           additionalProperties: false,
         },
       },
@@ -150,6 +173,28 @@ serve(async (req) => {
 
   try {
     const { graderingstabelUrl, aiProvider } = await req.json();
+
+    // Extract user from Authorization header
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Niet ingelogd" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Verify JWT
+    const token = authHeader.replace("Bearer ", "");
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: "Ongeldige sessie" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     if (!graderingstabelUrl) throw new Error("Geen graderingstabel URL opgegeven");
 
     console.log("Downloading grading table PDF...");

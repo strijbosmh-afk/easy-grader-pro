@@ -137,17 +137,18 @@ const ProjectDetail = () => {
     const path = `${id}/${type}_${Date.now()}.pdf`;
     const { error: uploadError } = await supabase.storage.from("pdfs").upload(path, file);
     if (uploadError) throw uploadError;
-    const { data: urlData } = supabase.storage.from("pdfs").getPublicUrl(path);
-    const publicUrl = urlData.publicUrl;
+    const { data: urlData, error: signError } = await supabase.storage.from("pdfs").createSignedUrl(path, 60 * 60 * 24 * 365); // 1 year
+    if (signError || !urlData?.signedUrl) throw new Error("Kon PDF URL niet aanmaken");
+    const signedUrl = urlData.signedUrl;
 
     if (type === "graderingstabel") {
       // Parse the grading table first before applying
-      setPendingGradingUrl(publicUrl);
+      setPendingGradingUrl(signedUrl);
       setParsingGrading(true);
       try {
         const aiProvider = (project as any)?.ai_provider || "lovable";
         const { data, error } = await supabase.functions.invoke("parse-grading-table", {
-          body: { graderingstabelUrl: publicUrl, aiProvider },
+          body: { graderingstabelUrl: signedUrl, aiProvider },
         });
         if (error) throw error;
         setParsedCriteria(data.criteria || []);
@@ -156,12 +157,12 @@ const ProjectDetail = () => {
       } catch (err: any) {
         toast.error("Kon graderingstabel niet analyseren: " + (err?.message || "onbekende fout"));
         // Still save the URL even if parsing fails
-        await updateProject.mutateAsync({ graderingstabel_pdf_url: publicUrl });
+        await updateProject.mutateAsync({ graderingstabel_pdf_url: signedUrl });
       } finally {
         setParsingGrading(false);
       }
     } else {
-      await updateProject.mutateAsync({ opdracht_pdf_url: publicUrl });
+      await updateProject.mutateAsync({ opdracht_pdf_url: signedUrl });
       toast.success("Opdracht geüpload");
     }
   };
@@ -211,6 +212,7 @@ const ProjectDetail = () => {
         max_score: c.max_score || 10,
         volgorde: i,
         is_eindscore: c.is_eindscore || false,
+        rubric_levels: c.rubric_levels || null,
       }));
       await supabase.from("grading_criteria").insert(criteriaToInsert);
 
@@ -258,10 +260,14 @@ const ProjectDetail = () => {
           toast.error(`Upload mislukt: ${file.name}`);
           continue;
         }
-        const { data: urlData } = supabase.storage.from("pdfs").getPublicUrl(path);
+        const { data: urlData, error: signError } = await supabase.storage.from("pdfs").createSignedUrl(path, 60 * 60 * 24 * 365); // 1 year
+        if (signError || !urlData?.signedUrl) {
+          toast.error(`Kon URL aanmaken voor: ${file.name}`);
+          continue;
+        }
         const { error: insertError } = await supabase
           .from("students")
-          .insert({ project_id: id!, naam, pdf_url: urlData.publicUrl });
+          .insert({ project_id: id!, naam, pdf_url: urlData.signedUrl });
         if (insertError) {
           toast.error(`Student toevoegen mislukt: ${naam}`);
           continue;

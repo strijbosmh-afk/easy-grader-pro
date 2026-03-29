@@ -86,14 +86,20 @@ function buildPromptParts(project: any, student: any, subCriteria: any[], eindsc
 
   let instruction: string;
   if (subCriteria.length > 0) {
-    const criteriaList = subCriteria.map((c: any, idx: number) =>
-      `${idx + 1}. "${c.criterium_naam}" — max score: ${c.max_score}`
-    ).join("\n");
+    const criteriaList = subCriteria.map((c: any, idx: number) => {
+      let line = `${idx + 1}. [ID: ${c.id}] "${c.criterium_naam}" — max score: ${c.max_score}`;
+      // Include structured rubric levels if available
+      if (c.rubric_levels && Array.isArray(c.rubric_levels) && c.rubric_levels.length > 0) {
+        const levels = c.rubric_levels.map((l: any) => `    Score ${l.score}: ${l.description}`).join("\n");
+        line += `\n  Scoreniveaus:\n${levels}`;
+      }
+      return line;
+    }).join("\n");
 
     let eindscoreInstructie = "";
     if (eindscoreCriterium) {
       eindscoreInstructie = `\n\nDaarnaast moet je ook een EINDSCORE geven:
-- Criterium: "${eindscoreCriterium.criterium_naam}" — max score: ${eindscoreCriterium.max_score}
+- [ID: ${eindscoreCriterium.id}] Criterium: "${eindscoreCriterium.criterium_naam}" — max score: ${eindscoreCriterium.max_score}
 - Dit is de uiteindelijke beoordeling van het werk als geheel op /${eindscoreCriterium.max_score}.
 - De eindscore is NIET simpelweg het gemiddelde van de deelscores, maar een holistische beoordeling.
 - Volg de graderingstabel om te bepalen welke score past.`;
@@ -113,7 +119,9 @@ KRITISCH BELANGRIJK — SCORES UIT DE GRADERINGSTABEL:
 - Hardcodeer GEEN aannames over scoreschalen. LEES de tabel en volg die EXACT.
 - Gebruik de criterium-namen EXACT zoals hierboven vermeld.
 - Je MOET ALLE ${subCriteria.length} criteria beoordelen. Sla er GEEN over.
-- Lees het studentwerk zorgvuldig en beoordeel op basis van de inhoud.`;
+- Lees het studentwerk zorgvuldig en beoordeel op basis van de inhoud.
+
+- BELANGRIJK: Gebruik het ID (het UUID tussen [ID: ...]) als "criterium_id" in je antwoord. Dit is VERPLICHT.`;
   } else {
     instruction = `Analyseer het werk van student "${student.naam}".
 1. Lees de graderingstabel PDF en extraheer alle beoordelingscriteria.
@@ -181,13 +189,14 @@ const toolSchema = {
           items: {
             type: "object",
             properties: {
+              criterium_id: { type: "string", description: "Het UUID van het criterium, exact zoals opgegeven in [ID: ...]" },
               naam: { type: "string" },
               max_score: { type: "number" },
               score: { type: "number" },
               motivatie: { type: "string", description: "Korte motivatie voor de score" },
               detail_feedback: { type: "string", description: "Gedetailleerde feedback op basis van de instructies in de graderingstabel (blauwe tekst). Bevat concrete voorbeelden met paginanummers en regelnummers. Laat leeg als er geen specifieke instructies zijn voor dit criterium." },
             },
-            required: ["naam", "max_score", "score", "motivatie", "detail_feedback"],
+            required: ["criterium_id", "naam", "max_score", "score", "motivatie", "detail_feedback"],
             additionalProperties: false,
           },
         },
@@ -359,14 +368,37 @@ serve(async (req) => {
       cachedOpdrachtBase64,
     } = await req.json();
 
+    // Extract user from Authorization header
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Niet ingelogd" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { data: project } = await supabase.from("projects").select("*").eq("id", projectId).single();
+    // Verify JWT
+    const token = authHeader.replace("Bearer ", "");
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: "Ongeldige sessie" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { data: project } = await supabase.from("projects").select("*").eq("id", projectId).eq("user_id", user.id).single();
+    if (!project) {
+      return new Response(JSON.stringify({ error: "Project niet gevonden of geen toegang" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { data: student } = await supabase.from("students").select("*").eq("id", studentId).single();
 
-    if (!project || !student) throw new Error("Project of student niet gevonden");
+    if (!student) throw new Error("Student niet gevonden");
     if (!student.pdf_url) throw new Error("Student heeft geen PDF");
 
     let { data: existingCriteria } = await supabase
@@ -471,21 +503,39 @@ serve(async (req) => {
     const unmatchedDbCriteria: string[] = [];
     const scoresToInsert: any[] = [];
 
+    // Build a lookup of valid criteria IDs for this project
+    const validCriteriaIds = new Set(existingCriteria!.map((c: any) => c.id));
+
     for (const aiCriterium of result.criteria) {
-      const matched = findBestMatch(aiCriterium.naam, existingCriteria!.filter((c: any) => !usedCriteria.has(c.id)));
-      if (matched) {
-        usedCriteria.add(matched.id);
+      // Primary: match by ID (the new way)
+      const criteriumId = aiCriterium.criterium_id;
+      if (criteriumId && validCriteriaIds.has(criteriumId) && !usedCriteria.has(criteriumId)) {
+        usedCriteria.add(criteriumId);
         scoresToInsert.push({
           student_id: studentId,
-          criterium_id: matched.id,
+          criterium_id: criteriumId,
           ai_suggested_score: parseScoreValue(aiCriterium.score),
           ai_motivatie: aiCriterium.motivatie,
           ai_detail_feedback: aiCriterium.detail_feedback || null,
         });
         matchedCount++;
       } else {
-        console.warn("No match for AI criterion:", aiCriterium.naam);
-        unmatchedAiCriteria.push(aiCriterium.naam);
+        // Fallback: try fuzzy name matching (backward compat for older AI responses)
+        const matched = findBestMatch(aiCriterium.naam, existingCriteria!.filter((c: any) => !usedCriteria.has(c.id)));
+        if (matched) {
+          usedCriteria.add(matched.id);
+          scoresToInsert.push({
+            student_id: studentId,
+            criterium_id: matched.id,
+            ai_suggested_score: parseScoreValue(aiCriterium.score),
+            ai_motivatie: aiCriterium.motivatie,
+            ai_detail_feedback: aiCriterium.detail_feedback || null,
+          });
+          matchedCount++;
+        } else {
+          console.warn("No match for AI criterion:", aiCriterium.naam, "ID:", criteriumId);
+          unmatchedAiCriteria.push(aiCriterium.naam);
+        }
       }
     }
 

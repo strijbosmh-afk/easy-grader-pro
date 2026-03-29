@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import { useState } from "react";
 import {
   Sidebar,
@@ -44,6 +45,7 @@ export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [newProjectName, setNewProjectName] = useState("");
   const [selectedProvider, setSelectedProvider] = useState<string>("lovable");
@@ -63,7 +65,7 @@ export function AppSidebar() {
 
   const createProject = useMutation({
     mutationFn: async (naam: string) => {
-      const { data, error } = await supabase.from("projects").insert({ naam, ai_provider: selectedProvider }).select().single();
+      const { data, error } = await supabase.from("projects").insert({ naam, ai_provider: selectedProvider, user_id: user?.id }).select().single();
       if (error) throw error;
       return data;
     },
