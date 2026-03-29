@@ -39,9 +39,7 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [newProjectName, setNewProjectName] = useState("");
-  const [selectedProvider, setSelectedProvider] = useState<string>("lovable");
+  const [wizardOpen, setWizardOpen] = useState(false);
   const [projectsOpen, setProjectsOpen] = useState(true);
 
   const { data: projects } = useQuery({
