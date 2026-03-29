@@ -1,0 +1,1 @@
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS feedback_language text NOT NULL DEFAULT 'nl';
