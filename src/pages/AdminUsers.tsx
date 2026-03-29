@@ -19,7 +19,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Loader2, Shield, ShieldCheck, Users, Ban, UserX, UserCheck, MoreHorizontal, Trash2 } from "lucide-react";
+import { Loader2, Shield, ShieldCheck, Users, Ban, UserX, UserCheck, MoreHorizontal, Trash2, CircleCheck, CircleOff } from "lucide-react";
 import { Navigate } from "react-router-dom";
 import {
   DropdownMenu,
@@ -88,6 +88,19 @@ export default function AdminUsers() {
         .select("*");
       if (error) throw error;
       return data as UserRole[];
+    },
+    enabled: isAdmin === true,
+  });
+
+  // Fetch user statuses (ban info) from edge function
+  const { data: userStatuses } = useQuery({
+    queryKey: ["admin-user-statuses"],
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke("admin-users", {
+        body: { action: "list" },
+      });
+      if (error) throw error;
+      return (data?.users || []) as { id: string; banned: boolean; last_sign_in: string | null }[];
     },
     enabled: isAdmin === true,
   });
@@ -217,6 +230,7 @@ export default function AdminUsers() {
                 <TableRow>
                   <TableHead>Gebruiker</TableHead>
                   <TableHead>E-mail</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead>Rol</TableHead>
                   <TableHead>Geregistreerd</TableHead>
                   <TableHead className="w-[140px]">Rol wijzigen</TableHead>
@@ -227,6 +241,8 @@ export default function AdminUsers() {
                 {profiles?.map((profile) => {
                   const currentRole = getUserRole(profile.id);
                   const isSelf = profile.id === user?.id;
+                  const status = userStatuses?.find((s) => s.id === profile.id);
+                  const isBanned = status?.banned ?? false;
 
                   return (
                     <TableRow key={profile.id}>
@@ -246,6 +262,19 @@ export default function AdminUsers() {
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {profile.email}
+                      </TableCell>
+                      <TableCell>
+                        {isBanned ? (
+                          <Badge variant="destructive" className="gap-1">
+                            <CircleOff className="h-3 w-3" />
+                            Gedeactiveerd
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="gap-1 border-green-300 text-green-700 dark:border-green-700 dark:text-green-400">
+                            <CircleCheck className="h-3 w-3" />
+                            Actief
+                          </Badge>
+                        )}
                       </TableCell>
                       <TableCell>
                         <Badge variant={roleBadgeVariant(currentRole)}>
