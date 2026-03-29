@@ -55,11 +55,22 @@ serve(async (req) => {
       });
     }
 
-    const { data: project } = await supabase.from("projects").select("*").eq("id", projectId).eq("user_id", user.id).single();
+    const { data: project } = await supabase.from("projects").select("id, user_id").eq("id", projectId).single();
     if (!project) {
-      return new Response(JSON.stringify({ error: "Project niet gevonden of geen toegang" }), {
-        status: 403, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
+      return new Response(JSON.stringify({ error: "Project niet gevonden" }), {
+        status: 404, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
       });
+    }
+    if (project.user_id !== user.id) {
+      const { data: reviewer } = await supabase.from("project_reviewers")
+        .select("id").eq("project_id", projectId).eq("reviewer_id", user.id).eq("status", "accepted").single();
+      const { data: share } = await supabase.from("project_shares")
+        .select("id").eq("project_id", projectId).eq("shared_with_user_id", user.id).single();
+      if (!reviewer && !share) {
+        return new Response(JSON.stringify({ error: "Geen toegang tot dit project" }), {
+          status: 403, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
+        });
+      }
     }
     const { data: student } = await supabase.from("students").select("*").eq("id", studentId).single();
     const { data: criteria } = await supabase
