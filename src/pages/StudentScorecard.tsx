@@ -80,6 +80,7 @@ const StudentScorecard = () => {
     staleTime: 30 * 60 * 1000, // 30 min
   });
 
+  const { data: criteria } = useQuery({
     queryKey: ["criteria", projectId],
     queryFn: async () => {
       const { data, error } = await supabase
