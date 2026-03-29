@@ -556,6 +556,21 @@ const StudentScorecard = () => {
               </Card>
             )}
 
+            {/* Validation Warnings Alert */}
+            {(student as any).ai_validation_warnings && Array.isArray((student as any).ai_validation_warnings) && (student as any).ai_validation_warnings.length > 0 && (
+              <Alert className="border-amber-400 bg-amber-50 dark:bg-amber-950/30">
+                <AlertTriangle className="h-4 w-4 text-amber-600" />
+                <AlertTitle className="text-amber-800 dark:text-amber-300">Score-validatie</AlertTitle>
+                <AlertDescription className="text-amber-700 dark:text-amber-400">
+                  <ul className="list-disc pl-4 mt-1 space-y-0.5 text-xs">
+                    {(student as any).ai_validation_warnings.map((w: string, i: number) => (
+                      <li key={i}>{w}</li>
+                    ))}
+                  </ul>
+                </AlertDescription>
+              </Alert>
+            )}
+
             {student.ai_feedback && (
               <Card>
                 <CardHeader className="pb-2">
