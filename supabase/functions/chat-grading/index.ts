@@ -56,6 +56,24 @@ serve(async (req) => {
       });
     }
 
+    // Rate limiting: max 60 AI calls per hour per user
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const { count: usageCount } = await supabase
+      .from('api_usage')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .eq('function_name', 'chat-grading')
+      .gte('created_at', oneHourAgo);
+
+    if (usageCount && usageCount >= 60) {
+      return new Response(
+        JSON.stringify({ error: 'Rate limit bereikt. Maximaal 60 chat-berichten per uur. Probeer het later opnieuw.' }),
+        { status: 429, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+      );
+    }
+
+    await supabase.from('api_usage').insert({ user_id: user.id, function_name: 'chat-grading' });
+
     const { data: project } = await supabase.from("projects").select("*").eq("id", projectId).eq("user_id", user.id).single();
     if (!project) {
       return new Response(JSON.stringify({ error: "Project niet gevonden of geen toegang" }), {
