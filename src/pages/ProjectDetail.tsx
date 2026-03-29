@@ -704,6 +704,37 @@ const ProjectDetail = () => {
                     {exportingWord ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileDown className="h-4 w-4 mr-2" />}
                     {selectedStudents.size > 0 ? `Export Verslag (${selectedStudents.size})` : "Export Verslag"}
                   </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={exportingPdf}
+                    onClick={async () => {
+                      const hasScores = students!.some((s: any) => s.student_scores?.some((sc: any) => sc.final_score !== null || sc.ai_suggested_score !== null));
+                      if (!hasScores) {
+                        toast.info("Nog geen scores om te exporteren.");
+                        return;
+                      }
+                      setExportingPdf(true);
+                      setPdfProgress("");
+                      try {
+                        const toExport = selectedStudents.size > 0
+                          ? students!.filter((s) => selectedStudents.has(s.id))
+                          : students!;
+                        await downloadBatchReportsZip(toExport, project, criteria!, (cur, tot, name) => {
+                          setPdfProgress(`Rapport ${cur} van ${tot}: ${name}`);
+                        });
+                        toast.success("PDF rapporten geëxporteerd!");
+                      } catch (err: any) {
+                        toast.error(err?.message || "PDF export mislukt");
+                      } finally {
+                        setExportingPdf(false);
+                        setPdfProgress("");
+                      }
+                    }}
+                  >
+                    {exportingPdf ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileText className="h-4 w-4 mr-2" />}
+                    {exportingPdf && pdfProgress ? pdfProgress : selectedStudents.size > 0 ? `Download Rapporten (${selectedStudents.size})` : "Download Rapporten (PDF)"}
+                  </Button>
                 </>
               )}
             </div>
