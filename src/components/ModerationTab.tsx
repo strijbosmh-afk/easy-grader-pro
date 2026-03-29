@@ -62,20 +62,20 @@ export function ModerationTab({ projectId, students, criteria }: Props) {
     const reviewed = reviews.length;
     const adjusted = reviews.filter((r: any) => r.status === "adjusted").length;
 
-    let statusColor = "secondary" as const;
+    let statusVariant: "secondary" | "default" | "outline" | "destructive" = "secondary";
     let statusText = "Niet beoordeeld";
     if (reviewed === 0) {
-      statusColor = "secondary";
+      statusVariant = "secondary";
       statusText = "Niet beoordeeld";
     } else if (adjusted > 0) {
-      statusColor = "outline" as const;
+      statusVariant = "outline";
       statusText = `${adjusted} aanpassing${adjusted > 1 ? "en" : ""}`;
     } else {
-      statusColor = "default";
+      statusVariant = "default";
       statusText = "Goedgekeurd";
     }
 
-    return { reviewed, totalCriteria, adjusted, statusColor, statusText };
+    return { reviewed, totalCriteria, adjusted, statusVariant, statusText };
   };
 
   const selectedStudent = students.find((s) => s.id === selectedStudentId);
@@ -174,7 +174,7 @@ export function ModerationTab({ projectId, students, criteria }: Props) {
                       ) : "–"}
                     </TableCell>
                     <TableCell className="text-center">
-                      <Badge variant={summary.statusColor} className="text-[10px]">
+                      <Badge variant={summary.statusVariant} className="text-[10px]">
                         {summary.statusText}
                       </Badge>
                     </TableCell>
