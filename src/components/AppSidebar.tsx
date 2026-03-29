@@ -233,36 +233,7 @@ export function AppSidebar() {
           </SidebarGroup>
         </SidebarContent>
 
-        <SidebarFooter className="p-4 space-y-2">
-          {/* User profile link */}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full justify-start"
-            onClick={() => navigate("/profiel")}
-          >
-            <Avatar className="h-5 w-5 mr-2">
-              <AvatarImage src={profile?.avatar_url || user?.user_metadata?.avatar_url} />
-              <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
-                {(profile?.display_name || user?.email || "U").slice(0, 2).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            {!collapsed && <span className="truncate text-sm">{profile?.display_name || user?.email}</span>}
-          </Button>
-
-          {/* Admin link */}
-          {isAdmin && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="w-full justify-start text-sidebar-foreground/70"
-              onClick={() => navigate("/admin/gebruikers")}
-            >
-              <Shield className="h-4 w-4 mr-2" />
-              {!collapsed && <span>Gebruikersbeheer</span>}
-            </Button>
-          )}
-
+        <SidebarFooter className="p-4">
           {!collapsed && (
             <div className="rounded-lg bg-sidebar-accent p-3">
               <div className="flex items-center gap-2 text-xs text-sidebar-foreground/70">
@@ -271,15 +242,6 @@ export function AppSidebar() {
               </div>
             </div>
           )}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full justify-start text-sidebar-foreground/70 hover:text-destructive"
-            onClick={logout}
-          >
-            <LogOut className="h-4 w-4 mr-2" />
-            {!collapsed && <span>Uitloggen</span>}
-          </Button>
         </SidebarFooter>
       </Sidebar>
 
