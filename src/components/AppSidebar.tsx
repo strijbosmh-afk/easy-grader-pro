@@ -146,7 +146,7 @@ export function AppSidebar() {
                   <SidebarMenu>
                     <SidebarMenuItem>
                       <SidebarMenuButton
-                        onClick={() => setDialogOpen(true)}
+                        onClick={() => setWizardOpen(true)}
                         className="text-sidebar-primary hover:text-sidebar-primary"
                       >
                         <Plus className="h-4 w-4 mr-2" />
@@ -244,75 +244,7 @@ export function AppSidebar() {
         </SidebarFooter>
       </Sidebar>
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Nieuw Project Aanmaken</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-5 pt-4">
-            <div>
-              <Label htmlFor="sidebarProjectName">Projectnaam</Label>
-              <Input
-                id="sidebarProjectName"
-                placeholder="Bijv. Wiskunde Hoofdstuk 3"
-                value={newProjectName}
-                onChange={(e) => setNewProjectName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && newProjectName.trim()) {
-                    createProject.mutate(newProjectName.trim());
-                  }
-                }}
-              />
-            </div>
-            <div>
-              <Label className="mb-3 block">AI Model voor analyse</Label>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => setSelectedProvider("lovable")}
-                  className={`relative rounded-lg border-2 p-4 text-left transition-all ${
-                    selectedProvider === "lovable"
-                      ? "border-primary bg-primary/5"
-                      : "border-border hover:border-primary/40"
-                  }`}
-                >
-                  <div className="flex items-center gap-2 mb-2">
-                    <Sparkles className="h-4 w-4 text-primary" />
-                    <span className="font-semibold text-sm text-foreground">Gemini 2.5 Flash</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    Snel & voordelig. Goed voor standaard beoordelingen en multimodale analyses.
-                  </p>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSelectedProvider("anthropic")}
-                  className={`relative rounded-lg border-2 p-4 text-left transition-all ${
-                    selectedProvider === "anthropic"
-                      ? "border-primary bg-primary/5"
-                      : "border-border hover:border-primary/40"
-                  }`}
-                >
-                  <div className="flex items-center gap-2 mb-2">
-                    <Cpu className="h-4 w-4 text-primary" />
-                    <span className="font-semibold text-sm text-foreground">Claude Sonnet 4</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    Diepgaande analyse. Sterk in nuance, complexe teksten en gedetailleerde feedback.
-                  </p>
-                </button>
-              </div>
-            </div>
-            <Button
-              className="w-full"
-              onClick={() => createProject.mutate(newProjectName.trim())}
-              disabled={!newProjectName.trim() || createProject.isPending}
-            >
-              {createProject.isPending ? "Aanmaken..." : "Aanmaken"}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <NewProjectWizard open={wizardOpen} onOpenChange={setWizardOpen} />
     </>
   );
 }
