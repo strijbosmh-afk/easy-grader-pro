@@ -559,23 +559,7 @@ const ProjectDetail = () => {
   const progress = totalStudents > 0 ? (gradedCount / totalStudents) * 100 : 0;
 
   const isDemo = (project as any)?.is_demo === true;
-      if (studentIds && studentIds.length > 0) {
-        const ids = studentIds.map(s => s.id);
-        await supabase.from("student_scores").delete().in("student_id", ids);
-        await supabase.from("score_audit_log").delete().in("student_id", ids);
-      }
-      await supabase.from("students").delete().eq("project_id", id!);
-      await supabase.from("grading_criteria").delete().eq("project_id", id!);
-      await supabase.from("project_shares").delete().eq("project_id", id!);
-      await supabase.from("projects").delete().eq("id", id!);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["projects"] });
-      toast.success("Demo-project verwijderd");
-      navigate("/");
-    },
-    onError: () => toast.error("Fout bij verwijderen"),
-  });
+
 
   return (
     <div className="min-h-screen bg-background">
