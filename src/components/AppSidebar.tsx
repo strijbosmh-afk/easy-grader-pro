@@ -223,7 +223,38 @@ export function AppSidebar() {
               </CollapsibleContent>
             </Collapsible>
           </SidebarGroup>
-        </SidebarContent>
+
+          {/* Shared projects */}
+          {recentShared.length > 0 && (
+            <SidebarGroup>
+              <SidebarGroupLabel className="flex items-center gap-2">
+                <Share2 className="h-3.5 w-3.5" />
+                Gedeeld met mij
+              </SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {recentShared.map((project: any) => {
+                    const projectPath = `/project/${project.id}`;
+                    const active = location.pathname.startsWith(projectPath);
+                    return (
+                      <SidebarMenuItem key={project.id}>
+                        <SidebarMenuButton
+                          onClick={() => navigate(projectPath)}
+                          className={active ? "bg-sidebar-accent text-sidebar-primary font-medium" : ""}
+                          title={project.naam}
+                        >
+                          <Share2 className="h-4 w-4 mr-2 shrink-0 text-sidebar-foreground/50" />
+                          {!collapsed && (
+                            <span className="truncate text-sm">{project.naam}</span>
+                          )}
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          )}
 
         <SidebarFooter className="p-4">
           {!collapsed && (
