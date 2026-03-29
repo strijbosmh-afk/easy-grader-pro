@@ -1,6 +1,6 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import JSZip from "jszip";
+import * as JSZip from "jszip";
 import { saveAs } from "file-saver";
 
 const COLORS = {
