@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -20,6 +20,18 @@ const Index = () => {
   const [newProjectName, setNewProjectName] = useState("");
   const [selectedProvider, setSelectedProvider] = useState<string>("lovable");
   const [dialogOpen, setDialogOpen] = useState(false);
+
+  // Claim orphaned projects (from before user_id was added)
+  useEffect(() => {
+    if (!user) return;
+    const claimOrphans = async () => {
+      await supabase
+        .from("projects")
+        .update({ user_id: user.id })
+        .is("user_id", null);
+    };
+    claimOrphans();
+  }, [user]);
 
   const { data: projects, isLoading } = useQuery({
     queryKey: ["projects"],

@@ -91,6 +91,60 @@ export type Database = {
         }
         Relationships: []
       }
+      score_audit_log: {
+        Row: {
+          change_type: string
+          created_at: string
+          criterium_id: string
+          id: string
+          new_opmerkingen: string | null
+          new_score: number | null
+          old_opmerkingen: string | null
+          old_score: number | null
+          student_id: string
+          user_id: string | null
+        }
+        Insert: {
+          change_type?: string
+          created_at?: string
+          criterium_id: string
+          id?: string
+          new_opmerkingen?: string | null
+          new_score?: number | null
+          old_opmerkingen?: string | null
+          old_score?: number | null
+          student_id: string
+          user_id?: string | null
+        }
+        Update: {
+          change_type?: string
+          created_at?: string
+          criterium_id?: string
+          id?: string
+          new_opmerkingen?: string | null
+          new_score?: number | null
+          old_opmerkingen?: string | null
+          old_score?: number | null
+          student_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "score_audit_log_criterium_id_fkey"
+            columns: ["criterium_id"]
+            isOneToOne: false
+            referencedRelation: "grading_criteria"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "score_audit_log_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       student_scores: {
         Row: {
           ai_detail_feedback: string | null
@@ -135,60 +189,6 @@ export type Database = {
             columns: ["student_id"]
             isOneToOne: false
             referencedRelation: "students"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      score_audit_log: {
-        Row: {
-          id: string
-          student_id: string
-          criterium_id: string
-          user_id: string | null
-          old_score: number | null
-          new_score: number | null
-          old_opmerkingen: string | null
-          new_opmerkingen: string | null
-          change_type: string
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          student_id: string
-          criterium_id: string
-          user_id?: string | null
-          old_score?: number | null
-          new_score?: number | null
-          old_opmerkingen?: string | null
-          new_opmerkingen?: string | null
-          change_type?: string
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          student_id?: string
-          criterium_id?: string
-          user_id?: string | null
-          old_score?: number | null
-          new_score?: number | null
-          old_opmerkingen?: string | null
-          new_opmerkingen?: string | null
-          change_type?: string
-          created_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "score_audit_log_student_id_fkey"
-            columns: ["student_id"]
-            isOneToOne: false
-            referencedRelation: "students"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "score_audit_log_criterium_id_fkey"
-            columns: ["criterium_id"]
-            isOneToOne: false
-            referencedRelation: "grading_criteria"
             referencedColumns: ["id"]
           },
         ]
