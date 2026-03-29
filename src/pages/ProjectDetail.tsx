@@ -337,6 +337,26 @@ const ProjectDetail = () => {
     }
   };
 
+  // Auto-extract education context from assignment
+  const [extractedContext, setExtractedContext] = useState<string | null>(null);
+  const [extractingContext, setExtractingContext] = useState(false);
+
+  const extractEducationContext = async (pdfUrl: string) => {
+    setExtractingContext(true);
+    try {
+      const { data, error } = await invokeEdgeFunction("extract-context", {
+        body: { pdfUrl },
+      });
+      if (error || !data?.context) return;
+      setExtractedContext(data.context);
+      toast.info("Onderwijscontext geëxtraheerd uit de opdracht — bekijk de suggestie bij Instellingen.", { duration: 5000 });
+    } catch {
+      // Silent fail — extraction is a nice-to-have
+    } finally {
+      setExtractingContext(false);
+    }
+  };
+
   const [batchAnalyzing, setBatchAnalyzing] = useState(false);
   const [reAnalyzing, setReAnalyzing] = useState(false);
   const [reAnalyzeNiveau, setReAnalyzeNiveau] = useState("streng");
