@@ -155,6 +155,7 @@ export type Database = {
           created_at: string
           custom_instructions: string | null
           education_context: string | null
+          feedback_language: string
           graderingstabel_pdf_url: string | null
           id: string
           is_demo: boolean
@@ -171,6 +172,7 @@ export type Database = {
           created_at?: string
           custom_instructions?: string | null
           education_context?: string | null
+          feedback_language?: string
           graderingstabel_pdf_url?: string | null
           id?: string
           is_demo?: boolean
@@ -187,6 +189,7 @@ export type Database = {
           created_at?: string
           custom_instructions?: string | null
           education_context?: string | null
+          feedback_language?: string
           graderingstabel_pdf_url?: string | null
           id?: string
           is_demo?: boolean

@@ -760,6 +760,35 @@ const ProjectDetail = () => {
             </CardContent>
           </Card>
 
+          {/* Feedbacktaal */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
+                <Settings className="h-4 w-4" />
+                Feedbacktaal
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Select
+                value={(project as any).feedback_language || "nl"}
+                onValueChange={(value) => {
+                  updateProject.mutateAsync({ feedback_language: value } as any);
+                  toast.success("Feedbacktaal opgeslagen");
+                }}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="nl">Nederlands</SelectItem>
+                  <SelectItem value="en">English</SelectItem>
+                  <SelectItem value="fr">Français</SelectItem>
+                  <SelectItem value="de">Deutsch</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">De taal waarin de AI feedback schrijft aan studenten</p>
+            </CardContent>
+          </Card>
           {/* Onderwijscontext */}
           <Card className="lg:col-span-4">
             <CardHeader className="pb-3">

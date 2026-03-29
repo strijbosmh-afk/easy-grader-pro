@@ -221,7 +221,19 @@ SCORE ANCHORING — VERPLICHT PROCES PER CRITERIUM:
   // --- SCORING SYSTEM SUMMARY ---
   const scoringSummary = project.scoring_system_summary;
 
+  // --- FEEDBACK LANGUAGE INSTRUCTION ---
+  const feedbackLang = project.feedback_language || "nl";
+  const langInstructions: Record<string, string> = {
+    nl: "Schrijf alle feedback, detail_feedback en eindscore_feedback in het Nederlands.",
+    en: "Write all feedback, detail_feedback and eindscore_feedback in English.",
+    fr: "Rédigez tous les feedback, detail_feedback et eindscore_feedback en français.",
+    de: "Schreibe alle feedback, detail_feedback und eindscore_feedback auf Deutsch.",
+  };
+  const langInstruction = langInstructions[feedbackLang] || langInstructions["nl"];
+
   let systemPrompt = `${contextBlock}
+
+${langInstruction}
 
 ${niveauInstructies[niveau] || niveauInstructies["streng"]}`;
 

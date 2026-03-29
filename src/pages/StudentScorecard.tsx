@@ -577,6 +577,11 @@ const StudentScorecard = () => {
                   <CardTitle className="text-base flex items-center gap-2">
                     <Bot className="h-4 w-4" />
                     AI Feedback
+                    {(project as any)?.feedback_language && (project as any).feedback_language !== "nl" && (
+                      <Badge variant="outline" className="text-[10px] ml-1">
+                        {{ en: "EN", fr: "FR", de: "DE" }[(project as any).feedback_language] || "NL"}
+                      </Badge>
+                    )}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
