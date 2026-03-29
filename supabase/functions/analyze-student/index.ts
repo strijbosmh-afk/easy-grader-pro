@@ -500,7 +500,7 @@ async function callAnthropicAI(systemPrompt: string, contentParts: any[], retryC
       },
       body: JSON.stringify({
         model: "claude-sonnet-4-20250514",
-        max_tokens: 4096,
+        max_tokens: 16000,
         // Extended thinking — temperature must NOT be set, tool_choice must be "auto" or absent
         thinking: { type: "enabled", budget_tokens: 10000 },
         system: systemPrompt,
