@@ -779,40 +779,45 @@ serve(async (req) => {
     const subCriteria = existingCriteria?.filter((c: any) => !c.is_eindscore) || [];
     const eindscoreCriterium = existingCriteria?.find((c: any) => c.is_eindscore);
 
-    // Download PDFs — use pre-fetched base64 when available (batch mode)
-    console.log("Downloading PDFs...");
-    const pdfPromises: Promise<string>[] = [];
-    const pdfLabels: string[] = [];
+    // Download documents — use pre-fetched base64 when available (batch mode)
+    console.log("Downloading documents...");
+    const docPromises: Promise<string>[] = [];
+    const docLabels: string[] = [];
+    const docUrls: string[] = [];
 
     if (project.graderingstabel_pdf_url) {
-      pdfPromises.push(
+      docPromises.push(
         cachedGraderingstabelBase64
           ? Promise.resolve(cachedGraderingstabelBase64)
-          : fetchPdfAsBase64(project.graderingstabel_pdf_url, supabase)
+          : fetchDocAsBase64(project.graderingstabel_pdf_url, supabase)
       );
-      pdfLabels.push("graderingstabel");
+      docLabels.push("graderingstabel");
+      docUrls.push(project.graderingstabel_pdf_url);
     }
     if (project.opdracht_pdf_url) {
-      pdfPromises.push(
+      docPromises.push(
         cachedOpdrachtBase64
           ? Promise.resolve(cachedOpdrachtBase64)
-          : fetchPdfAsBase64(project.opdracht_pdf_url, supabase)
+          : fetchDocAsBase64(project.opdracht_pdf_url, supabase)
       );
-      pdfLabels.push("opdracht");
+      docLabels.push("opdracht");
+      docUrls.push(project.opdracht_pdf_url);
     }
-    pdfPromises.push(fetchPdfAsBase64(student.pdf_url, supabase));
-    pdfLabels.push("student");
+    docPromises.push(fetchDocAsBase64(student.pdf_url, supabase));
+    docLabels.push("student");
+    docUrls.push(student.pdf_url);
 
-    const pdfBase64s = await Promise.all(pdfPromises);
-    console.log("PDFs loaded:", pdfLabels.join(", "), cachedGraderingstabelBase64 ? "(graderingstabel from cache)" : "");
+    const docBase64s = await Promise.all(docPromises);
+    console.log("Documents loaded:", docLabels.join(", "), cachedGraderingstabelBase64 ? "(graderingstabel from cache)" : "");
 
     // Build multimodal content
     const contentParts: any[] = [];
-    for (let i = 0; i < pdfBase64s.length; i++) {
-      contentParts.push({ type: "text", text: `--- ${pdfLabels[i].toUpperCase()} PDF ---` });
+    for (let i = 0; i < docBase64s.length; i++) {
+      const mimeType = detectMimeType(docUrls[i]);
+      contentParts.push({ type: "text", text: `--- ${docLabels[i].toUpperCase()} DOCUMENT ---` });
       contentParts.push({
         type: "image_url",
-        image_url: { url: `data:application/pdf;base64,${pdfBase64s[i]}` },
+        image_url: { url: `data:${mimeType};base64,${docBase64s[i]}` },
       });
     }
 
