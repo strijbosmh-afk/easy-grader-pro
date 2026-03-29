@@ -62,6 +62,28 @@ export function AppSidebar() {
     },
   });
 
+  // Fetch shared projects
+  const { data: sharedProjects } = useQuery({
+    queryKey: ["shared-projects", user?.id],
+    queryFn: async () => {
+      const { data: shares, error: sharesError } = await supabase
+        .from("project_shares")
+        .select("project_id")
+        .eq("shared_with_user_id", user!.id);
+      if (sharesError) throw sharesError;
+      if (!shares || shares.length === 0) return [];
+      const projectIds = shares.map((s: any) => s.project_id);
+      const { data, error } = await supabase
+        .from("projects")
+        .select("*, students(id, status)")
+        .in("id", projectIds)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user?.id,
+  });
+
   const createProject = useMutation({
     mutationFn: async (naam: string) => {
       const { data, error } = await supabase.from("projects").insert({ naam, ai_provider: selectedProvider, user_id: user?.id }).select().single();
@@ -82,6 +104,7 @@ export function AppSidebar() {
   const isActive = (path: string) => location.pathname === path;
 
   const recentProjects = projects?.filter((p: any) => !p.archived).slice(0, 8) || [];
+  const recentShared = sharedProjects?.filter((p: any) => !p.archived).slice(0, 5) || [];
 
   return (
     <>
