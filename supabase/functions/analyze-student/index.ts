@@ -16,17 +16,14 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
 }
 
 function extractStoragePath(url: string): string | null {
-  // Match /storage/v1/object/(public|sign)/pdfs/...
   const match = url.match(/\/storage\/v1\/object\/(?:public|sign)\/pdfs\/(.+?)(?:\?|$)/);
   if (match) return match[1];
-  // Match /object/(public|sign)/pdfs/...
   const match2 = url.match(/\/object\/(?:public|sign)\/pdfs\/(.+?)(?:\?|$)/);
   if (match2) return match2[1];
   return null;
 }
 
 async function fetchPdfAsBase64(url: string, supabaseClient?: any): Promise<string> {
-  // Try to download from Supabase storage directly using the service role client
   if (supabaseClient) {
     const storagePath = extractStoragePath(url);
     if (storagePath) {
@@ -38,7 +35,6 @@ async function fetchPdfAsBase64(url: string, supabaseClient?: any): Promise<stri
       console.warn(`Storage download failed for ${storagePath}, falling back to URL fetch:`, error?.message);
     }
   }
-  // Fallback: fetch via URL
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Failed to fetch PDF: ${res.status}`);
   const buffer = await res.arrayBuffer();
@@ -83,11 +79,9 @@ function findBestMatch(aiName: string, criteria: any[]): any | null {
 }
 
 function parseScoreValue(rawScore: unknown): number {
-  // If the AI already returned a proper number, trust it directly.
   if (typeof rawScore === "number" && Number.isFinite(rawScore)) return rawScore;
 
   const rawText = typeof rawScore === "string" ? rawScore : String(rawScore ?? "");
-  // Support comma-as-decimal (e.g. "7,5" → 7.5)
   const normalized = rawText.replace(/,/g, ".");
   const matches = normalized.match(/-?\d+(?:\.\d+)?/g);
 
@@ -99,9 +93,52 @@ function parseScoreValue(rawScore: unknown): number {
 
   if (parsedNumbers.length === 0) return 0;
 
-  // Return the first number found. The AI is responsible for returning the
-  // correct value based on the grading table — no client-side overrides needed.
   return parsedNumbers[0];
+}
+
+// --- SCORE VALIDATION ---
+function validateAndClampScores(
+  aiCriteria: any[],
+  dbCriteria: any[]
+): { validated: any[]; warnings: string[] } {
+  const warnings: string[] = [];
+  const dbMap = new Map(dbCriteria.map(c => [c.id, c]));
+
+  const validated = aiCriteria.map(ac => {
+    // Try to find the DB criterion by matched criterium_id
+    const dbCrit = dbMap.get(ac._matched_db_id || ac.criterium_id);
+    if (!dbCrit) return ac;
+
+    let score = parseScoreValue(ac.score);
+    const maxScore = dbCrit.max_score;
+
+    // Clamp to valid range
+    if (score > maxScore) {
+      warnings.push(`Score ${score} voor "${dbCrit.criterium_naam}" overschrijdt max ${maxScore}. Aangepast naar ${maxScore}.`);
+      score = maxScore;
+    }
+    const hasNegative = dbCrit.rubric_levels?.some((l: any) => l.score < 0);
+    if (score < 0 && !hasNegative) {
+      warnings.push(`Negatieve score ${score} voor "${dbCrit.criterium_naam}" aangepast naar 0.`);
+      score = 0;
+    }
+
+    // Validate against discrete rubric levels
+    if (dbCrit.rubric_levels && Array.isArray(dbCrit.rubric_levels) && dbCrit.rubric_levels.length > 0) {
+      const validScores = dbCrit.rubric_levels.map((l: any) => l.score);
+      if (!validScores.includes(score)) {
+        const nearest = validScores.reduce((prev: number, curr: number) =>
+          Math.abs(curr - score) < Math.abs(prev - score) ? curr : prev
+        );
+        warnings.push(`Score ${score} voor "${dbCrit.criterium_naam}" is geen geldig rubric-niveau [${validScores.join(', ')}]. Aangepast naar ${nearest}.`);
+        score = nearest;
+      }
+    }
+
+    return { ...ac, score };
+  });
+
+  return { validated, warnings };
 }
 
 function buildPromptParts(project: any, student: any, subCriteria: any[], eindscoreCriterium: any, niveau: string, customInstructions?: string) {
@@ -111,11 +148,16 @@ function buildPromptParts(project: any, student: any, subCriteria: any[], eindsc
     mild: `Beoordeel stimulerend en positief: benadruk wat goed gaat. Een gemiddelde student scoort rond de 70-80% van het maximum.`,
   };
 
+  // --- ADAPTIVE DOMAIN-AWARE CONTEXT ---
+  const educationContext = project.education_context;
+  const contextBlock = educationContext
+    ? `Je bent een ervaren docent die studentwerk beoordeelt.\n\nCONTEXT VAN DE DOCENT OVER DE OPLEIDING EN STUDENTEN:\n${educationContext}\n\nGebruik deze context om je beoordeling te kaderen. Pas je taalgebruik, diepgang en verwachtingsniveau aan op basis van het opleidingsniveau en -type dat hierboven beschreven is.`
+    : `Je bent een ervaren docent die studentwerk beoordeelt. Pas je verwachtingsniveau aan op basis van de graderingstabel en het type opdracht dat je uit de documenten afleidt.`;
+
   let instruction: string;
   if (subCriteria.length > 0) {
     const criteriaList = subCriteria.map((c: any, idx: number) => {
       let line = `${idx + 1}. [ID: ${c.id}] "${c.criterium_naam}" — max score: ${c.max_score}`;
-      // Include structured rubric levels if available
       if (c.rubric_levels && Array.isArray(c.rubric_levels) && c.rubric_levels.length > 0) {
         const levels = c.rubric_levels.map((l: any) => `    Score ${l.score}: ${l.description}`).join("\n");
         line += `\n  Scoreniveaus:\n${levels}`;
@@ -125,11 +167,21 @@ function buildPromptParts(project: any, student: any, subCriteria: any[], eindsc
 
     let eindscoreInstructie = "";
     if (eindscoreCriterium) {
-      eindscoreInstructie = `\n\nDaarnaast moet je ook een EINDSCORE geven:
-- [ID: ${eindscoreCriterium.id}] Criterium: "${eindscoreCriterium.criterium_naam}" — max score: ${eindscoreCriterium.max_score}
-- Dit is de uiteindelijke beoordeling van het werk als geheel op /${eindscoreCriterium.max_score}.
-- De eindscore is NIET simpelweg het gemiddelde van de deelscores, maar een holistische beoordeling.
-- Volg de graderingstabel om te bepalen welke score past.`;
+      eindscoreInstructie = `
+
+EINDSCORE — [ID: ${eindscoreCriterium.id}] "${eindscoreCriterium.criterium_naam}" — max score: ${eindscoreCriterium.max_score}
+Dit is de uiteindelijke beoordeling als geheel.
+
+EINDSCORE BEREKENING — VERPLICHT PROCES:
+1. Controleer EERST of de graderingstabel een FORMULE of WEGING bevat voor de eindscore (bijv. "Totaal = 40% X + 30% Y + 30% Z", of een optelsom).
+2. Als er een formule is: BEREKEN de eindscore volgens die formule op basis van je deelscores. Vermeld de formule EN de berekening in je motivatie.
+3. Als er GEEN formule is: geef een holistische eindscore die coherent is met de deelscores. Als je eindscore meer dan 15% afwijkt van het ongewogen gemiddelde van de deelscores (genormaliseerd naar de eindscoreschaal), MOET je expliciet motiveren waarom.
+4. De eindscore mag NOOIT hoger zijn dan max_score (${eindscoreCriterium.max_score}).
+5. Als de graderingstabel rubric-niveaus voor de eindscore definieert, kies dan EXACT een van die niveaus.`;
+      if (eindscoreCriterium.rubric_levels && Array.isArray(eindscoreCriterium.rubric_levels) && eindscoreCriterium.rubric_levels.length > 0) {
+        const levels = eindscoreCriterium.rubric_levels.map((l: any) => `    Score ${l.score}: ${l.description}`).join("\n");
+        eindscoreInstructie += `\n  Scoreniveaus eindscore:\n${levels}`;
+      }
     }
 
     instruction = `Beoordeel het werk van student "${student.naam}".
@@ -148,6 +200,16 @@ KRITISCH BELANGRIJK — SCORES UIT DE GRADERINGSTABEL:
 - Je MOET ALLE ${subCriteria.length} criteria beoordelen. Sla er GEEN over.
 - Lees het studentwerk zorgvuldig en beoordeel op basis van de inhoud.
 
+SCORE ANCHORING — VERPLICHT PROCES PER CRITERIUM:
+1. Lees het studentwerk voor dit criterium.
+2. Bekijk ALLE gedefinieerde scoreniveaus in de rubric hierboven.
+3. Vergelijk het studentwerk met ELKE niveaubeschrijving, van hoog naar laag.
+4. Kies het niveau dat het BEST overeenkomt. Citeer de niveaubeschrijving in je motivatie.
+5. Ken EXACT die score toe — NOOIT een tussenwaarde die niet in de rubric staat.
+6. Als het werk tussen twee niveaus valt, kies het LAGERE niveau en leg uit wat ontbrak voor het hogere niveau.
+7. Vermeld in je motivatie: "Scoreniveau: [gekozen score] — [begin van de niveaubeschrijving]"
+8. Als er GEEN rubric-niveaus gedefinieerd zijn voor een criterium, gebruik dan de max_score als bovengrens en scoor op een geheel getal. Motiveer waarom je dit percentage van het maximum geeft.
+
 - BELANGRIJK: Gebruik het ID (het UUID tussen [ID: ...]) als "criterium_id" in je antwoord. Dit is VERPLICHT.`;
   } else {
     instruction = `Analyseer het werk van student "${student.naam}".
@@ -156,9 +218,23 @@ KRITISCH BELANGRIJK — SCORES UIT DE GRADERINGSTABEL:
 3. Als er een eindcijfer/totaalscore in de tabel staat, geef dat ook.`;
   }
 
-  const systemPrompt = `Je bent een ervaren docent die studentwerk beoordeelt. Je leest de documenten grondig.
+  // --- SCORING SYSTEM SUMMARY ---
+  const scoringSummary = project.scoring_system_summary;
 
-${niveauInstructies[niveau] || niveauInstructies["streng"]}
+  let systemPrompt = `${contextBlock}
+
+${niveauInstructies[niveau] || niveauInstructies["streng"]}`;
+
+  if (scoringSummary) {
+    systemPrompt += `
+
+VOORANALYSE VAN HET SCORINGSSYSTEEM:
+Het scoringssysteem van deze graderingstabel is als volgt samengevat:
+${scoringSummary}
+Gebruik deze samenvatting als leidraad, maar controleer ALTIJD de originele graderingstabel PDF als de definitieve bron.`;
+  }
+
+  systemPrompt += `
 
 SCORESCHAAL — LEES DE GRADERINGSTABEL:
 - De graderingstabel PDF bepaalt welke scores mogelijk zijn per criterium. Bestudeer dit ZEER zorgvuldig.
@@ -182,15 +258,28 @@ SCHRIJFSTIJL MOTIVATIE:
 - Schrijf gewone, vloeiende zinnen en alinea's.
 - Vermijd AI-typische labels zoals "Aandachtspunten:", "Sterke punten:", "Samenvatting:" als kopjes.
 
-DETAIL FEEDBACK (BLAUWE TEKST INSTRUCTIES):
-- De graderingstabel bevat per criterium vaak specifieke instructies (vaak in blauw) over wat je moet rapporteren.
-- Volg deze instructies LETTERLIJK en plaats het resultaat in het veld "detail_feedback".
-- Voorbeelden van zulke instructies: "geef een opsomming van de taalfouten", "geef aan welke ideeën niet duidelijk waren", "noem de ontbrekende onderdelen".
-- In de detail_feedback: geef ALTIJD concrete voorbeelden met paginanummer en regelnummer.
-- Formaat: beschrijf elk punt op een nieuwe regel, bijv: "Pagina 3, regel 12: spelfout 'beinvloed' moet 'beïnvloed' zijn."
-- BELANGRIJK: Geef voor IEDER criterium detail_feedback. Als er niets te verbeteren is, schrijf dan expliciet: "Geen verbeterpunten gevonden. Het werk voldoet aan alle vereisten voor dit criterium."
-- Laat detail_feedback NOOIT leeg. Elk criterium krijgt feedback.
-- Schrijf GEEN markdown in detail_feedback. Gewone tekst met regels.${customInstructions ? `
+CONSTRUCTIEVE FEEDBACK:
+- Begin elke motivatie met wat de student GOED heeft gedaan (minimaal 1 concreet positief punt).
+- Geef daarna concrete verbeterpunten met SPECIFIEKE verwijzingen naar het werk (paginanummer, paragraaf, citaat).
+- Eindig met een ontwikkelingsgericht advies: wat kan de student concreet doen om te verbeteren?
+- Vermijd vage feedback zoals "goed werk" of "kan beter". Wees SPECIFIEK en VERIFIEERBAAR.
+- Pas je taalgebruik aan op het niveau van de studenten (zoals beschreven in de onderwijscontext hierboven).
+- Wees respectvol — dit zijn studenten in opleiding, geen afgestudeerde professionals.
+- BELANGRIJK: Elk punt in je feedback moet VERIFIEERBAAR zijn door naar het studentwerk te kijken. Fabriceer NOOIT paginaverwijzingen of citaten die niet in het document staan.
+
+DETAIL FEEDBACK — VERPLICHT EN SPECIFIEK:
+- De graderingstabel bevat per criterium vaak SPECIFIEKE INSTRUCTIES (vaak in gekleurd lettertype of apart blok). Deze instructies zijn ABSOLUUT VERPLICHT op te volgen.
+- SCAN de graderingstabel SYSTEMATISCH op gekleurde tekst, kaders, vetgedrukte instructies en speciale aanwijzingen per criterium.
+- Voorbeelden van typische instructies die je LETTERLIJK moet opvolgen:
+  * "Geef een opsomming van de taalfouten (met paginanummer en regelnummer)" → Noem ELKE fout met exacte locatie.
+  * "Geef aan welke ideeën niet duidelijk waren (met paginanummers)" → Citeer de onduidelijke passages.
+  * "Noem de ontbrekende onderdelen/bronnen" → Maak een volledige lijst.
+  * "Indien niet 'sterk': [instructie]" → Controleer of de score het hoogste niveau is; zo niet, volg de instructie.
+- In detail_feedback: gebruik ALTIJD het format "Pagina X, [regel/alinea] Y: [bevinding]".
+- Geef voor IEDER criterium detail_feedback. Als er niets te verbeteren is: "Geen specifieke verbeterpunten. Het werk voldoet aan alle vereisten voor dit criterium."
+- LAAT detail_feedback NOOIT LEEG. Elk criterium MOET feedback krijgen.
+- Schrijf GEEN markdown in detail_feedback. Gebruik gewone tekst met regelovergangen.
+- KRITISCH: Verwijs ALLEEN naar pagina's/regels die je DAADWERKELIJK in het document hebt gezien. Fabriceer NOOIT verwijzingen. Als je een paginanummer niet zeker weet, schrijf dan "in het document staat..." zonder een specifiek nummer te noemen.${customInstructions ? `
 
 AANGEPASTE INSTRUCTIES VAN DE DOCENT — DEZE HEBBEN ABSOLUTE VOORRANG:
 De docent heeft de volgende SPECIFIEKE instructies gegeven die je STRIKT moet opvolgen. Deze instructies overschrijven ALLE andere richtlijnen als er een conflict is. Volg ze LETTERLIJK:
@@ -198,7 +287,6 @@ De docent heeft de volgende SPECIFIEKE instructies gegeven die je STRIKT moet op
 ${customInstructions}
 
 HERHALING: Bovenstaande docent-instructies hebben VOORRANG boven alle andere regels in deze prompt. Als de docent zegt dat een criterium een specifieke score moet krijgen, volg dat dan EXACT.` : ""}`;
-
 
   return { instruction, systemPrompt };
 }
@@ -222,8 +310,13 @@ const toolSchema = {
               score: { type: "number" },
               motivatie: { type: "string", description: "Korte motivatie voor de score" },
               detail_feedback: { type: "string", description: "Gedetailleerde feedback op basis van de instructies in de graderingstabel (blauwe tekst). Bevat concrete voorbeelden met paginanummers en regelnummers. Laat leeg als er geen specifieke instructies zijn voor dit criterium." },
+              confidence: {
+                type: "string",
+                enum: ["high", "medium", "low"],
+                description: "Hoe zeker ben je van deze score? 'low' als het studentwerk onduidelijk is, de rubric ambigu is, of het werk dit criterium nauwelijks behandelt."
+              },
             },
-            required: ["criterium_id", "naam", "max_score", "score", "motivatie", "detail_feedback"],
+            required: ["criterium_id", "naam", "max_score", "score", "motivatie", "detail_feedback", "confidence"],
             additionalProperties: false,
           },
         },
@@ -235,46 +328,84 @@ const toolSchema = {
   },
 };
 
+// --- TWO-PHASE GRADING: LOVABLE/GEMINI ---
 async function callLovableAI(systemPrompt: string, contentParts: any[]) {
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
   if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
-  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+  const headers = {
+    Authorization: `Bearer ${LOVABLE_API_KEY}`,
+    "Content-Type": "application/json",
+  };
+
+  // Phase 1: Analysis without tool — ask for reasoning only
+  console.log("Lovable Phase 1: Analysis...");
+  const phase1Response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${LOVABLE_API_KEY}`,
-      "Content-Type": "application/json",
-    },
+    headers,
     body: JSON.stringify({
       model: "google/gemini-2.5-flash",
-      temperature: 0,
+      temperature: 0.2,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: [
+          ...contentParts,
+          { type: "text", text: "Lees eerst het studentwerk grondig. Schrijf per criterium een korte analyse: wat heeft de student goed gedaan, wat ontbreekt, welk rubric-niveau past het best en waarom. Citeer specifieke passages uit het werk (met paginanummer). Geef NOG GEEN scores — alleen je analyse." },
+        ]},
+      ],
+    }),
+  });
+
+  if (!phase1Response.ok) {
+    const errText = await phase1Response.text();
+    console.error("Lovable Phase 1 error:", phase1Response.status, errText);
+    if (phase1Response.status === 429) throw { status: 429, message: "AI is tijdelijk overbelast" };
+    if (phase1Response.status === 402) throw { status: 402, message: "AI credits op" };
+    throw new Error(`AI analyse mislukt (fase 1): ${phase1Response.status}`);
+  }
+
+  const phase1Data = await phase1Response.json();
+  const analysisText = phase1Data.choices?.[0]?.message?.content || "";
+  console.log("Phase 1 analysis length:", analysisText.length, "chars");
+
+  // Phase 2: Scoring with tool — include the analysis as context
+  console.log("Lovable Phase 2: Scoring...");
+  const phase2Response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      model: "google/gemini-2.5-flash",
+      temperature: 0.2,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: contentParts },
+        { role: "assistant", content: analysisText },
+        { role: "user", content: "Op basis van je analyse hierboven, geef nu je definitieve scores via de submit_grading tool." },
       ],
       tools: [toolSchema],
       tool_choice: { type: "function", function: { name: "submit_grading" } },
     }),
   });
 
-  if (!response.ok) {
-    const errText = await response.text();
-    console.error("Lovable AI error:", response.status, errText);
-    if (response.status === 429) throw { status: 429, message: "AI is tijdelijk overbelast" };
-    if (response.status === 402) throw { status: 402, message: "AI credits op" };
-    throw new Error(`AI analyse mislukt: ${response.status}`);
+  if (!phase2Response.ok) {
+    const errText = await phase2Response.text();
+    console.error("Lovable Phase 2 error:", phase2Response.status, errText);
+    if (phase2Response.status === 429) throw { status: 429, message: "AI is tijdelijk overbelast" };
+    if (phase2Response.status === 402) throw { status: 402, message: "AI credits op" };
+    throw new Error(`AI analyse mislukt (fase 2): ${phase2Response.status}`);
   }
 
-  const data = await response.json();
-  return parseAIResponse(data);
+  const phase2Data = await phase2Response.json();
+  return parseAIResponse(phase2Data);
 }
 
+// --- TWO-PHASE GRADING: ANTHROPIC/CLAUDE with Extended Thinking ---
 async function callAnthropicAI(systemPrompt: string, contentParts: any[], retryCount = 0): Promise<any> {
   const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
   if (!ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY niet geconfigureerd");
 
   const MAX_RETRIES = 1;
-  const TIMEOUT_MS = 280_000; // 280 seconds
+  const TIMEOUT_MS = 280_000;
 
   // Convert contentParts to Anthropic format
   const anthropicContent: any[] = [];
@@ -297,7 +428,7 @@ async function callAnthropicAI(systemPrompt: string, contentParts: any[], retryC
   const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
   try {
-    console.log(`Anthropic call attempt ${retryCount + 1}/${MAX_RETRIES + 1}...`);
+    console.log(`Anthropic call attempt ${retryCount + 1}/${MAX_RETRIES + 1} (with extended thinking)...`);
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
@@ -307,8 +438,9 @@ async function callAnthropicAI(systemPrompt: string, contentParts: any[], retryC
       },
       body: JSON.stringify({
         model: "claude-sonnet-4-20250514",
-        max_tokens: 8192,
-        temperature: 0,
+        max_tokens: 16000,
+        // Extended thinking enabled — temperature must NOT be set
+        thinking: { type: "enabled", budget_tokens: 10000 },
         system: systemPrompt,
         messages: [{ role: "user", content: anthropicContent }],
         tools: [{
@@ -382,11 +514,79 @@ function parseAIResponse(aiData: any) {
   throw new Error("Kon AI antwoord niet verwerken");
 }
 
+// --- SCORE MATCHING HELPER ---
+function matchAndBuildScores(
+  result: any,
+  existingCriteria: any[],
+  studentId: string,
+): {
+  scoresToInsert: any[];
+  matchedCount: number;
+  unmatchedAiCriteria: string[];
+  unmatchedDbCriteria: string[];
+} {
+  let matchedCount = 0;
+  const usedCriteria = new Set<string>();
+  const unmatchedAiCriteria: string[] = [];
+  const unmatchedDbCriteria: string[] = [];
+  const scoresToInsert: any[] = [];
+
+  const validCriteriaIds = new Set(existingCriteria.map((c: any) => c.id));
+
+  for (const aiCriterium of result.criteria) {
+    const criteriumId = aiCriterium.criterium_id;
+    if (criteriumId && validCriteriaIds.has(criteriumId) && !usedCriteria.has(criteriumId)) {
+      usedCriteria.add(criteriumId);
+      scoresToInsert.push({
+        student_id: studentId,
+        criterium_id: criteriumId,
+        ai_suggested_score: parseScoreValue(aiCriterium.score),
+        ai_motivatie: aiCriterium.motivatie,
+        ai_detail_feedback: aiCriterium.detail_feedback || null,
+        ai_confidence: aiCriterium.confidence || null,
+      });
+      matchedCount++;
+    } else {
+      const matched = findBestMatch(aiCriterium.naam, existingCriteria.filter((c: any) => !usedCriteria.has(c.id)));
+      if (matched) {
+        usedCriteria.add(matched.id);
+        scoresToInsert.push({
+          student_id: studentId,
+          criterium_id: matched.id,
+          ai_suggested_score: parseScoreValue(aiCriterium.score),
+          ai_motivatie: aiCriterium.motivatie,
+          ai_detail_feedback: aiCriterium.detail_feedback || null,
+          ai_confidence: aiCriterium.confidence || null,
+        });
+        matchedCount++;
+      } else {
+        console.warn("No match for AI criterion:", aiCriterium.naam, "ID:", criteriumId);
+        unmatchedAiCriteria.push(aiCriterium.naam);
+      }
+    }
+  }
+
+  for (const c of existingCriteria) {
+    if (!usedCriteria.has(c.id)) {
+      console.warn("No AI score for criterion:", c.criterium_naam);
+      unmatchedDbCriteria.push(c.criterium_naam);
+      scoresToInsert.push({
+        student_id: studentId,
+        criterium_id: c.id,
+        ai_suggested_score: null,
+        ai_motivatie: `⚠️ De AI heeft dit criterium niet beoordeeld. Controleer of de criterium-naam in de graderingstabel overeenkomt met "${c.criterium_naam}".`,
+        ai_confidence: null,
+      });
+    }
+  }
+
+  return { scoresToInsert, matchedCount, unmatchedAiCriteria, unmatchedDbCriteria };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    // Accept optional pre-fetched PDFs from batch caller to avoid re-downloading per student
     const {
       studentId,
       projectId,
@@ -395,7 +595,6 @@ serve(async (req) => {
       cachedOpdrachtBase64,
     } = await req.json();
 
-    // Extract user from Authorization header
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Niet ingelogd" }), {
@@ -407,7 +606,6 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Verify JWT
     const token = authHeader.replace("Bearer ", "");
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !user) {
@@ -416,11 +614,22 @@ serve(async (req) => {
       });
     }
 
-    const { data: project } = await supabase.from("projects").select("*").eq("id", projectId).eq("user_id", user.id).single();
+    // Check ownership OR shared access
+    const { data: project } = await supabase.from("projects").select("*").eq("id", projectId).single();
     if (!project) {
-      return new Response(JSON.stringify({ error: "Project niet gevonden of geen toegang" }), {
-        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      return new Response(JSON.stringify({ error: "Project niet gevonden" }), {
+        status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+    // Verify access: owner or shared
+    if (project.user_id !== user.id) {
+      const { data: share } = await supabase.from("project_shares")
+        .select("id").eq("project_id", projectId).eq("shared_with_user_id", user.id).single();
+      if (!share) {
+        return new Response(JSON.stringify({ error: "Geen toegang tot dit project" }), {
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     const { data: student } = await supabase.from("students").select("*").eq("id", studentId).single();
@@ -434,8 +643,8 @@ serve(async (req) => {
       .eq("project_id", projectId)
       .order("volgorde", { ascending: true });
 
-    const niveau = niveauOverride || (project as any).beoordelingsniveau || "streng";
-    const aiProvider = (project as any).ai_provider || "lovable";
+    const niveau = niveauOverride || project.beoordelingsniveau || "streng";
+    const aiProvider = project.ai_provider || "lovable";
 
     const subCriteria = existingCriteria?.filter((c: any) => !c.is_eindscore) || [];
     const eindscoreCriterium = existingCriteria?.find((c: any) => c.is_eindscore);
@@ -477,7 +686,7 @@ serve(async (req) => {
       });
     }
 
-    const customInstructions = (project as any).custom_instructions || undefined;
+    const customInstructions = project.custom_instructions || undefined;
     const { instruction, systemPrompt } = buildPromptParts(project, student, subCriteria, eindscoreCriterium, niveau, customInstructions);
     contentParts.push({ type: "text", text: instruction });
 
@@ -521,6 +730,10 @@ serve(async (req) => {
       existingCriteria = inserted;
     }
 
+    // --- VALIDATE AND CLAMP SCORES ---
+    const { validated: validatedCriteria, warnings: validationWarnings } = validateAndClampScores(result.criteria, existingCriteria!);
+    result.criteria = validatedCriteria;
+
     // Fetch old scores before deletion for audit logging
     const { data: oldScores } = await supabase
       .from("student_scores")
@@ -531,59 +744,49 @@ serve(async (req) => {
     // Delete existing scores, then batch-insert new ones
     await supabase.from("student_scores").delete().eq("student_id", studentId);
 
-    let matchedCount = 0;
-    const usedCriteria = new Set<string>();
-    const unmatchedAiCriteria: string[] = [];
-    const unmatchedDbCriteria: string[] = [];
-    const scoresToInsert: any[] = [];
+    // First pass matching
+    let { scoresToInsert, matchedCount, unmatchedAiCriteria, unmatchedDbCriteria } =
+      matchAndBuildScores(result, existingCriteria!, studentId);
 
-    // Build a lookup of valid criteria IDs for this project
-    const validCriteriaIds = new Set(existingCriteria!.map((c: any) => c.id));
+    // --- RETRY WITH CORRECTIVE FEEDBACK FOR MISSING CRITERIA ---
+    if (unmatchedDbCriteria.length > 0) {
+      console.log(`Missing ${unmatchedDbCriteria.length} criteria after first pass. Retrying with corrective prompt...`);
 
-    for (const aiCriterium of result.criteria) {
-      // Primary: match by ID (the new way)
-      const criteriumId = aiCriterium.criterium_id;
-      if (criteriumId && validCriteriaIds.has(criteriumId) && !usedCriteria.has(criteriumId)) {
-        usedCriteria.add(criteriumId);
-        scoresToInsert.push({
-          student_id: studentId,
-          criterium_id: criteriumId,
-          ai_suggested_score: parseScoreValue(aiCriterium.score),
-          ai_motivatie: aiCriterium.motivatie,
-          ai_detail_feedback: aiCriterium.detail_feedback || null,
-        });
-        matchedCount++;
-      } else {
-        // Fallback: try fuzzy name matching (backward compat for older AI responses)
-        const matched = findBestMatch(aiCriterium.naam, existingCriteria!.filter((c: any) => !usedCriteria.has(c.id)));
-        if (matched) {
-          usedCriteria.add(matched.id);
-          scoresToInsert.push({
-            student_id: studentId,
-            criterium_id: matched.id,
-            ai_suggested_score: parseScoreValue(aiCriterium.score),
-            ai_motivatie: aiCriterium.motivatie,
-            ai_detail_feedback: aiCriterium.detail_feedback || null,
-          });
-          matchedCount++;
+      const missingList = unmatchedDbCriteria.map(name => `- "${name}"`).join('\n');
+      const correctionMessage = {
+        type: "text",
+        text: `CORRECTIE NODIG: Je vorige antwoord miste scores voor de volgende criteria:\n${missingList}\n\nJe MOET voor ALLE ${existingCriteria!.length} criteria een score geven. Analyseer het studentwerk opnieuw voor de ontbrekende criteria en geef een volledige set scores via de submit_grading tool.`
+      };
+
+      const retryParts = [...contentParts, correctionMessage];
+      let retryResult;
+      try {
+        if (aiProvider === "anthropic") {
+          retryResult = await callAnthropicAI(systemPrompt, retryParts);
         } else {
-          console.warn("No match for AI criterion:", aiCriterium.naam, "ID:", criteriumId);
-          unmatchedAiCriteria.push(aiCriterium.naam);
+          retryResult = await callLovableAI(systemPrompt, retryParts);
         }
-      }
-    }
 
-    // Fill unmatched DB criteria with null score and a clear warning message
-    for (const c of existingCriteria!) {
-      if (!usedCriteria.has(c.id)) {
-        console.warn("No AI score for criterion:", c.criterium_naam);
-        unmatchedDbCriteria.push(c.criterium_naam);
-        scoresToInsert.push({
-          student_id: studentId,
-          criterium_id: c.id,
-          ai_suggested_score: null,
-          ai_motivatie: `⚠️ De AI heeft dit criterium niet beoordeeld. Controleer of de criterium-naam in de graderingstabel overeenkomt met "${c.criterium_naam}".`,
-        });
+        const { validated: retryValidated, warnings: retryWarnings } = validateAndClampScores(retryResult.criteria, existingCriteria!);
+        retryResult.criteria = retryValidated;
+        validationWarnings.push(...retryWarnings);
+
+        // Re-run matching with retry result
+        const retryMatch = matchAndBuildScores(retryResult, existingCriteria!, studentId);
+
+        // Use retry result only if it matched more criteria
+        if (retryMatch.matchedCount > matchedCount) {
+          console.log(`Retry improved matching: ${matchedCount} -> ${retryMatch.matchedCount}`);
+          scoresToInsert = retryMatch.scoresToInsert;
+          matchedCount = retryMatch.matchedCount;
+          unmatchedAiCriteria = retryMatch.unmatchedAiCriteria;
+          unmatchedDbCriteria = retryMatch.unmatchedDbCriteria;
+          result = retryResult;
+        } else {
+          console.log("Retry did not improve matching, keeping original result");
+        }
+      } catch (retryErr) {
+        console.warn("Retry failed, keeping original result:", retryErr);
       }
     }
 
@@ -616,15 +819,22 @@ serve(async (req) => {
 
     const hasWarnings = unmatchedDbCriteria.length > 0;
 
+    // Store validation warnings on student
+    if (validationWarnings.length > 0) {
+      await supabase.from("students").update({ ai_validation_warnings: validationWarnings }).eq("id", studentId);
+    }
+
     await supabase.from("students").update({
       status: "reviewed",
       ai_feedback: result.algemene_feedback,
+      ...(validationWarnings.length > 0 ? { ai_validation_warnings: validationWarnings } : { ai_validation_warnings: null }),
     }).eq("id", studentId);
 
     return new Response(JSON.stringify({
       success: true,
       matched: matchedCount,
       total: existingCriteria!.length,
+      validationWarnings: validationWarnings.length > 0 ? validationWarnings : null,
       warnings: hasWarnings ? {
         unmatchedDbCriteria,
         unmatchedAiCriteria,

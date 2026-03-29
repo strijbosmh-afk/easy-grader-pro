@@ -6,7 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, ArrowRight, Loader2, Bot, Check, Download, RefreshCw, FileText, FileDown, ChevronLeft, ChevronRight, Eye, X } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { ArrowLeft, ArrowRight, Loader2, Bot, Check, Download, RefreshCw, FileText, FileDown, ChevronLeft, ChevronRight, Eye, X, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { useState, useEffect, useCallback } from "react";
 import { exportStudentToPdf } from "@/lib/export";
@@ -165,6 +167,7 @@ const StudentScorecard = () => {
       ai_suggested_score: score?.ai_suggested_score,
       ai_motivatie: score?.ai_motivatie,
       ai_detail_feedback: (score as any)?.ai_detail_feedback,
+      ai_confidence: (score as any)?.ai_confidence,
     };
   };
 
@@ -553,6 +556,21 @@ const StudentScorecard = () => {
               </Card>
             )}
 
+            {/* Validation Warnings Alert */}
+            {(student as any).ai_validation_warnings && Array.isArray((student as any).ai_validation_warnings) && (student as any).ai_validation_warnings.length > 0 && (
+              <Alert className="border-amber-400 bg-amber-50 dark:bg-amber-950/30">
+                <AlertTriangle className="h-4 w-4 text-amber-600" />
+                <AlertTitle className="text-amber-800 dark:text-amber-300">Score-validatie</AlertTitle>
+                <AlertDescription className="text-amber-700 dark:text-amber-400">
+                  <ul className="list-disc pl-4 mt-1 space-y-0.5 text-xs">
+                    {(student as any).ai_validation_warnings.map((w: string, i: number) => (
+                      <li key={i}>{w}</li>
+                    ))}
+                  </ul>
+                </AlertDescription>
+              </Alert>
+            )}
+
             {student.ai_feedback && (
               <Card>
                 <CardHeader className="pb-2">
@@ -586,6 +604,30 @@ const StudentScorecard = () => {
                             <div className="flex items-center gap-2 mb-1">
                               <Bot className="h-3 w-3 text-muted-foreground" />
                               <span className="text-xs font-medium text-muted-foreground">AI Suggestie: {ai.ai_suggested_score}/{c.max_score}</span>
+                              {ai.ai_confidence === "low" && (
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger>
+                                      <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p className="text-xs">De AI is onzeker over deze score. Controleer handmatig.</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              )}
+                              {ai.ai_confidence === "medium" && (
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger>
+                                      <AlertTriangle className="h-3.5 w-3.5 text-yellow-400" />
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p className="text-xs">De AI heeft gemiddeld vertrouwen in deze score.</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              )}
                             </div>
                             {ai.ai_motivatie && (
                               <p className="text-xs text-muted-foreground">{ai.ai_motivatie}</p>

@@ -153,6 +153,10 @@ const ProjectDetail = () => {
         if (error) throw error;
         setParsedCriteria(data.criteria || []);
         setParsedSamenvatting(data.samenvatting || "");
+        // Save scoring system summary if returned
+        if (data.scoring_system_summary) {
+          await supabase.from("projects").update({ scoring_system_summary: data.scoring_system_summary } as any).eq("id", id!);
+        }
         setShowGradingDialog(true);
       } catch (err: any) {
         toast.error("Kon graderingstabel niet analyseren: " + (err?.message || "onbekende fout"));
@@ -690,7 +694,31 @@ const ProjectDetail = () => {
             </CardContent>
           </Card>
 
-          {/* Opdracht PDF */}
+          {/* Onderwijscontext */}
+          <Card className="lg:col-span-4">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
+                <Settings className="h-4 w-4" />
+                Onderwijscontext (optioneel)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <textarea
+                className="w-full min-h-[60px] text-sm rounded-md border border-input bg-background px-3 py-2 ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                placeholder="Bijv.: Professionele bachelor Kleuteronderwijs aan een Vlaamse hogeschool. Studenten zijn toekomstige kleuterleidsters. Typische opdrachten: stageverslag, didactische voorbereiding, portfolio."
+                defaultValue={(project as any).education_context || ""}
+                onBlur={(e) => {
+                  const val = e.target.value.trim();
+                  if (val !== ((project as any).education_context || "")) {
+                    updateProject.mutateAsync({ education_context: val || null } as any);
+                    toast.success("Onderwijscontext opgeslagen");
+                  }
+                }}
+              />
+              <p className="text-xs text-muted-foreground mt-1">Beschrijf de opleiding, het type studenten en opdrachten. Dit helpt de AI om passender te beoordelen.</p>
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
