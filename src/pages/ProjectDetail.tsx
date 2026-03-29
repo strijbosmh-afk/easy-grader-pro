@@ -178,11 +178,12 @@ const ProjectDetail = () => {
   };
 
   const doUploadPdf = async (file: File, type: "opdracht" | "graderingstabel") => {
-    const path = `${user!.id}/${id}/${type}_${Date.now()}.pdf`;
+    const ext = file.name.split('.').pop()?.toLowerCase() || 'pdf';
+    const path = `${user!.id}/${id}/${type}_${Date.now()}.${ext}`;
     const { error: uploadError } = await supabase.storage.from("pdfs").upload(path, file);
     if (uploadError) throw uploadError;
     const { data: urlData, error: signError } = await supabase.storage.from("pdfs").createSignedUrl(path, 60 * 60 * 24 * 365); // 1 year
-    if (signError || !urlData?.signedUrl) throw new Error("Kon PDF URL niet aanmaken");
+    if (signError || !urlData?.signedUrl) throw new Error("Kon bestand URL niet aanmaken");
     const signedUrl = urlData.signedUrl;
 
     if (type === "graderingstabel") {
@@ -1036,7 +1037,7 @@ const ProjectDetail = () => {
               <input
                 id="graderingstabel-upload"
                 type="file"
-                accept=".pdf"
+                accept=".pdf,.docx,.doc"
                 className="hidden"
                 onChange={(e) => e.target.files?.[0] && uploadPdf(e.target.files[0], "graderingstabel")}
               />
@@ -1166,7 +1167,7 @@ const ProjectDetail = () => {
                 <>
                   <Upload className="h-6 w-6 text-muted-foreground mx-auto mb-2" />
                   <p className="text-sm text-muted-foreground">
-                    Sleep student-PDFs hierheen of{" "}
+                    Sleep PDF- of Word-bestanden hierheen of{" "}
                     <label htmlFor="student-upload" className="text-primary cursor-pointer hover:underline">
                       blader
                     </label>
@@ -1174,7 +1175,7 @@ const ProjectDetail = () => {
                   <input
                     id="student-upload"
                     type="file"
-                    accept=".pdf"
+                    accept=".pdf,.docx,.doc"
                     multiple
                     className="hidden"
                     onChange={(e) => e.target.files && uploadStudentPdfs(e.target.files)}

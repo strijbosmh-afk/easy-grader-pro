@@ -391,7 +391,7 @@ export async function exportStudentsBatchToWord(
  */
 export function extractStudentName(filename: string): string {
   // Remove extension
-  let name = filename.replace(/\.pdf$/i, "").trim();
+  let name = filename.replace(/\.(pdf|docx|doc)$/i, "").trim();
 
   // Pattern 1: "Name - something" or "Name – something"
   if (name.includes(" - ") || name.includes(" – ")) {
