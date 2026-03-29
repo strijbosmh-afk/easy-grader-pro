@@ -17,6 +17,7 @@ import { exportProjectToExcel } from "@/lib/export";
 import { exportStudentsBatchToWord, extractStudentName } from "@/lib/export-word";
 import { Checkbox } from "@/components/ui/checkbox";
 import { GradingChat } from "@/components/GradingChat";
+import { BatchProgressOverlay, type BatchProgress, type BatchSummary } from "@/components/BatchProgressOverlay";
 import {
   Dialog,
   DialogContent,
