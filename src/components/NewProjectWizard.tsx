@@ -96,7 +96,10 @@ export function NewProjectWizard({ open, onOpenChange }: NewProjectWizardProps) 
       toast.success("Project aangemaakt!");
       navigate(`/project/${data.id}`);
     },
-    onError: () => toast.error("Fout bij aanmaken project"),
+    onError: (err) => {
+      console.error("Project creation error:", err);
+      toast.error("Fout bij aanmaken project");
+    },
   });
 
   const resetWizard = () => {
