@@ -482,6 +482,9 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_collaborator_ids: { Args: { _user_id: string }; Returns: string[] }
+      get_shared_project_ids: { Args: { _user_id: string }; Returns: string[] }
+      get_user_project_ids: { Args: { _user_id: string }; Returns: string[] }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
