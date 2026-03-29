@@ -13,6 +13,14 @@ import { exportStudentToPdf } from "@/lib/export";
 import { exportStudentToWord } from "@/lib/export-word";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
+function extractStoragePath(url: string): string | null {
+  const match = url.match(/\/storage\/v1\/object\/(?:public|sign)\/pdfs\/(.+?)(?:\?|$)/);
+  if (match) return decodeURIComponent(match[1]);
+  const match2 = url.match(/\/object\/(?:public|sign)\/pdfs\/(.+?)(?:\?|$)/);
+  if (match2) return decodeURIComponent(match2[1]);
+  return null;
+}
+
 const StudentScorecard = () => {
   const { id: projectId, studentId } = useParams<{ id: string; studentId: string }>();
   const navigate = useNavigate();
@@ -55,6 +63,21 @@ const StudentScorecard = () => {
       if (error) throw error;
       return data;
     },
+  });
+
+  // Generate signed URL for private PDF viewing
+  const { data: signedPdfUrl } = useQuery({
+    queryKey: ["signed-pdf", student?.pdf_url],
+    queryFn: async () => {
+      const url = student!.pdf_url!;
+      const storagePath = extractStoragePath(url);
+      if (!storagePath) return url; // fallback to original URL
+      const { data, error } = await supabase.storage.from("pdfs").createSignedUrl(storagePath, 3600);
+      if (error || !data?.signedUrl) return url;
+      return data.signedUrl;
+    },
+    enabled: !!student?.pdf_url,
+    staleTime: 30 * 60 * 1000, // 30 min
   });
 
   const { data: criteria } = useQuery({
@@ -480,11 +503,17 @@ const StudentScorecard = () => {
                   </Button>
                 </CardHeader>
                 <CardContent className="flex-1 p-0 overflow-hidden">
-                  <iframe
-                    src={`${student.pdf_url}#toolbar=1&navpanes=0`}
-                    className="w-full h-full border-0"
-                    title="Student PDF"
-                  />
+                  {signedPdfUrl ? (
+                    <iframe
+                      src={`${signedPdfUrl}#toolbar=1&navpanes=0`}
+                      className="w-full h-full border-0"
+                      title="Student PDF"
+                    />
+                  ) : (
+                    <div className="flex items-center justify-center h-full">
+                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
