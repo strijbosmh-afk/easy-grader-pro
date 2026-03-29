@@ -503,11 +503,17 @@ const StudentScorecard = () => {
                   </Button>
                 </CardHeader>
                 <CardContent className="flex-1 p-0 overflow-hidden">
-                  <iframe
-                    src={`${student.pdf_url}#toolbar=1&navpanes=0`}
-                    className="w-full h-full border-0"
-                    title="Student PDF"
-                  />
+                  {signedPdfUrl ? (
+                    <iframe
+                      src={`${signedPdfUrl}#toolbar=1&navpanes=0`}
+                      className="w-full h-full border-0"
+                      title="Student PDF"
+                    />
+                  ) : (
+                    <div className="flex items-center justify-center h-full">
+                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
