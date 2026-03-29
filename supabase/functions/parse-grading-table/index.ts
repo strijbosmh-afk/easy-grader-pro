@@ -36,7 +36,14 @@ function extractStoragePath(url: string): string | null {
   return null;
 }
 
-async function fetchPdfAsBase64(url: string, supabaseClient?: any): Promise<string> {
+function detectMimeType(url: string): string {
+  const lower = url.toLowerCase();
+  if (lower.includes(".docx")) return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+  if (lower.includes(".doc") && !lower.includes(".docx")) return "application/msword";
+  return "application/pdf";
+}
+
+async function fetchDocAsBase64(url: string, supabaseClient?: any): Promise<string> {
   if (supabaseClient) {
     const storagePath = extractStoragePath(url);
     if (storagePath) {
@@ -49,7 +56,7 @@ async function fetchPdfAsBase64(url: string, supabaseClient?: any): Promise<stri
     }
   }
   const res = await fetch(url);
-  if (!res.ok) throw new Error(`Failed to fetch PDF: ${res.status}`);
+  if (!res.ok) throw new Error(`Failed to fetch document: ${res.status}`);
   const buffer = await res.arrayBuffer();
   return arrayBufferToBase64(buffer);
 }
@@ -136,8 +143,8 @@ async function callLovableAI(pdfBase64: string) {
         {
           role: "user",
           content: [
-            { type: "text", text: "Analyseer deze graderingstabel PDF. Extraheer alle deelcriteria EN identificeer het eindcijfer (totaalscore). Geef ook een samenvatting van het scoringssysteem:" },
-            { type: "image_url", image_url: { url: `data:application/pdf;base64,${pdfBase64}` } },
+            { type: "text", text: "Analyseer deze graderingstabel. Extraheer alle deelcriteria EN identificeer het eindcijfer (totaalscore). Geef ook een samenvatting van het scoringssysteem:" },
+            { type: "image_url", image_url: { url: `data:${mimeType};base64,${docBase64}` } },
           ],
         },
       ],
@@ -181,8 +188,8 @@ async function callAnthropicAI(pdfBase64: string) {
       messages: [{
         role: "user",
         content: [
-          { type: "text", text: "Analyseer deze graderingstabel PDF. Extraheer alle deelcriteria EN identificeer het eindcijfer (totaalscore). Geef ook een samenvatting van het scoringssysteem:" },
-          { type: "document", source: { type: "base64", media_type: "application/pdf", data: pdfBase64 } },
+          { type: "text", text: "Analyseer deze graderingstabel. Extraheer alle deelcriteria EN identificeer het eindcijfer (totaalscore). Geef ook een samenvatting van het scoringssysteem:" },
+          { type: "document", source: { type: "base64", media_type: mimeType, data: docBase64 } },
         ],
       }],
       tools: [{ name: toolDef.name, description: toolDef.description, input_schema: toolDef.parameters }],
