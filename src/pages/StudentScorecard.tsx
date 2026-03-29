@@ -589,6 +589,30 @@ const StudentScorecard = () => {
                             <div className="flex items-center gap-2 mb-1">
                               <Bot className="h-3 w-3 text-muted-foreground" />
                               <span className="text-xs font-medium text-muted-foreground">AI Suggestie: {ai.ai_suggested_score}/{c.max_score}</span>
+                              {ai.ai_confidence === "low" && (
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger>
+                                      <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p className="text-xs">De AI is onzeker over deze score. Controleer handmatig.</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              )}
+                              {ai.ai_confidence === "medium" && (
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger>
+                                      <AlertTriangle className="h-3.5 w-3.5 text-yellow-400" />
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p className="text-xs">De AI heeft gemiddeld vertrouwen in deze score.</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              )}
                             </div>
                             {ai.ai_motivatie && (
                               <p className="text-xs text-muted-foreground">{ai.ai_motivatie}</p>
