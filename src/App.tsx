@@ -13,6 +13,7 @@ import Statistics from "./pages/Statistics";
 import ProjectOverview from "./pages/ProjectOverview";
 import Profile from "./pages/Profile";
 import AdminUsers from "./pages/AdminUsers";
+import Guide from "./pages/Guide";
 import Login from "./pages/Login";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
@@ -42,6 +43,7 @@ function ProtectedRoutes() {
         <Route path="/statistieken" element={<Statistics />} />
         <Route path="/profiel" element={<Profile />} />
         <Route path="/admin/gebruikers" element={<AdminUsers />} />
+        <Route path="/handleiding" element={<Guide />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </AppLayout>
