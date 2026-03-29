@@ -101,6 +101,7 @@ function StudentAnalyzingProgress({ studentId, startTimesRef, avgTime }: {
   );
 }
 
+const ProjectDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
