@@ -162,6 +162,57 @@ export function StudentReviewView({ studentId, projectId, onBack }: Props) {
       queryClient.invalidateQueries({ queryKey: ["score-reviews", studentId] });
       queryClient.invalidateQueries({ queryKey: ["scores", studentId] });
       toast.success("Review opgeslagen!");
+
+      // Check if all students in the project are now reviewed by this reviewer
+      try {
+        const { data: allStudents } = await supabase
+          .from("students")
+          .select("id")
+          .eq("project_id", projectId);
+        if (allStudents && allStudents.length > 0) {
+          const allStudentIds = allStudents.map((s) => s.id);
+          const { data: allScores } = await supabase
+            .from("student_scores")
+            .select("id")
+            .in("student_id", allStudentIds);
+          const allScoreIds = allScores?.map((s) => s.id) || [];
+          if (allScoreIds.length > 0) {
+            const { data: allReviews } = await supabase
+              .from("score_reviews")
+              .select("student_score_id")
+              .eq("reviewer_id", user.id)
+              .in("student_score_id", allScoreIds);
+            const reviewedScoreIds = new Set(allReviews?.map((r) => r.student_score_id) || []);
+            const allReviewed = allScoreIds.every((id) => reviewedScoreIds.has(id));
+            if (allReviewed) {
+              // Get project info for notification
+              const { data: project } = await supabase
+                .from("projects")
+                .select("user_id, naam")
+                .eq("id", projectId)
+                .single();
+              const { data: reviewerProfile } = await supabase
+                .from("profiles")
+                .select("display_name, email")
+                .eq("id", user.id)
+                .single();
+              if (project?.user_id && project.user_id !== user.id) {
+                const reviewerName = reviewerProfile?.display_name || reviewerProfile?.email || "Een reviewer";
+                await supabase.from("notifications").insert({
+                  user_id: project.user_id,
+                  type: "review_completed",
+                  title: "Review voltooid",
+                  message: `${reviewerName} heeft alle studenten in "${project.naam}" beoordeeld`,
+                  link: `/project/${projectId}`,
+                });
+                toast.info("De projecteigenaar is op de hoogte gebracht!");
+              }
+            }
+          }
+        }
+      } catch {
+        // Non-critical: don't block the save
+      }
     } catch {
       toast.error("Opslaan mislukt");
     } finally {
