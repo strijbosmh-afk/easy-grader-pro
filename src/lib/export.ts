@@ -3,15 +3,43 @@ import { saveAs } from "file-saver";
 import jsPDF from "jspdf";
 
 export function exportProjectToExcel(project: any, students: any[], criteria: any[]) {
-  const header = ["Student", ...criteria.map((c) => c.criterium_naam), "Totaal", "Max"];
+  // Split criteria into sub-criteria and the holistic eindscore (if present)
+  const subCriteria = criteria.filter((c) => !c.is_eindscore);
+  const eindscoreCriterium = criteria.find((c) => c.is_eindscore);
+
+  // Build header: Student | <sub-criteria...> | Deeltotaal | Deelmax | [Eindscore | Eindmax]
+  const header = [
+    "Student",
+    ...subCriteria.map((c) => c.criterium_naam),
+    "Deeltotaal",
+    "Deelmax",
+    ...(eindscoreCriterium ? [eindscoreCriterium.criterium_naam, `Max (${eindscoreCriterium.max_score})`] : []),
+  ];
+
   const rows = students.map((s) => {
-    const scores = criteria.map((c) => {
+    const subScores = subCriteria.map((c) => {
       const sc = s.student_scores?.find((ss: any) => ss.criterium_id === c.id);
       return sc?.final_score ?? sc?.ai_suggested_score ?? "";
     });
-    const total = scores.reduce((sum: number, v: any) => sum + (Number(v) || 0), 0);
-    const max = criteria.reduce((sum: number, c: any) => sum + Number(c.max_score), 0);
-    return [s.naam, ...scores, total, max];
+
+    // Sum only sub-criteria, not the eindscore
+    const subTotal = subScores.reduce((sum: number, v: any) => sum + (Number(v) || 0), 0);
+    const subMax = subCriteria.reduce((sum: number, c: any) => sum + Number(c.max_score), 0);
+
+    const eindscoreVal = eindscoreCriterium
+      ? (() => {
+          const sc = s.student_scores?.find((ss: any) => ss.criterium_id === eindscoreCriterium.id);
+          return sc?.final_score ?? sc?.ai_suggested_score ?? "";
+        })()
+      : undefined;
+
+    return [
+      s.naam,
+      ...subScores,
+      subTotal,
+      subMax,
+      ...(eindscoreCriterium ? [eindscoreVal, eindscoreCriterium.max_score] : []),
+    ];
   });
 
   const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);

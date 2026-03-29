@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { MessageSquare, Send, Loader2, ChevronDown, ChevronUp, RefreshCw, Sparkles } from "lucide-react";
+import { MessageSquare, Send, Loader2, ChevronDown, ChevronUp, RefreshCw, Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -13,13 +13,15 @@ type Message = { role: "user" | "assistant"; content: string };
 interface GradingChatProps {
   projectId: string;
   onReAnalyzeRequested: () => void;
+  onInstructionsCleared?: () => void;
   customInstructions?: string | null;
 }
 
-export function GradingChat({ projectId, onReAnalyzeRequested, customInstructions }: GradingChatProps) {
+export function GradingChat({ projectId, onReAnalyzeRequested, onInstructionsCleared, customInstructions }: GradingChatProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [showReAnalyze, setShowReAnalyze] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -53,20 +55,43 @@ export function GradingChat({ projectId, onReAnalyzeRequested, customInstruction
       const assistantMsg: Message = { role: "assistant", content: data.reply };
       setMessages([...newMessages, assistantMsg]);
 
-      // If instructions were saved, show re-analyze option
-      if (data.savedInstructions) {
+      // If instructions were saved, show re-analyze option and refresh project data
+      if (data.savedInstructions !== undefined && data.savedInstructions !== null) {
         setShowReAnalyze(true);
         toast.success("Beoordelingsinstructies opgeslagen!");
+        onInstructionsCleared?.(); // triggers a project refresh in parent
       }
 
       // Check if the AI mentions re-analysis in its reply
-      if (data.reply.toLowerCase().includes("heranalyse")) {
+      if (data.reply?.toLowerCase().includes("heranalyse")) {
         setShowReAnalyze(true);
       }
     } catch (err: any) {
       toast.error(err?.message || "Chatfout");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const clearInstructions = async () => {
+    if (!customInstructions) return;
+    setIsClearing(true);
+    try {
+      const { error } = await supabase
+        .from("projects")
+        .update({ custom_instructions: null })
+        .eq("id", projectId);
+
+      if (error) throw error;
+
+      setMessages([]);
+      setShowReAnalyze(false);
+      toast.success("Instructies gewist.");
+      onInstructionsCleared?.();
+    } catch (err: any) {
+      toast.error(err?.message || "Kon instructies niet wissen");
+    } finally {
+      setIsClearing(false);
     }
   };
 
@@ -104,11 +129,27 @@ export function GradingChat({ projectId, onReAnalyzeRequested, customInstruction
 
         <CollapsibleContent>
           <CardContent className="pt-0 space-y-3">
-            {/* Active instructions indicator */}
+            {/* Active instructions indicator with clear button */}
             {customInstructions && (
               <div className="rounded-md bg-primary/5 border border-primary/20 p-2.5">
-                <p className="text-xs font-medium text-primary mb-1">Actieve instructies:</p>
-                <p className="text-xs text-muted-foreground leading-relaxed">{customInstructions}</p>
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-xs font-medium text-primary">Actieve instructies:</p>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-5 px-1.5 text-[10px] text-muted-foreground hover:text-destructive"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      clearInstructions();
+                    }}
+                    disabled={isClearing}
+                    title="Wis alle instructies"
+                  >
+                    {isClearing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+                    <span className="ml-1">Wissen</span>
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap">{customInstructions}</p>
               </div>
             )}
 

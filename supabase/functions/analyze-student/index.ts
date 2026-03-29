@@ -55,10 +55,12 @@ function findBestMatch(aiName: string, criteria: any[]): any | null {
   return null;
 }
 
-function parseScoreValue(rawScore: unknown, motivatie?: string, criteriumNaam?: string, customInstructions?: string): number {
+function parseScoreValue(rawScore: unknown): number {
+  // If the AI already returned a proper number, trust it directly.
   if (typeof rawScore === "number" && Number.isFinite(rawScore)) return rawScore;
 
   const rawText = typeof rawScore === "string" ? rawScore : String(rawScore ?? "");
+  // Support comma-as-decimal (e.g. "7,5" → 7.5)
   const normalized = rawText.replace(/,/g, ".");
   const matches = normalized.match(/-?\d+(?:\.\d+)?/g);
 
@@ -70,27 +72,8 @@ function parseScoreValue(rawScore: unknown, motivatie?: string, criteriumNaam?: 
 
   if (parsedNumbers.length === 0) return 0;
 
-  const instructionsText = (customInstructions || "").toLowerCase();
-  const motivationText = (motivatie || "").toLowerCase();
-  const criterionText = (criteriumNaam || "").toLowerCase();
-
-  const isVolledigheidRule =
-    criterionText.includes("volledigheid") &&
-    instructionsText.includes("0") &&
-    instructionsText.includes("-5");
-
-  if (isVolledigheidRule) {
-    const looksComplete = /volledig|voldoet|alle onderdelen aanwezig|correct aangeleverd/.test(motivationText);
-    const looksIncomplete = /onvolledig|ontbreekt|mist|niet volledig|niet aangeleverd/.test(motivationText);
-
-    if (looksIncomplete) return -5;
-    if (looksComplete) return 0;
-
-    if (parsedNumbers.includes(-5) || parsedNumbers.includes(0)) {
-      return parsedNumbers.includes(-5) ? -5 : 0;
-    }
-  }
-
+  // Return the first number found. The AI is responsible for returning the
+  // correct value based on the grading table — no client-side overrides needed.
   return parsedNumbers[0];
 }
 
@@ -130,12 +113,7 @@ KRITISCH BELANGRIJK — SCORES UIT DE GRADERINGSTABEL:
 - Hardcodeer GEEN aannames over scoreschalen. LEES de tabel en volg die EXACT.
 - Gebruik de criterium-namen EXACT zoals hierboven vermeld.
 - Je MOET ALLE ${subCriteria.length} criteria beoordelen. Sla er GEEN over.
-- Lees het studentwerk zorgvuldig en beoordeel op basis van de inhoud.${customInstructions ? `
-
-DOCENT-INSTRUCTIES (ABSOLUTE VOORRANG, LETTERLIJK VOLGEN):
-${customInstructions}
-
-Als deze docent-instructies botsen met andere regels, volg ALTIJD de docent-instructies.` : ""}`;
+- Lees het studentwerk zorgvuldig en beoordeel op basis van de inhoud.`;
   } else {
     instruction = `Analyseer het werk van student "${student.naam}".
 1. Lees de graderingstabel PDF en extraheer alle beoordelingscriteria.
@@ -233,6 +211,7 @@ async function callLovableAI(systemPrompt: string, contentParts: any[]) {
     },
     body: JSON.stringify({
       model: "google/gemini-2.5-flash",
+      temperature: 0,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: contentParts },
@@ -293,6 +272,7 @@ async function callAnthropicAI(systemPrompt: string, contentParts: any[], retryC
       body: JSON.stringify({
         model: "claude-sonnet-4-20250514",
         max_tokens: 8192,
+        temperature: 0,
         system: systemPrompt,
         messages: [{ role: "user", content: anthropicContent }],
         tools: [{
@@ -472,17 +452,14 @@ serve(async (req) => {
 
     let matchedCount = 0;
     const usedCriteria = new Set<string>();
+    const unmatchedAiCriteria: string[] = [];
+    const unmatchedDbCriteria: string[] = [];
 
     for (const aiCriterium of result.criteria) {
       const matched = findBestMatch(aiCriterium.naam, existingCriteria!.filter((c: any) => !usedCriteria.has(c.id)));
       if (matched) {
         usedCriteria.add(matched.id);
-        const score = parseScoreValue(
-          aiCriterium.score,
-          aiCriterium.motivatie,
-          matched.criterium_naam,
-          customInstructions
-        );
+        const score = parseScoreValue(aiCriterium.score);
         await supabase.from("student_scores").insert({
           student_id: studentId,
           criterium_id: matched.id,
@@ -493,30 +470,43 @@ serve(async (req) => {
         matchedCount++;
       } else {
         console.warn("No match for AI criterion:", aiCriterium.naam);
+        unmatchedAiCriteria.push(aiCriterium.naam);
       }
     }
 
-    // Fill missing criteria with 0
+    // Fill unmatched DB criteria with null score and a clear warning message
     for (const c of existingCriteria!) {
       if (!usedCriteria.has(c.id)) {
         console.warn("No AI score for criterion:", c.criterium_naam);
+        unmatchedDbCriteria.push(c.criterium_naam);
         await supabase.from("student_scores").insert({
           student_id: studentId,
           criterium_id: c.id,
-          ai_suggested_score: 0,
-          ai_motivatie: "Geen beoordeling ontvangen van AI voor dit criterium.",
+          ai_suggested_score: null,
+          ai_motivatie: `⚠️ De AI heeft dit criterium niet beoordeeld. Controleer of de criterium-naam in de graderingstabel overeenkomt met "${c.criterium_naam}".`,
         });
       }
     }
 
     console.log(`Matched ${matchedCount}/${result.criteria.length} AI criteria to ${existingCriteria!.length} DB criteria`);
 
+    const hasWarnings = unmatchedDbCriteria.length > 0;
+
     await supabase.from("students").update({
       status: "reviewed",
       ai_feedback: result.algemene_feedback,
     }).eq("id", studentId);
 
-    return new Response(JSON.stringify({ success: true, matched: matchedCount, total: existingCriteria!.length }), {
+    return new Response(JSON.stringify({
+      success: true,
+      matched: matchedCount,
+      total: existingCriteria!.length,
+      warnings: hasWarnings ? {
+        unmatchedDbCriteria,
+        unmatchedAiCriteria,
+        message: `${unmatchedDbCriteria.length} criteria konden niet worden gekoppeld aan AI-output. Controleer de scorekaart.`,
+      } : null,
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {

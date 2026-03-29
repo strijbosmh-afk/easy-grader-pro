@@ -460,7 +460,9 @@ const ProjectDetail = () => {
     return criteria.filter((c: any) => {
       const sc = scores.find((s: any) => s.criterium_id === c.id);
       if (!sc) return true;
-      return sc.ai_motivatie?.includes("Geen beoordeling ontvangen");
+      // Flag criteria where score is null (unmatched by AI) or has an explicit warning message
+      if (sc.ai_suggested_score === null && sc.final_score === null) return true;
+      return sc.ai_motivatie?.includes("Geen beoordeling ontvangen") || sc.ai_motivatie?.startsWith("⚠️");
     });
   };
 
@@ -725,6 +727,7 @@ const ProjectDetail = () => {
         <GradingChat
           projectId={id!}
           onReAnalyzeRequested={() => doBatchReAnalyze()}
+          onInstructionsCleared={() => queryClient.invalidateQueries({ queryKey: ["project", id] })}
           customInstructions={project?.custom_instructions}
         />
 
