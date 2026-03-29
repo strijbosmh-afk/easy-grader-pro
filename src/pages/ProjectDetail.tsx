@@ -123,6 +123,36 @@ const ProjectDetail = () => {
     },
   });
 
+  // Reviewer queries (must be before early returns)
+  const { data: myReviewerRecord } = useQuery({
+    queryKey: ["my-reviewer-status", id, user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("project_reviewers")
+        .select("*")
+        .eq("project_id", id!)
+        .eq("reviewer_id", user!.id)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user?.id,
+  });
+
+  const { data: hasReviewers } = useQuery({
+    queryKey: ["has-reviewers", id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("project_reviewers")
+        .select("id")
+        .eq("project_id", id!)
+        .eq("status", "accepted")
+        .limit(1);
+      if (error) return false;
+      return (data?.length || 0) > 0;
+    },
+  });
+
   const updateProject = useMutation({
     mutationFn: async (updates: Record<string, any>) => {
       const { error } = await supabase.from("projects").update(updates).eq("id", id!);
