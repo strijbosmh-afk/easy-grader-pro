@@ -151,10 +151,12 @@ export type Database = {
           beoordelingsniveau: string
           created_at: string
           custom_instructions: string | null
+          education_context: string | null
           graderingstabel_pdf_url: string | null
           id: string
           naam: string
           opdracht_pdf_url: string | null
+          scoring_system_summary: string | null
           updated_at: string
           user_id: string | null
         }
@@ -164,10 +166,12 @@ export type Database = {
           beoordelingsniveau?: string
           created_at?: string
           custom_instructions?: string | null
+          education_context?: string | null
           graderingstabel_pdf_url?: string | null
           id?: string
           naam: string
           opdracht_pdf_url?: string | null
+          scoring_system_summary?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -177,10 +181,12 @@ export type Database = {
           beoordelingsniveau?: string
           created_at?: string
           custom_instructions?: string | null
+          education_context?: string | null
           graderingstabel_pdf_url?: string | null
           id?: string
           naam?: string
           opdracht_pdf_url?: string | null
+          scoring_system_summary?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -242,6 +248,7 @@ export type Database = {
       }
       student_scores: {
         Row: {
+          ai_confidence: string | null
           ai_detail_feedback: string | null
           ai_motivatie: string | null
           ai_suggested_score: number | null
@@ -252,6 +259,7 @@ export type Database = {
           student_id: string
         }
         Insert: {
+          ai_confidence?: string | null
           ai_detail_feedback?: string | null
           ai_motivatie?: string | null
           ai_suggested_score?: number | null
@@ -262,6 +270,7 @@ export type Database = {
           student_id: string
         }
         Update: {
+          ai_confidence?: string | null
           ai_detail_feedback?: string | null
           ai_motivatie?: string | null
           ai_suggested_score?: number | null
@@ -291,6 +300,7 @@ export type Database = {
       students: {
         Row: {
           ai_feedback: string | null
+          ai_validation_warnings: Json | null
           created_at: string
           docent_feedback: string | null
           id: string
@@ -302,6 +312,7 @@ export type Database = {
         }
         Insert: {
           ai_feedback?: string | null
+          ai_validation_warnings?: Json | null
           created_at?: string
           docent_feedback?: string | null
           id?: string
@@ -313,6 +324,7 @@ export type Database = {
         }
         Update: {
           ai_feedback?: string | null
+          ai_validation_warnings?: Json | null
           created_at?: string
           docent_feedback?: string | null
           id?: string
