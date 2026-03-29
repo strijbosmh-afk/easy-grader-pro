@@ -1324,7 +1324,36 @@ const ProjectDetail = () => {
             )}
           </CardContent>
         </Card>
+
+        {/* Moderation tab (owner only, when reviewers exist) */}
+        {isOwner && hasReviewers && students && criteria && (
+          <ModerationTab projectId={id!} students={students} criteria={criteria} />
+        )}
       </main>
+
+      {/* Reviewer review overlay */}
+      {reviewStudentId && (
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm">
+          <div className="container mx-auto px-6 py-8 max-w-4xl h-full overflow-y-auto">
+            <StudentReviewView
+              studentId={reviewStudentId}
+              projectId={id!}
+              onBack={() => {
+                setReviewStudentId(null);
+                queryClient.invalidateQueries({ queryKey: ["students", id] });
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Invite reviewer dialog */}
+      <InviteReviewerDialog
+        projectId={id!}
+        projectName={project?.naam || ""}
+        open={showInviteReviewer}
+        onOpenChange={setShowInviteReviewer}
+      />
 
       {/* Grading table confirmation dialog */}
       <Dialog open={showGradingDialog} onOpenChange={(open) => !open && dismissGradingDialog()}>
