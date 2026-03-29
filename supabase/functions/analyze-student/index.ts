@@ -36,7 +36,14 @@ function extractStoragePath(url: string): string | null {
   return null;
 }
 
-async function fetchPdfAsBase64(url: string, supabaseClient?: any): Promise<string> {
+function detectMimeType(url: string): string {
+  const lower = url.toLowerCase();
+  if (lower.includes(".docx")) return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+  if (lower.includes(".doc") && !lower.includes(".docx")) return "application/msword";
+  return "application/pdf";
+}
+
+async function fetchDocAsBase64(url: string, supabaseClient?: any): Promise<string> {
   if (supabaseClient) {
     const storagePath = extractStoragePath(url);
     if (storagePath) {
@@ -49,7 +56,7 @@ async function fetchPdfAsBase64(url: string, supabaseClient?: any): Promise<stri
     }
   }
   const res = await fetch(url);
-  if (!res.ok) throw new Error(`Failed to fetch PDF: ${res.status}`);
+  if (!res.ok) throw new Error(`Failed to fetch document: ${res.status}`);
   const buffer = await res.arrayBuffer();
   return arrayBufferToBase64(buffer);
 }
@@ -452,11 +459,11 @@ async function callAnthropicAI(systemPrompt: string, contentParts: any[], retryC
       anthropicContent.push({ type: "text", text: part.text });
     } else if (part.type === "image_url") {
       const url = part.image_url.url;
-      if (url.startsWith("data:application/pdf;base64,")) {
-        const base64 = url.replace("data:application/pdf;base64,", "");
+      const dataMatch = url.match(/^data:([^;]+);base64,(.+)$/);
+      if (dataMatch) {
         anthropicContent.push({
           type: "document",
-          source: { type: "base64", media_type: "application/pdf", data: base64 },
+          source: { type: "base64", media_type: dataMatch[1], data: dataMatch[2] },
         });
       }
     }
