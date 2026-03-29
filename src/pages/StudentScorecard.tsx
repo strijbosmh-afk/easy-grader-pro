@@ -13,6 +13,14 @@ import { exportStudentToPdf } from "@/lib/export";
 import { exportStudentToWord } from "@/lib/export-word";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
+function extractStoragePath(url: string): string | null {
+  const match = url.match(/\/storage\/v1\/object\/(?:public|sign)\/pdfs\/(.+?)(?:\?|$)/);
+  if (match) return decodeURIComponent(match[1]);
+  const match2 = url.match(/\/object\/(?:public|sign)\/pdfs\/(.+?)(?:\?|$)/);
+  if (match2) return decodeURIComponent(match2[1]);
+  return null;
+}
+
 const StudentScorecard = () => {
   const { id: projectId, studentId } = useParams<{ id: string; studentId: string }>();
   const navigate = useNavigate();
