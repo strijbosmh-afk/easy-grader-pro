@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -230,7 +230,7 @@ const ProjectDetail = () => {
       // Re-analyze all students that have a PDF (parallel, with concurrency limit)
       const studentsWithPdf = students?.filter((s) => s.pdf_url) || [];
       if (studentsWithPdf.length > 0) {
-        await runBatchWithConcurrency(studentsWithPdf, {}, setBatchAnalyzing);
+        await runBatchSequential(studentsWithPdf, {}, setBatchAnalyzing);
       }
     } catch (err: any) {
       toast.error("Fout bij toepassen criteria: " + (err?.message || "onbekende fout"));
@@ -406,7 +406,7 @@ const ProjectDetail = () => {
     const toAnalyze = selectedStudents.size > 0
       ? allEligible.filter((s) => selectedStudents.has(s.id))
       : allEligible;
-    await runBatchWithConcurrency(toAnalyze, {}, setBatchAnalyzing);
+    await runBatchSequential(toAnalyze, {}, setBatchAnalyzing);
   };
 
   const batchReAnalyze = () => {
@@ -427,7 +427,7 @@ const ProjectDetail = () => {
     const eligible = selectedStudents.size > 0
       ? allEligible.filter((s) => selectedStudents.has(s.id))
       : allEligible;
-    await runBatchWithConcurrency(
+    await runBatchSequential(
       eligible,
       { niveauOverride: reAnalyzeNiveau },
       setReAnalyzing
@@ -893,7 +893,15 @@ const ProjectDetail = () => {
                       variant="default"
                       size="sm"
                       disabled={batchAnalyzing || reAnalyzing || !project.opdracht_pdf_url || !project.graderingstabel_pdf_url}
-                      onClick={batchAnalyze}
+                      onClick={() => {
+                        const pending = students?.filter((s) => s.status === "pending" || s.status === "reviewed") || [];
+                        if (pending.length === 0) {
+                          toast.info("Geen studenten om te analyseren");
+                          return;
+                        }
+                        setModelPickerAction("batch");
+                        setShowModelPicker(true);
+                      }}
                     >
                       {batchAnalyzing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Bot className="h-4 w-4 mr-2" />}
                       {selectedStudents.size > 0 ? `Analyseer (${selectedStudents.size})` : "Analyseer alle"}
@@ -945,32 +953,16 @@ const ProjectDetail = () => {
             </div>
           </CardHeader>
 
-          {/* Batch progress indicator */}
-          {batchProgress && (
-            <Card className="mx-6 mt-4 border-primary/30 bg-primary/5">
-              <CardContent className="py-4">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                    <span className="text-sm font-medium">
-                      Analyse bezig: {batchProgress.done}/{batchProgress.total}
-                    </span>
-                  </div>
-                  {batchProgress.current && (
-                    <span className="text-xs text-muted-foreground">
-                      Huidige student: {batchProgress.current}
-                    </span>
-                  )}
-                </div>
-                <Progress value={(batchProgress.done / batchProgress.total) * 100} className="h-2" />
-                {batchProgress.failed.length > 0 && (
-                  <p className="text-xs text-destructive mt-2">
-                    Mislukt: {batchProgress.failed.join(", ")}
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          )}
+          {/* Batch progress overlay */}
+          <BatchProgressOverlay
+            progress={batchProgress}
+            onCancel={() => { cancelRef.current = true; }}
+            summary={batchSummary}
+            onCloseSummary={() => {
+              setBatchSummary(null);
+              queryClient.invalidateQueries({ queryKey: ["students", id] });
+            }}
+          />
 
           <CardContent className="space-y-6">
             {/* Drag & drop zone */}
