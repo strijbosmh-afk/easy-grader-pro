@@ -288,53 +288,18 @@ const ProjectDetail = () => {
   const [batchAnalyzing, setBatchAnalyzing] = useState(false);
   const [reAnalyzing, setReAnalyzing] = useState(false);
   const [reAnalyzeNiveau, setReAnalyzeNiveau] = useState("streng");
-  const [batchProgress, setBatchProgress] = useState<{ done: number; total: number; current: string; failed: string[] } | null>(null);
+  const [batchProgress, setBatchProgress] = useState<BatchProgress | null>(null);
+  const [batchSummary, setBatchSummary] = useState<BatchSummary | null>(null);
   const [finalizing, setFinalizing] = useState(false);
+  const cancelRef = useRef(false);
 
-  const analyzeStudent = useMutation({
-    mutationFn: async (studentId: string) => {
-      await supabase.from("students").update({ status: "analyzing" as StudentStatus }).eq("id", studentId);
-      queryClient.invalidateQueries({ queryKey: ["students", id] });
-
-      const { data, error } = await supabase.functions.invoke("analyze-student", {
-        body: { studentId, projectId: id },
-      });
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["students", id] });
-      toast.success("Analyse voltooid!");
-    },
-    onError: async (err: any, studentId: string) => {
-      await supabase.from("students").update({ status: "pending" as StudentStatus }).eq("id", studentId);
-      queryClient.invalidateQueries({ queryKey: ["students", id] });
-      toast.error(err?.message || "Analyse mislukt");
-    },
-  });
-
-  const batchAnalyze = () => {
-    const pending = students?.filter((s) => s.status === "pending" || s.status === "reviewed") || [];
-    if (pending.length === 0) {
-      toast.info("Geen studenten om te analyseren");
-      return;
-    }
-    setModelPickerAction("batch");
-    setShowModelPicker(true);
-  };
-
-  // Run up to CONCURRENCY analyses in parallel, reusing pre-fetched project PDFs
-  const CONCURRENCY = 4;
-
-  const runBatchWithConcurrency = async (
+  const runBatchSequential = async (
     studentList: any[],
     extraBody: Record<string, unknown> = {},
     setRunning: (v: boolean) => void
   ) => {
     if (studentList.length === 0) return;
-    setRunning(true);
 
-    // Pre-check: warn about students with no PDF
     const missingPdf = studentList.filter((s) => !s.pdf_url);
     if (missingPdf.length > 0) {
       toast.warning(
@@ -342,48 +307,98 @@ const ProjectDetail = () => {
       );
     }
     const eligible = studentList.filter((s) => s.pdf_url);
-    if (eligible.length === 0) {
-      setRunning(false);
-      return;
-    }
+    if (eligible.length === 0) return;
 
-    // Mark all as "analyzing" upfront so the UI shows progress immediately
-    await supabase.from("students").update({ status: "analyzing" as StudentStatus })
+    setRunning(true);
+    cancelRef.current = false;
+
+    const progress: BatchProgress = {
+      total: eligible.length,
+      completed: 0,
+      failed: 0,
+      currentStudentName: eligible[0]?.naam || "",
+      failedNames: [],
+      startTime: Date.now(),
+      studentTimes: [],
+    };
+    setBatchProgress({ ...progress });
+
+    // Update all to 'grading' status
+    await supabase.from("students").update({ grading_status: "grading" } as any)
       .in("id", eligible.map((s) => s.id));
-    queryClient.invalidateQueries({ queryKey: ["students", id] });
 
-    let success = 0;
-    let failed = 0;
-    let index = 0;
+    let successCount = 0;
+    let failCount = 0;
     const failedNames: string[] = [];
-    setBatchProgress({ done: 0, total: eligible.length, current: "", failed: [] });
+    const times: number[] = [];
 
-    const runNext = async (): Promise<void> => {
-      if (index >= eligible.length) return;
-      const student = eligible[index++];
+    for (let i = 0; i < eligible.length; i++) {
+      if (cancelRef.current) break;
+
+      const student = eligible[i];
+      progress.currentStudentName = student.naam;
+      setBatchProgress({ ...progress });
+
+      // Mark analyzing
+      await supabase.from("students").update({ status: "analyzing" as StudentStatus, grading_status: "grading" } as any).eq("id", student.id);
+      queryClient.invalidateQueries({ queryKey: ["students", id] });
+
+      const t0 = Date.now();
       try {
         const { error } = await supabase.functions.invoke("analyze-student", {
           body: { studentId: student.id, projectId: id, ...extraBody },
         });
         if (error) throw error;
-        success++;
+        successCount++;
+        await supabase.from("students").update({ grading_status: "completed" } as any).eq("id", student.id);
       } catch {
-        await supabase.from("students").update({ status: "pending" as StudentStatus }).eq("id", student.id);
-        failed++;
+        failCount++;
         failedNames.push(student.naam);
+        await supabase.from("students").update({ status: "pending" as StudentStatus, grading_status: "failed" } as any).eq("id", student.id);
       }
-      setBatchProgress(prev => prev ? { ...prev, done: prev.done + 1, current: eligible[index]?.naam || "", failed: failedNames } : null);
-      queryClient.invalidateQueries({ queryKey: ["students", id] });
-      return runNext();
-    };
 
-    // Launch up to CONCURRENCY workers
-    await Promise.all(Array.from({ length: Math.min(CONCURRENCY, eligible.length) }, runNext));
+      times.push(Date.now() - t0);
+      progress.completed = successCount;
+      progress.failed = failCount;
+      progress.failedNames = [...failedNames];
+      progress.studentTimes = [...times];
+      setBatchProgress({ ...progress });
+      queryClient.invalidateQueries({ queryKey: ["students", id] });
+    }
 
     setBatchProgress(null);
     setRunning(false);
-    queryClient.invalidateQueries({ queryKey: ["students", id] });
-    toast.success(`Klaar: ${success} geslaagd${failed > 0 ? `, ${failed} mislukt` : ""}`);
+
+    // Compute summary
+    const updatedStudents = queryClient.getQueryData<any[]>(["students", id]) || students || [];
+    let totalWarnings = 0;
+    const confidenceCounts = { high: 0, medium: 0, low: 0 };
+    for (const s of eligible) {
+      const fresh = updatedStudents.find((u: any) => u.id === s.id);
+      if (fresh?.ai_validation_warnings && Array.isArray(fresh.ai_validation_warnings)) {
+        totalWarnings += fresh.ai_validation_warnings.length;
+      }
+      const scores = fresh?.student_scores || [];
+      for (const sc of scores) {
+        if (sc.ai_confidence === "low") confidenceCounts.low++;
+        else if (sc.ai_confidence === "medium") confidenceCounts.medium++;
+        else confidenceCounts.high++;
+      }
+    }
+    const totalConf = confidenceCounts.high + confidenceCounts.medium + confidenceCounts.low;
+    const avgConf = totalConf === 0 ? "n/a"
+      : confidenceCounts.low / totalConf > 0.3 ? "low"
+      : confidenceCounts.medium / totalConf > 0.3 ? "medium"
+      : "high";
+
+    setBatchSummary({
+      total: eligible.length,
+      success: successCount,
+      failed: failCount,
+      avgTimeMs: times.length > 0 ? times.reduce((a, b) => a + b, 0) / times.length : 0,
+      avgConfidence: avgConf,
+      validationWarnings: totalWarnings,
+    });
   };
 
   const doBatchAnalyze = async () => {
