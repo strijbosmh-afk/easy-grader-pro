@@ -30,6 +30,7 @@ export function NewProjectWizard({ open, onOpenChange }: NewProjectWizardProps) 
   // Step state
   const [step, setStep] = useState(0);
   const [projectName, setProjectName] = useState("");
+  const [educationContext, setEducationContext] = useState("");
   const [selectedProvider, setSelectedProvider] = useState("lovable");
 
   // Step 2: Sharing
@@ -99,6 +100,7 @@ export function NewProjectWizard({ open, onOpenChange }: NewProjectWizardProps) 
   const resetWizard = () => {
     setStep(0);
     setProjectName("");
+    setEducationContext("");
     setSelectedProvider("lovable");
     setSelectedUsers([]);
     setSharePermission("edit");
@@ -253,6 +255,28 @@ export function NewProjectWizard({ open, onOpenChange }: NewProjectWizardProps) 
                       Diepgaand. Sterk in nuance en complexe teksten.
                     </p>
                   </button>
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="wizardEduContext" className="text-muted-foreground">
+                  Onderwijscontext (optioneel)
+                </Label>
+                <textarea
+                  id="wizardEduContext"
+                  className="w-full min-h-[70px] mt-1.5 text-sm rounded-md border border-input bg-muted/30 px-3 py-2 ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  placeholder="Bv: Bacheloropleiding kleuteronderwijs, 2e jaar. Studenten schrijven een reflectieverslag over hun stage-ervaring in een Vlaamse kleuterschool."
+                  value={educationContext}
+                  onChange={(e) => setEducationContext(e.target.value.slice(0, 500))}
+                  maxLength={500}
+                />
+                <div className="flex justify-between mt-1">
+                  <p className="text-xs text-muted-foreground">
+                    Beschrijf kort de opleiding, het niveau en het type student. Dit helpt de AI om feedback beter af te stemmen. Laat leeg als je dit niet nodig hebt.
+                  </p>
+                  <span className="text-xs text-muted-foreground whitespace-nowrap ml-2">
+                    {educationContext.length} / 500
+                  </span>
                 </div>
               </div>
             </div>

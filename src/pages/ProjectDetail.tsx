@@ -9,7 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Upload, FileText, Pencil, Check, X, Loader2, Bot, Download, Settings, LayoutGrid, RefreshCw, AlertTriangle, Users, FolderOpen, Search, Eye, Trash2, FileDown, CheckCircle, Circle, Sparkles, Cpu, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Upload, FileText, Pencil, Check, X, Loader2, Bot, Download, Settings, LayoutGrid, RefreshCw, AlertTriangle, Users, FolderOpen, Search, Eye, Trash2, FileDown, CheckCircle, Circle, Sparkles, Cpu, ShieldCheck, Info } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
@@ -921,22 +922,43 @@ const ProjectDetail = () => {
               <CardTitle className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
                 <Settings className="h-4 w-4" />
                 Onderwijscontext (optioneel)
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="h-3.5 w-3.5 text-muted-foreground/60 cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="max-w-xs text-xs">
+                      De AI gebruikt deze context als achtergrondinformatie bij het schrijven van feedback. Het verandert niets aan de scores of beoordelingscriteria — die komen altijd uit je graderingstabel.
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </CardTitle>
             </CardHeader>
             <CardContent>
               <textarea
-                className="w-full min-h-[60px] text-sm rounded-md border border-input bg-background px-3 py-2 ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                placeholder="Bijv.: Professionele bachelor Kleuteronderwijs aan een Vlaamse hogeschool. Studenten zijn toekomstige kleuterleidsters. Typische opdrachten: stageverslag, didactische voorbereiding, portfolio."
+                className="w-full min-h-[60px] text-sm rounded-md border border-input bg-muted/30 px-3 py-2 ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                placeholder="Bv: Bacheloropleiding kleuteronderwijs, 2e jaar. Studenten schrijven een reflectieverslag over hun stage-ervaring in een Vlaamse kleuterschool."
                 defaultValue={(project as any).education_context || ""}
+                maxLength={500}
                 onBlur={(e) => {
-                  const val = e.target.value.trim();
+                  const val = e.target.value.trim().slice(0, 500);
                   if (val !== ((project as any).education_context || "")) {
                     updateProject.mutateAsync({ education_context: val || null } as any);
                     toast.success("Onderwijscontext opgeslagen");
                   }
                 }}
+                onInput={(e) => {
+                  const el = e.target as HTMLTextAreaElement;
+                  const counter = el.parentElement?.querySelector('[data-counter]');
+                  if (counter) counter.textContent = `${el.value.length} / 500`;
+                }}
               />
-              <p className="text-xs text-muted-foreground mt-1">Beschrijf de opleiding, het type studenten en opdrachten. Dit helpt de AI om passender te beoordelen.</p>
+              <div className="flex justify-between mt-1">
+                <p className="text-xs text-muted-foreground">Beschrijf kort de opleiding, het niveau en het type student. Dit helpt de AI om feedback beter af te stemmen.</p>
+                <span data-counter className="text-xs text-muted-foreground whitespace-nowrap ml-2">
+                  {((project as any).education_context || "").length} / 500
+                </span>
+              </div>
             </CardContent>
           </Card>
 
