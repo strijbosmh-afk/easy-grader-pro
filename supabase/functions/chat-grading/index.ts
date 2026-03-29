@@ -27,7 +27,7 @@ serve(async (req) => {
     // Verify custom header
     const requestedBy = req.headers.get("x-requested-by");
     if (requestedBy !== "GradeAssist") {
-      return new Response(JSON.stringify({ error: "Forbidden" }), {
+      return new Response(JSON.stringify({ error: "Geen toegang" }), {
         status: 403,
         headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
       });

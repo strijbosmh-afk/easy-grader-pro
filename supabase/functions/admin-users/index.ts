@@ -28,7 +28,7 @@ Deno.serve(async (req) => {
     // Verify custom header
     const requestedBy = req.headers.get("x-requested-by");
     if (requestedBy !== "GradeAssist") {
-      return new Response(JSON.stringify({ error: "Forbidden" }), {
+      return new Response(JSON.stringify({ error: "Geen toegang" }), {
         status: 403,
         headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
       });
@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
     // Verify caller is authenticated
     const authHeader = req.headers.get("authorization");
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      return new Response(JSON.stringify({ error: "Niet ingelogd" }), {
         status: 401,
         headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
       });
@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
 
     const { data: { user: caller }, error: authError } = await userClient.auth.getUser();
     if (authError || !caller) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      return new Response(JSON.stringify({ error: "Niet ingelogd" }), {
         status: 401,
         headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
       });
@@ -66,7 +66,7 @@ Deno.serve(async (req) => {
     });
 
     if (!isAdmin) {
-      return new Response(JSON.stringify({ error: "Forbidden: admin role required" }), {
+      return new Response(JSON.stringify({ error: "Geen toegang: admin rol vereist" }), {
         status: 403,
         headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
       });
@@ -140,7 +140,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    return new Response(JSON.stringify({ error: "Invalid action. Use: ban, unban, delete" }), {
+    return new Response(JSON.stringify({ error: "Ongeldige actie. Gebruik: ban, unban, delete" }), {
       status: 400,
       headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
     });
