@@ -11,8 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import {
 import { invokeEdgeFunction } from "@/lib/supabase-helpers";
+import {
   Sparkles, Cpu, ArrowRight, ArrowLeft, Send, Users, MessageSquare, Loader2, Check, Share2,
 } from "lucide-react";
 
