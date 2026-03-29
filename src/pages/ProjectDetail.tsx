@@ -177,7 +177,7 @@ const ProjectDetail = () => {
   };
 
   const doUploadPdf = async (file: File, type: "opdracht" | "graderingstabel") => {
-    const path = `${id}/${type}_${Date.now()}.pdf`;
+    const path = `${user!.id}/${id}/${type}_${Date.now()}.pdf`;
     const { error: uploadError } = await supabase.storage.from("pdfs").upload(path, file);
     if (uploadError) throw uploadError;
     const { data: urlData, error: signError } = await supabase.storage.from("pdfs").createSignedUrl(path, 60 * 60 * 24 * 365); // 1 year
@@ -301,7 +301,7 @@ const ProjectDetail = () => {
           continue;
         }
         const naam = extractStudentName(file.name);
-        const path = `${id}/students/${Date.now()}_${file.name}`;
+        const path = `${user!.id}/${id}/students/${Date.now()}_${file.name}`;
         const { error: uploadError } = await supabase.storage.from("pdfs").upload(path, file);
         if (uploadError) {
           toast.error(`Upload mislukt: ${file.name}`);
