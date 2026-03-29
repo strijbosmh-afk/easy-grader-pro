@@ -12,6 +12,7 @@ export interface BatchProgress {
   failedNames: string[];
   startTime: number;
   studentTimes: number[]; // ms per completed student
+  concurrency?: number;
 }
 
 export interface BatchSummary {
@@ -110,10 +111,16 @@ export function BatchProgressOverlay({ progress, onCancel, summary, onCloseSumma
         <div className="space-y-4 py-2">
           <Progress value={pct} className="h-2" />
 
+          {progress.concurrency && progress.concurrency > 1 && (
+            <p className="text-xs text-muted-foreground">
+              Parallelle verwerking: {progress.concurrency} tegelijk
+            </p>
+          )}
+
           <p className="text-sm text-foreground">
-            Student {progress.completed + progress.failed + 1} van {progress.total} wordt beoordeeld
+            {progress.completed + progress.failed} van {progress.total} voltooid
             {progress.currentStudentName && (
-              <span className="text-muted-foreground">: {progress.currentStudentName}</span>
+              <span className="text-muted-foreground"> — Bezig met: {progress.currentStudentName}</span>
             )}
           </p>
 
@@ -142,7 +149,7 @@ export function BatchProgressOverlay({ progress, onCancel, summary, onCloseSumma
         </div>
         <DialogFooter>
           <Button variant="outline" size="sm" onClick={onCancel}>
-            Stop na huidige student
+            Annuleren... Huidige beoordelingen worden afgerond
           </Button>
         </DialogFooter>
       </DialogContent>
