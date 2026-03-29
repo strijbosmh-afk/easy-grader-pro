@@ -387,6 +387,7 @@ const ProjectDetail = () => {
 
     setRunning(true);
     cancelRef.current = false;
+    activeStudentsRef.current.clear();
 
     // Concurrency based on provider
     const providerSetting = (project as any)?.ai_provider || "lovable";
