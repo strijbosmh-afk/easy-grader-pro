@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, Loader2, Users, Download } from "lucide-react";
+import { ArrowLeft, Loader2, Users, Download, Beaker } from "lucide-react";
 import { exportProjectToExcel } from "@/lib/export";
 
 const ProjectOverview = () => {
@@ -133,6 +133,9 @@ const ProjectOverview = () => {
             <h1 className="text-2xl font-bold text-foreground flex items-center gap-3">
               <Users className="h-6 w-6 text-primary" />
               Scoreoverzicht — {project?.naam}
+              {(project as any)?.is_demo && (
+                <Badge variant="outline" className="text-xs"><Beaker className="h-3 w-3 mr-1" />Demo</Badge>
+              )}
             </h1>
             <p className="text-muted-foreground text-sm mt-1">
               {students?.length || 0} studenten · {criteria?.length || 0} criteria · Max {maxTotal} punten
