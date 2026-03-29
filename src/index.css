@@ -95,3 +95,21 @@
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
   }
 }
+
+@keyframes progress-indeterminate {
+  0% {
+    width: 30%;
+    transform: translateX(-100%);
+  }
+  50% {
+    width: 50%;
+  }
+  100% {
+    width: 30%;
+    transform: translateX(400%);
+  }
+}
+
+.animate-progress-indeterminate {
+  animation: progress-indeterminate 1.8s ease-in-out infinite;
+}

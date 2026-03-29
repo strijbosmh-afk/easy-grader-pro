@@ -1389,10 +1389,21 @@ const ProjectDetail = () => {
                               )}
                             </TableCell>
                             <TableCell>
-                              <Badge variant={statusVariants[student.status as StudentStatus]}>
-                                {student.status === "analyzing" && <Loader2 className="h-3 w-3 animate-spin mr-1" />}
-                                {statusLabels[student.status as StudentStatus]}
-                              </Badge>
+                              {student.status === "analyzing" ? (
+                                <div className="space-y-1 min-w-[120px]">
+                                  <div className="flex items-center gap-1.5">
+                                    <Loader2 className="h-3 w-3 animate-spin text-primary" />
+                                    <span className="text-xs font-medium text-primary">Analyseren...</span>
+                                  </div>
+                                  <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                                    <div className="h-full rounded-full bg-primary animate-progress-indeterminate" />
+                                  </div>
+                                </div>
+                              ) : (
+                                <Badge variant={statusVariants[student.status as StudentStatus]}>
+                                  {statusLabels[student.status as StudentStatus]}
+                                </Badge>
+                              )}
                             </TableCell>
                             <TableCell>
                               {total !== null ? (
