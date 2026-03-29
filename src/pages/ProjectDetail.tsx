@@ -587,36 +587,7 @@ const ProjectDetail = () => {
 
   const isDemo = (project as any)?.is_demo === true;
 
-  // Check if current user is a reviewer (not owner)
-  const { data: myReviewerRecord } = useQuery({
-    queryKey: ["my-reviewer-status", id, user?.id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("project_reviewers")
-        .select("*")
-        .eq("project_id", id!)
-        .eq("reviewer_id", user!.id)
-        .maybeSingle();
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!user?.id,
-  });
-
-  const { data: hasReviewers } = useQuery({
-    queryKey: ["has-reviewers", id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("project_reviewers")
-        .select("id")
-        .eq("project_id", id!)
-        .eq("status", "accepted")
-        .limit(1);
-      if (error) return false;
-      return (data?.length || 0) > 0;
-    },
-  });
-
+  const isDemo = (project as any)?.is_demo === true;
   const isOwner = project?.user_id === user?.id;
   const isReviewer = !!myReviewerRecord && myReviewerRecord.status === "accepted";
   const isReviewerPending = !!myReviewerRecord && myReviewerRecord.status === "pending";
