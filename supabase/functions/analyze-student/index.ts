@@ -1,10 +1,23 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+const ALLOWED_ORIGINS = [
+  "https://easy-grader-pro.lovable.app",
+  "https://lovable.dev",
+  "http://localhost:5173",
+  "http://localhost:8080",
+];
+
+function getCorsHeaders(req: Request) {
+  const origin = req.headers.get("Origin") || "";
+  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    "Access-Control-Allow-Origin": allowedOrigin,
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-requested-by",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Vary": "Origin",
+  };
+}
 
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
@@ -666,9 +679,18 @@ function matchAndBuildScores(
 }
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  if (req.method === "OPTIONS") return new Response(null, { headers: getCorsHeaders(req) });
 
   try {
+
+    // Verify custom header
+    const requestedBy = req.headers.get("x-requested-by");
+    if (requestedBy !== "GradeAssist") {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403,
+        headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
+      });
+    }
     const {
       studentId,
       projectId,
@@ -680,7 +702,7 @@ serve(async (req) => {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Niet ingelogd" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
       });
     }
 
@@ -692,7 +714,7 @@ serve(async (req) => {
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !user) {
       return new Response(JSON.stringify({ error: "Ongeldige sessie" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
       });
     }
 
@@ -700,7 +722,7 @@ serve(async (req) => {
     const { data: project } = await supabase.from("projects").select("*").eq("id", projectId).single();
     if (!project) {
       return new Response(JSON.stringify({ error: "Project niet gevonden" }), {
-        status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 404, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
       });
     }
     // Verify access: owner or shared
@@ -709,7 +731,7 @@ serve(async (req) => {
         .select("id").eq("project_id", projectId).eq("shared_with_user_id", user.id).single();
       if (!share) {
         return new Response(JSON.stringify({ error: "Geen toegang tot dit project" }), {
-          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 403, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
         });
       }
     }
@@ -785,7 +807,7 @@ serve(async (req) => {
       if (err.status === 429 || err.status === 402) {
         await supabase.from("students").update({ status: "pending" }).eq("id", studentId);
         return new Response(JSON.stringify({ error: err.message }), {
-          status: err.status, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: err.status, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
         });
       }
       throw err;
@@ -923,7 +945,7 @@ serve(async (req) => {
         message: `${unmatchedDbCriteria.length} criteria konden niet worden gekoppeld aan AI-output. Controleer de scorekaart.`,
       } : null,
     }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
     });
   } catch (error) {
     console.error("Error:", error);
@@ -937,7 +959,7 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : "Onbekende fout" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 500, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
     );
   }
 });

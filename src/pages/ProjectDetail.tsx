@@ -26,6 +26,7 @@ import { InviteReviewerDialog } from "@/components/InviteReviewerDialog";
 import { ModerationTab } from "@/components/ModerationTab";
 import { StudentReviewView } from "@/components/StudentReviewView";
 import {
+import { invokeEdgeFunction } from "@/lib/supabase-helpers";
   Dialog,
   DialogContent,
   DialogDescription,
@@ -190,7 +191,7 @@ const ProjectDetail = () => {
       setParsingGrading(true);
       try {
         const aiProvider = (project as any)?.ai_provider || "lovable";
-        const { data, error } = await supabase.functions.invoke("parse-grading-table", {
+        const { data, error } = await invokeEdgeFunction("parse-grading-table", {
           body: { graderingstabelUrl: signedUrl, aiProvider },
         });
         if (error) throw error;
@@ -387,7 +388,7 @@ const ProjectDetail = () => {
 
       const t0 = Date.now();
       try {
-        const { error } = await supabase.functions.invoke("analyze-student", {
+        const { error } = await invokeEdgeFunction("analyze-student", {
           body: { studentId: student.id, projectId: id, ...extraBody },
         });
         if (error) throw error;

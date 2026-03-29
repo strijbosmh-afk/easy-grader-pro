@@ -12,6 +12,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import {
+import { invokeEdgeFunction } from "@/lib/supabase-helpers";
   Sparkles, Cpu, ArrowRight, ArrowLeft, Send, Users, MessageSquare, Loader2, Check, Share2,
 } from "lucide-react";
 
@@ -137,7 +138,7 @@ export function NewProjectWizard({ open, onOpenChange }: NewProjectWizardProps) 
     setIsChatLoading(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke("project-context-chat", {
+      const { data, error } = await invokeEdgeFunction("project-context-chat", {
         body: {
           messages: newMessages,
           projectName: projectName.trim(),

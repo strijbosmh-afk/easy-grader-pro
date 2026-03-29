@@ -15,6 +15,7 @@ import { exportStudentToPdf } from "@/lib/export";
 import { downloadStudentReport } from "@/lib/export-pdf";
 import { exportStudentToWord } from "@/lib/export-word";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { invokeEdgeFunction } from "@/lib/supabase-helpers";
 
 function extractStoragePath(url: string): string | null {
   const match = url.match(/\/storage\/v1\/object\/(?:public|sign)\/pdfs\/(.+?)(?:\?|$)/);
@@ -300,7 +301,7 @@ const StudentScorecard = () => {
       queryClient.invalidateQueries({ queryKey: ["student", studentId] });
       const body: any = { studentId, projectId };
       if (niveauOverride) body.niveauOverride = niveauOverride;
-      const { data, error } = await supabase.functions.invoke("analyze-student", { body });
+      const { data, error } = await invokeEdgeFunction("analyze-student", { body });
       if (error) throw error;
       return data;
     },
@@ -488,7 +489,7 @@ const StudentScorecard = () => {
               onClick={async () => {
                 setGeneratingReport(true);
                 try {
-                  const { data, error } = await supabase.functions.invoke("generate-report", {
+                  const { data, error } = await invokeEdgeFunction("generate-report", {
                     body: { studentId, projectId },
                   });
                   if (error) throw error;

@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { invokeEdgeFunction } from "@/lib/supabase-helpers";
 
 interface OnboardingOverlayProps {
   onDismiss: () => void;
@@ -30,7 +31,7 @@ export function OnboardingOverlay({ onDismiss }: OnboardingOverlayProps) {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Niet ingelogd");
 
-      const res = await supabase.functions.invoke("create-demo-project", {
+      const res = await invokeEdgeFunction("create-demo-project", {
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
 
