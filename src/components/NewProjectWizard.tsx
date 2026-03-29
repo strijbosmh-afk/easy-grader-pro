@@ -70,6 +70,7 @@ export function NewProjectWizard({ open, onOpenChange }: NewProjectWizardProps) 
           ai_provider: selectedProvider,
           user_id: user?.id,
           custom_instructions: contextSummary,
+          education_context: educationContext.trim() || null,
         })
         .select()
         .single();
