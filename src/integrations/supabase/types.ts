@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      api_usage: {
+        Row: {
+          created_at: string | null
+          function_name: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          function_name: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          function_name?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       grading_criteria: {
         Row: {
           criterium_naam: string
