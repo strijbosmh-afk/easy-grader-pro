@@ -419,23 +419,34 @@ const ProjectDetail = () => {
       async (student) => {
         if (cancelRef.current) throw new Error("cancelled");
 
+        // Track active student
+        activeStudentsRef.current.add(student.naam);
+        progress.currentStudentName = Array.from(activeStudentsRef.current).join(", ");
+        setBatchProgress({ ...progress });
+
         // Mark analyzing
         await supabase.from("students").update({ status: "analyzing" as StudentStatus, grading_status: "grading" } as any).eq("id", student.id);
         debouncedInvalidateStudents();
 
         const t0 = Date.now();
-        const { error } = await invokeWithRetry("analyze-student", {
-          body: { studentId: student.id, projectId: id, ...extraBody },
-        });
-        const elapsed = Date.now() - t0;
+        try {
+          const { error } = await invokeWithRetry("analyze-student", {
+            body: { studentId: student.id, projectId: id, ...extraBody },
+          });
+          const elapsed = Date.now() - t0;
 
-        if (error) {
-          await supabase.from("students").update({ status: "pending" as StudentStatus, grading_status: "failed" } as any).eq("id", student.id);
-          throw error;
+          if (error) {
+            await supabase.from("students").update({ status: "pending" as StudentStatus, grading_status: "failed" } as any).eq("id", student.id);
+            throw error;
+          }
+
+          await supabase.from("students").update({ grading_status: "completed" } as any).eq("id", student.id);
+          return { studentId: student.id, elapsed };
+        } finally {
+          activeStudentsRef.current.delete(student.naam);
+          progress.currentStudentName = Array.from(activeStudentsRef.current).join(", ") || "Afronden...";
+          setBatchProgress({ ...progress });
         }
-
-        await supabase.from("students").update({ grading_status: "completed" } as any).eq("id", student.id);
-        return { studentId: student.id, elapsed };
       },
       (_completed, _total, result, index) => {
         if (result) {
