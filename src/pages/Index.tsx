@@ -21,6 +21,18 @@ const Index = () => {
   const [selectedProvider, setSelectedProvider] = useState<string>("lovable");
   const [dialogOpen, setDialogOpen] = useState(false);
 
+  // Claim orphaned projects (from before user_id was added)
+  useEffect(() => {
+    if (!user) return;
+    const claimOrphans = async () => {
+      await supabase
+        .from("projects")
+        .update({ user_id: user.id })
+        .is("user_id", null);
+    };
+    claimOrphans();
+  }, [user]);
+
   const { data: projects, isLoading } = useQuery({
     queryKey: ["projects"],
     queryFn: async () => {
