@@ -41,27 +41,6 @@ const Index = () => {
     },
   });
 
-  const createProject = useMutation({
-    mutationFn: async (naam: string) => {
-      const { data, error } = await supabase
-        .from("projects")
-        .insert({ naam, ai_provider: selectedProvider, user_id: user?.id })
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["projects"] });
-      setDialogOpen(false);
-      setNewProjectName("");
-      setSelectedProvider("lovable");
-      toast.success("Project aangemaakt!");
-      navigate(`/project/${data.id}`);
-    },
-    onError: () => toast.error("Fout bij aanmaken project"),
-  });
-
   const toggleArchive = useMutation({
     mutationFn: async ({ id, archived }: { id: string; archived: boolean }) => {
       const { error } = await supabase.from("projects").update({ archived }).eq("id", id);
