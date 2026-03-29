@@ -1474,7 +1474,7 @@ const ProjectDetail = () => {
 
                                 if (hasIssues) {
                                   const tooltipLines = [
-                                    ...missing.map((m: string) => `Score ontbreekt: ${m}`),
+                                    ...missing.map((m: any) => `Score ontbreekt: ${m.criterium_naam}`),
                                     ...warnings,
                                   ];
                                   return (
