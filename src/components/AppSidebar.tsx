@@ -76,23 +76,6 @@ export function AppSidebar() {
     enabled: !!user?.id,
   });
 
-  const createProject = useMutation({
-    mutationFn: async (naam: string) => {
-      const { data, error } = await supabase.from("projects").insert({ naam, ai_provider: selectedProvider, user_id: user?.id }).select().single();
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["projects"] });
-      setDialogOpen(false);
-      setNewProjectName("");
-      setSelectedProvider("lovable");
-      toast.success("Project aangemaakt!");
-      navigate(`/project/${data.id}`);
-    },
-    onError: () => toast.error("Fout bij aanmaken project"),
-  });
-
   const isActive = (path: string) => location.pathname === path;
 
   const recentProjects = projects?.filter((p: any) => !p.archived).slice(0, 8) || [];
