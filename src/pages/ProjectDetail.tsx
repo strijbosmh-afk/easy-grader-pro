@@ -220,30 +220,10 @@ const ProjectDetail = () => {
       setShowGradingDialog(false);
       toast.success("Nieuwe criteria toegepast! Heranalyse wordt gestart...");
 
-      // Re-analyze all students that have a PDF
+      // Re-analyze all students that have a PDF (parallel, with concurrency limit)
       const studentsWithPdf = students?.filter((s) => s.pdf_url) || [];
       if (studentsWithPdf.length > 0) {
-        setBatchAnalyzing(true);
-        let success = 0;
-        let failed = 0;
-        for (const student of studentsWithPdf) {
-          try {
-            await supabase.from("students").update({ status: "analyzing" as StudentStatus }).eq("id", student.id);
-            queryClient.invalidateQueries({ queryKey: ["students", id] });
-            const { error } = await supabase.functions.invoke("analyze-student", {
-              body: { studentId: student.id, projectId: id },
-            });
-            if (error) throw error;
-            success++;
-          } catch {
-            await supabase.from("students").update({ status: "pending" as StudentStatus }).eq("id", student.id);
-            failed++;
-          }
-          queryClient.invalidateQueries({ queryKey: ["students", id] });
-        }
-        setBatchAnalyzing(false);
-        queryClient.invalidateQueries({ queryKey: ["students", id] });
-        toast.success(`Heranalyse klaar: ${success} geslaagd${failed > 0 ? `, ${failed} mislukt` : ""}`);
+        await runBatchWithConcurrency(studentsWithPdf, {}, setBatchAnalyzing);
       }
     } catch (err: any) {
       toast.error("Fout bij toepassen criteria: " + (err?.message || "onbekende fout"));
@@ -330,17 +310,45 @@ const ProjectDetail = () => {
     setShowModelPicker(true);
   };
 
-  const doBatchAnalyze = async () => {
-    const pending = students?.filter((s) => s.status === "pending" || s.status === "reviewed") || [];
-    setBatchAnalyzing(true);
+  // Run up to CONCURRENCY analyses in parallel, reusing pre-fetched project PDFs
+  const CONCURRENCY = 4;
+
+  const runBatchWithConcurrency = async (
+    studentList: any[],
+    extraBody: Record<string, unknown> = {},
+    setRunning: (v: boolean) => void
+  ) => {
+    if (studentList.length === 0) return;
+    setRunning(true);
+
+    // Pre-check: warn about students with no PDF
+    const missingPdf = studentList.filter((s) => !s.pdf_url);
+    if (missingPdf.length > 0) {
+      toast.warning(
+        `${missingPdf.length} student${missingPdf.length > 1 ? "en hebben" : " heeft"} geen PDF en worden overgeslagen: ${missingPdf.map((s) => s.naam).join(", ")}`
+      );
+    }
+    const eligible = studentList.filter((s) => s.pdf_url);
+    if (eligible.length === 0) {
+      setRunning(false);
+      return;
+    }
+
+    // Mark all as "analyzing" upfront so the UI shows progress immediately
+    await supabase.from("students").update({ status: "analyzing" as StudentStatus })
+      .in("id", eligible.map((s) => s.id));
+    queryClient.invalidateQueries({ queryKey: ["students", id] });
+
     let success = 0;
     let failed = 0;
-    for (const student of pending) {
+    let index = 0;
+
+    const runNext = async (): Promise<void> => {
+      if (index >= eligible.length) return;
+      const student = eligible[index++];
       try {
-        await supabase.from("students").update({ status: "analyzing" as StudentStatus }).eq("id", student.id);
-        queryClient.invalidateQueries({ queryKey: ["students", id] });
         const { error } = await supabase.functions.invoke("analyze-student", {
-          body: { studentId: student.id, projectId: id },
+          body: { studentId: student.id, projectId: id, ...extraBody },
         });
         if (error) throw error;
         success++;
@@ -349,10 +357,20 @@ const ProjectDetail = () => {
         failed++;
       }
       queryClient.invalidateQueries({ queryKey: ["students", id] });
-    }
-    setBatchAnalyzing(false);
+      return runNext();
+    };
+
+    // Launch up to CONCURRENCY workers
+    await Promise.all(Array.from({ length: Math.min(CONCURRENCY, eligible.length) }, runNext));
+
+    setRunning(false);
     queryClient.invalidateQueries({ queryKey: ["students", id] });
-    toast.success(`Batch analyse klaar: ${success} geslaagd${failed > 0 ? `, ${failed} mislukt` : ""}`);
+    toast.success(`Klaar: ${success} geslaagd${failed > 0 ? `, ${failed} mislukt` : ""}`);
+  };
+
+  const doBatchAnalyze = async () => {
+    const pending = students?.filter((s) => s.status === "pending" || s.status === "reviewed") || [];
+    await runBatchWithConcurrency(pending, {}, setBatchAnalyzing);
   };
 
   const batchReAnalyze = () => {
@@ -367,27 +385,11 @@ const ProjectDetail = () => {
 
   const doBatchReAnalyze = async () => {
     const eligible = students?.filter((s) => s.status === "reviewed" || s.status === "graded") || [];
-    setReAnalyzing(true);
-    let success = 0;
-    let failed = 0;
-    for (const student of eligible) {
-      try {
-        await supabase.from("students").update({ status: "analyzing" as StudentStatus }).eq("id", student.id);
-        queryClient.invalidateQueries({ queryKey: ["students", id] });
-        const { error } = await supabase.functions.invoke("analyze-student", {
-          body: { studentId: student.id, projectId: id, niveauOverride: reAnalyzeNiveau },
-        });
-        if (error) throw error;
-        success++;
-      } catch {
-        await supabase.from("students").update({ status: "pending" as StudentStatus }).eq("id", student.id);
-        failed++;
-      }
-      queryClient.invalidateQueries({ queryKey: ["students", id] });
-    }
-    setReAnalyzing(false);
-    queryClient.invalidateQueries({ queryKey: ["students", id] });
-    toast.success(`Heranalyse klaar: ${success} geslaagd${failed > 0 ? `, ${failed} mislukt` : ""}`);
+    await runBatchWithConcurrency(
+      eligible,
+      { niveauOverride: reAnalyzeNiveau },
+      setReAnalyzing
+    );
   };
 
   const handleDrop = useCallback(

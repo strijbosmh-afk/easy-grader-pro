@@ -88,8 +88,8 @@ const Statistics = () => {
       : filteredStudents.filter((s: any) => s.projectId === p.id);
     const scores = students.flatMap((s: any) =>
       (s.student_scores || [])
-        .filter((sc: any) => sc.final_score != null && sc.grading_criteria?.max_score)
-        .map((sc: any) => (sc.final_score / sc.grading_criteria.max_score) * 100)
+        .filter((sc: any) => (sc.final_score != null || sc.ai_suggested_score != null) && sc.grading_criteria?.max_score)
+        .map((sc: any) => ((sc.final_score ?? sc.ai_suggested_score) / sc.grading_criteria.max_score) * 100)
     );
     const avg = scores.length > 0 ? scores.reduce((a: number, b: number) => a + b, 0) / scores.length : 0;
     return {
@@ -118,8 +118,8 @@ const Statistics = () => {
     ];
     for (const s of filteredStudents) {
       const scores = ((s as any).student_scores || [])
-        .filter((sc: any) => (sc.final_score != null) && sc.grading_criteria?.max_score)
-        .map((sc: any) => (sc.final_score / sc.grading_criteria.max_score) * 100);
+        .filter((sc: any) => (sc.final_score != null || sc.ai_suggested_score != null) && sc.grading_criteria?.max_score)
+        .map((sc: any) => ((sc.final_score ?? sc.ai_suggested_score) / sc.grading_criteria.max_score) * 100);
       if (scores.length === 0) continue;
       const avg = scores.reduce((a: number, b: number) => a + b, 0) / scores.length;
       const bucket = buckets.find((b) => avg >= b.min && avg < b.max);
@@ -133,8 +133,8 @@ const Statistics = () => {
     return filteredStudents
       .map((s: any) => {
         const scores = (s.student_scores || [])
-          .filter((sc: any) => sc.final_score != null && sc.grading_criteria?.max_score)
-          .map((sc: any) => (sc.final_score / sc.grading_criteria.max_score) * 100);
+          .filter((sc: any) => (sc.final_score != null || sc.ai_suggested_score != null) && sc.grading_criteria?.max_score)
+          .map((sc: any) => ((sc.final_score ?? sc.ai_suggested_score) / sc.grading_criteria.max_score) * 100);
         const avg = scores.length > 0 ? scores.reduce((a: number, b: number) => a + b, 0) / scores.length : null;
         return { naam: s.naam, projectNaam: s.projectNaam, avg };
       })

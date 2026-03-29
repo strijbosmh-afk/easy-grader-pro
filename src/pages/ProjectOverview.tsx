@@ -87,6 +87,8 @@ const ProjectOverview = () => {
 
   const getScoreColor = (score: number | null, max: number) => {
     if (score === null) return "";
+    // Negative scores (penalty criteria) always shown in red with a distinct style
+    if (score < 0) return "text-destructive font-bold";
     const pct = (score / max) * 100;
     if (pct >= 80) return "text-green-600 dark:text-green-400 font-semibold";
     if (pct >= 60) return "text-foreground";
@@ -205,7 +207,7 @@ const ProjectOverview = () => {
                                 key={c.id}
                                 className={`text-center ${getScoreColor(score, Number(c.max_score))}`}
                               >
-                                {score !== null ? Number(score).toFixed(1) : "—"}
+                                {score !== null ? (Number(score) < 0 ? `${Number(score).toFixed(1)} ⚠` : Number(score) % 1 === 0 ? Number(score).toString() : Number(score).toFixed(1)) : "—"}
                               </TableCell>
                             );
                           })}

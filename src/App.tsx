@@ -13,7 +13,17 @@ import ProjectOverview from "./pages/ProjectOverview";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // Don't refetch data that's less than 60 seconds old — eliminates redundant
+      // Supabase round-trips when navigating between pages
+      staleTime: 60_000,
+      // Keep unused query data in cache for 5 minutes
+      gcTime: 5 * 60_000,
+    },
+  },
+});
 
 function ProtectedRoutes() {
   const { isAuthenticated } = useAuth();

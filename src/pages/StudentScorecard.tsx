@@ -6,9 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Loader2, Bot, Check, Download, RefreshCw, FileText, FileDown } from "lucide-react";
+import { ArrowLeft, ArrowRight, Loader2, Bot, Check, Download, RefreshCw, FileText, FileDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { exportStudentToPdf } from "@/lib/export";
 import { exportStudentToWord } from "@/lib/export-word";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -22,10 +22,26 @@ const StudentScorecard = () => {
   const [reAnalyzeNiveau, setReAnalyzeNiveau] = useState("streng");
   const [generatingReport, setGeneratingReport] = useState(false);
 
+  const [isDirty, setIsDirty] = useState(false);
+
   const { data: project } = useQuery({
     queryKey: ["project", projectId],
     queryFn: async () => {
       const { data, error } = await supabase.from("projects").select("*").eq("id", projectId!).single();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Fetch ordered sibling students for prev/next navigation
+  const { data: siblings } = useQuery({
+    queryKey: ["students", projectId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("students")
+        .select("id, naam")
+        .eq("project_id", projectId!)
+        .order("naam", { ascending: true });
       if (error) throw error;
       return data;
     },
@@ -84,12 +100,22 @@ const StudentScorecard = () => {
     }
   }, [scores, criteria, initialized]);
 
-  // Reset initialized when studentId changes
+  // Reset state when navigating to a different student
   useEffect(() => {
     setInitialized(false);
     setLocalScores({});
     setDocentFeedback(null);
+    setIsDirty(false);
   }, [studentId]);
+
+  // Warn before browser tab close when there are unsaved changes
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (isDirty) { e.preventDefault(); e.returnValue = ""; }
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [isDirty]);
 
   const getScoreForCriterium = (criteriumId: string) => {
     if (localScores[criteriumId]) return localScores[criteriumId];
@@ -110,6 +136,7 @@ const StudentScorecard = () => {
   };
 
   const updateLocal = (criteriumId: string, field: "final_score" | "opmerkingen", value: string) => {
+    setIsDirty(true);
     setLocalScores((prev) => ({
       ...prev,
       [criteriumId]: {
@@ -138,23 +165,37 @@ const StudentScorecard = () => {
     }
     setSaving(true);
     try {
+      // Validate scores are within allowed range
       for (const c of criteria) {
         const vals = localScores[c.id] || getScoreForCriterium(c.id);
-        const finalScore = vals.final_score !== "" ? parseFloat(vals.final_score) : null;
-        await supabase.from("student_scores").upsert(
-          {
-            student_id: studentId!,
-            criterium_id: c.id,
-            final_score: finalScore,
-            opmerkingen: vals.opmerkingen || null,
-          },
-          { onConflict: "student_id,criterium_id" }
-        );
+        if (vals.final_score !== "") {
+          const num = parseFloat(vals.final_score);
+          if (num > Number(c.max_score)) {
+            toast.error(`Score voor "${c.criterium_naam}" mag maximaal ${c.max_score} zijn.`);
+            setSaving(false);
+            return;
+          }
+        }
       }
+
+      // Batch upsert all scores in one call
+      const upsertRows = criteria.map((c) => {
+        const vals = localScores[c.id] || getScoreForCriterium(c.id);
+        return {
+          student_id: studentId!,
+          criterium_id: c.id,
+          final_score: vals.final_score !== "" ? parseFloat(vals.final_score) : null,
+          opmerkingen: vals.opmerkingen || null,
+        };
+      });
+      await supabase.from("student_scores").upsert(upsertRows, { onConflict: "student_id,criterium_id" });
+
       await supabase.from("students").update({
         status: "graded" as any,
         docent_feedback: feedbackValue || null,
       }).eq("id", studentId!);
+
+      setIsDirty(false);
       queryClient.invalidateQueries({ queryKey: ["scores", studentId] });
       queryClient.invalidateQueries({ queryKey: ["student", studentId] });
       queryClient.invalidateQueries({ queryKey: ["students", projectId] });
@@ -165,6 +206,31 @@ const StudentScorecard = () => {
       setSaving(false);
     }
   };
+
+  // Keyboard shortcut: Ctrl/Cmd+S to save
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+        e.preventDefault();
+        if (!saving) saveScores();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [saving, localScores, docentFeedback]);
+
+  // Prev/next navigation helpers
+  const siblingIndex = siblings?.findIndex((s) => s.id === studentId) ?? -1;
+  const prevStudent = siblingIndex > 0 ? siblings![siblingIndex - 1] : null;
+  const nextStudent = siblingIndex >= 0 && siblings && siblingIndex < siblings.length - 1 ? siblings[siblingIndex + 1] : null;
+
+  const navigateToStudent = useCallback((targetId: string) => {
+    if (isDirty) {
+      if (!window.confirm("Je hebt niet-opgeslagen wijzigingen. Toch verdergaan?")) return;
+    }
+    setIsDirty(false);
+    navigate(`/project/${projectId}/student/${targetId}`);
+  }, [isDirty, projectId, navigate]);
 
   const analyzeStudent = useMutation({
     mutationFn: async (niveauOverride?: string) => {
@@ -217,13 +283,50 @@ const StudentScorecard = () => {
     <div className="min-h-screen bg-background">
       <header className="border-b bg-card">
         <div className="container mx-auto px-6 py-4">
-          <Button variant="ghost" size="sm" onClick={() => navigate(`/project/${projectId}`)} className="mb-3">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Terug naar project
-          </Button>
+          <div className="flex items-center justify-between mb-3">
+            <Button variant="ghost" size="sm" onClick={() => navigate(`/project/${projectId}`)}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Terug naar project
+            </Button>
+            {/* Prev / Next student navigation */}
+            {siblings && siblings.length > 1 && (
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={!prevStudent}
+                  onClick={() => prevStudent && navigateToStudent(prevStudent.id)}
+                  title={prevStudent ? `← ${prevStudent.naam}` : undefined}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  <span className="hidden sm:inline ml-1 max-w-[100px] truncate">{prevStudent?.naam ?? ""}</span>
+                </Button>
+                <span className="text-xs text-muted-foreground px-2">
+                  {siblingIndex + 1} / {siblings.length}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={!nextStudent}
+                  onClick={() => nextStudent && navigateToStudent(nextStudent.id)}
+                  title={nextStudent ? `${nextStudent.naam} →` : undefined}
+                >
+                  <span className="hidden sm:inline mr-1 max-w-[100px] truncate">{nextStudent?.naam ?? ""}</span>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+          </div>
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-foreground">{student.naam}</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-bold text-foreground">{student.naam}</h1>
+                {isDirty && (
+                  <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-400">
+                    Niet opgeslagen
+                  </Badge>
+                )}
+              </div>
               <p className="text-sm text-muted-foreground mt-1">{project?.naam}</p>
             </div>
             <div className="flex items-center gap-3">

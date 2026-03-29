@@ -350,7 +350,14 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { studentId, projectId, niveauOverride } = await req.json();
+    // Accept optional pre-fetched PDFs from batch caller to avoid re-downloading per student
+    const {
+      studentId,
+      projectId,
+      niveauOverride,
+      cachedGraderingstabelBase64,
+      cachedOpdrachtBase64,
+    } = await req.json();
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -374,24 +381,32 @@ serve(async (req) => {
     const subCriteria = existingCriteria?.filter((c: any) => !c.is_eindscore) || [];
     const eindscoreCriterium = existingCriteria?.find((c: any) => c.is_eindscore);
 
-    // Download PDFs
+    // Download PDFs — use pre-fetched base64 when available (batch mode)
     console.log("Downloading PDFs...");
     const pdfPromises: Promise<string>[] = [];
     const pdfLabels: string[] = [];
 
     if (project.graderingstabel_pdf_url) {
-      pdfPromises.push(fetchPdfAsBase64(project.graderingstabel_pdf_url));
+      pdfPromises.push(
+        cachedGraderingstabelBase64
+          ? Promise.resolve(cachedGraderingstabelBase64)
+          : fetchPdfAsBase64(project.graderingstabel_pdf_url)
+      );
       pdfLabels.push("graderingstabel");
     }
     if (project.opdracht_pdf_url) {
-      pdfPromises.push(fetchPdfAsBase64(project.opdracht_pdf_url));
+      pdfPromises.push(
+        cachedOpdrachtBase64
+          ? Promise.resolve(cachedOpdrachtBase64)
+          : fetchPdfAsBase64(project.opdracht_pdf_url)
+      );
       pdfLabels.push("opdracht");
     }
     pdfPromises.push(fetchPdfAsBase64(student.pdf_url));
     pdfLabels.push("student");
 
     const pdfBase64s = await Promise.all(pdfPromises);
-    console.log("PDFs downloaded:", pdfLabels.join(", "));
+    console.log("PDFs loaded:", pdfLabels.join(", "), cachedGraderingstabelBase64 ? "(graderingstabel from cache)" : "");
 
     // Build multimodal content
     const contentParts: any[] = [];
@@ -447,23 +462,23 @@ serve(async (req) => {
       existingCriteria = inserted;
     }
 
-    // Delete existing scores, then insert new
+    // Delete existing scores, then batch-insert new ones in a single round-trip
     await supabase.from("student_scores").delete().eq("student_id", studentId);
 
     let matchedCount = 0;
     const usedCriteria = new Set<string>();
     const unmatchedAiCriteria: string[] = [];
     const unmatchedDbCriteria: string[] = [];
+    const scoresToInsert: any[] = [];
 
     for (const aiCriterium of result.criteria) {
       const matched = findBestMatch(aiCriterium.naam, existingCriteria!.filter((c: any) => !usedCriteria.has(c.id)));
       if (matched) {
         usedCriteria.add(matched.id);
-        const score = parseScoreValue(aiCriterium.score);
-        await supabase.from("student_scores").insert({
+        scoresToInsert.push({
           student_id: studentId,
           criterium_id: matched.id,
-          ai_suggested_score: score,
+          ai_suggested_score: parseScoreValue(aiCriterium.score),
           ai_motivatie: aiCriterium.motivatie,
           ai_detail_feedback: aiCriterium.detail_feedback || null,
         });
@@ -479,13 +494,18 @@ serve(async (req) => {
       if (!usedCriteria.has(c.id)) {
         console.warn("No AI score for criterion:", c.criterium_naam);
         unmatchedDbCriteria.push(c.criterium_naam);
-        await supabase.from("student_scores").insert({
+        scoresToInsert.push({
           student_id: studentId,
           criterium_id: c.id,
           ai_suggested_score: null,
           ai_motivatie: `⚠️ De AI heeft dit criterium niet beoordeeld. Controleer of de criterium-naam in de graderingstabel overeenkomt met "${c.criterium_naam}".`,
         });
       }
+    }
+
+    // Single batch insert for all scores
+    if (scoresToInsert.length > 0) {
+      await supabase.from("student_scores").insert(scoresToInsert);
     }
 
     console.log(`Matched ${matchedCount}/${result.criteria.length} AI criteria to ${existingCriteria!.length} DB criteria`);
