@@ -995,8 +995,6 @@ const ProjectDetail = () => {
                 accept=".pdf,.docx,.doc"
                 className="hidden"
                 onChange={(e) => e.target.files?.[0] && uploadPdf(e.target.files[0], "opdracht")}
-          continue;
-        }
               />
             </CardContent>
           </Card>
