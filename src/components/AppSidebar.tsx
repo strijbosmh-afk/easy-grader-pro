@@ -216,9 +216,11 @@ export function AppSidebar() {
             variant="ghost"
             size="sm"
             className="w-full justify-start text-sidebar-foreground/70 hover:text-destructive"
-            onClick={() => {
-              sessionStorage.removeItem("authenticated");
-              navigate("/login");
+            onClick={async () => {
+              const { useAuth } = await import("@/contexts/AuthContext");
+              // Can't use hook here — call supabase directly
+              const { supabase } = await import("@/integrations/supabase/client");
+              await supabase.auth.signOut();
             }}
           >
             <LogOut className="h-4 w-4 mr-2" />
