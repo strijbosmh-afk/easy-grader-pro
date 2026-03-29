@@ -411,6 +411,8 @@ const ProjectDetail = () => {
     const eligible = studentList.filter((s) => s.pdf_url);
     if (eligible.length === 0) return;
 
+    setRunning(true);
+    cancelRef.current = false;
     activeStudentsRef.current.clear();
     studentStartTimesRef.current.clear();
 
