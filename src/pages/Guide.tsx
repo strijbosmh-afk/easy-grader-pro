@@ -1,4 +1,4 @@
-import { BookOpen, Brain, ShieldCheck, Sparkles, Target, AlertTriangle, RotateCcw, MessageSquare, TrendingUp, CheckCircle, X } from "lucide-react";
+import { BookOpen, Brain, ShieldCheck, Sparkles, Target, AlertTriangle, RotateCcw, MessageSquare, TrendingUp, CheckCircle, X, Users, FileText, BarChart3, Upload, Globe, Lock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
@@ -46,7 +46,7 @@ const features = [
   {
     title: "Onderwijscontext",
     description:
-      "Stel per project in welke opleiding en welk type studenten u beoordeelt. De AI past verwachtingsniveau en taal hierop aan.",
+      "Stel per project in welke opleiding en welk type studenten u beoordeelt. De AI past verwachtingsniveau en taal hierop aan. Dit veld wordt gesaniteerd zodat het de AI nooit kan verwarren — leeg laten is altijd veilig.",
   },
   {
     title: "Scoringssysteemanalyse",
@@ -63,38 +63,100 @@ const features = [
     description:
       "De AI volgt instructies in de graderingstabel (vaak gekleurde tekst) letterlijk op en geeft concrete feedback met paginaverwijzingen.",
   },
+  {
+    title: "AI-chat per project",
+    description:
+      "Stel vragen over de opdracht, rubric of specifieke studenten via een ingebouwde chatfunctie. De AI heeft volledige context over uw project en geeft direct antwoord.",
+  },
+];
+
+const collaborationFeatures = [
+  {
+    title: "Moderatie / tweede beoordelaar",
+    description:
+      "Nodig een collega uit als reviewer of moderator. De reviewer kan per criterium akkoord gaan, scores aanpassen, of opmerkingen toevoegen. U als eigenaar ziet alle review-activiteit en kunt scores definitief maken.",
+  },
+  {
+    title: "Project delen",
+    description:
+      "Deel een project met collega's zodat zij het studentwerk en de beoordelingen kunnen inzien. U behoudt altijd de eigenaarschap.",
+  },
+  {
+    title: "E-mailnotificaties",
+    description:
+      "Wanneer een reviewer klaar is met het beoordelen van alle studenten, ontvangt de projecteigenaar automatisch een e-mailnotificatie.",
+  },
+];
+
+const exportFeatures = [
+  {
+    title: "Excel-rapport",
+    description:
+      "Exporteer een compleet Excel-bestand met drie tabbladen: Overzicht (scores per student), Feedback (gedetailleerde AI-feedback per student) en Statistieken (gemiddelden, mediaan, standaarddeviatie).",
+  },
+  {
+    title: "PDF-beoordelingsverslag",
+    description:
+      "Genereer per student een professioneel PDF-verslag met scores, motivatie en feedback. Beschikbaar als individueel bestand of als batch-export in een ZIP-archief.",
+  },
+  {
+    title: "Word-verslag",
+    description:
+      "Exporteer beoordelingen als professioneel Word-document, geoptimaliseerd voor afdrukken zonder AI-labels of markdown-opmaak.",
+  },
+];
+
+const securityFeatures = [
+  "Pad-gebaseerde opslagbeveiliging: bestanden zijn alleen toegankelijk voor de eigenaar van het project.",
+  "Rate limiting: maximaal 60 AI-beoordelingen per uur per gebruiker om misbruik te voorkomen.",
+  "CORS-beveiliging: alleen verzoeken van geautoriseerde domeinen worden geaccepteerd.",
+  "Audit trail: elke scorewijziging (door AI, docent of reviewer) wordt gelogd met tijdstip, oude waarde en nieuwe waarde.",
+  "Row Level Security: alle database-tabellen zijn beveiligd zodat gebruikers alleen hun eigen data kunnen zien.",
+  "Projecttoegangscontrole: backend-functies verifiëren dat de gebruiker eigenaar of geaccepteerde reviewer is voordat data wordt verwerkt.",
 ];
 
 const workflowSteps = [
   {
     step: 1,
-    title: "Project instellen",
+    title: "Project aanmaken",
     description:
-      "Upload de graderingstabel en optioneel de opdrachtomschrijving. Vul de onderwijscontext in zodat de AI weet welk type studenten u beoordeelt. De AI analyseert automatisch de graderingstabel en extraheert criteria met scoreniveaus.",
+      "Maak een nieuw project aan via de wizard. Kies een AI-model, vul optioneel de onderwijscontext in, en doorloop het AI-contextgesprek dat uw project beter leert kennen. U kunt ook direct collega's uitnodigen als reviewer.",
   },
   {
     step: 2,
-    title: "Studenten uploaden",
+    title: "Rubric en opdracht uploaden",
     description:
-      "Upload de PDF-bestanden van alle studenten. U kunt ze individueel of in batch laten beoordelen.",
+      "Upload de graderingstabel (PDF of Word) en optioneel de opdrachtomschrijving. De AI analyseert automatisch de rubric en extraheert criteria met scoreniveaus.",
   },
   {
     step: 3,
-    title: "AI-beoordeling starten",
+    title: "Studentwerk uploaden",
     description:
-      "De AI doorloopt het tweefase-proces per student. In batchmodus worden meerdere studenten parallel verwerkt.",
+      "Upload PDF- of Word-bestanden van studenten. Meerdere bestanden tegelijk uploaden is mogelijk.",
   },
   {
     step: 4,
-    title: "Controleren en bijsturen",
+    title: "AI-beoordeling starten",
     description:
-      "Bekijk de scorekaart per student. Let vooral op scores met lage betrouwbaarheid en eventuele validatiewaarschuwingen. Pas scores en feedback aan waar nodig.",
+      "Start de beoordeling individueel of in batch. De AI doorloopt het tweefase-proces per student. In batchmodus worden meerdere studenten parallel verwerkt met voortgangsindicatie.",
   },
   {
     step: 5,
-    title: "Finaliseren",
+    title: "Controleren en bijsturen",
     description:
-      "Wanneer u tevreden bent, finaliseert u de scores. Alleen gefinaliseerde scores worden meegenomen in rapporten.",
+      "Bekijk de scorekaart per student. Let op scores met lage betrouwbaarheid en validatiewaarschuwingen. Pas scores en feedback aan waar nodig. Gebruik de AI-chat voor vragen over specifieke beoordelingen.",
+  },
+  {
+    step: 6,
+    title: "Review (optioneel)",
+    description:
+      "Als u een reviewer heeft uitgenodigd, kan deze per criterium scores beoordelen. Na afloop ontvangt u een notificatie en kunt u de review-resultaten verwerken.",
+  },
+  {
+    step: 7,
+    title: "Exporteren en finaliseren",
+    description:
+      "Exporteer de resultaten als Excel, PDF of Word. Bekijk statistieken in het analytics-dashboard met scoreverdelingen, gemiddelden en vergelijkingen.",
   },
 ];
 
@@ -119,7 +181,7 @@ export default function Guide() {
             <BookOpen className="h-5 w-5 text-primary" />
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">
-            Handleiding AI-Beoordeling
+            Handleiding GradeAssist
           </h1>
         </div>
       </div>
@@ -128,7 +190,7 @@ export default function Guide() {
       <Card>
         <CardContent className="pt-6">
           <p className="text-sm leading-relaxed text-muted-foreground">
-            GradeAssist gebruikt geavanceerde AI-modellen om het werk van studenten te analyseren en te beoordelen op basis van uw graderingstabel. Het systeem leest drie documenten: de graderingstabel (rubric), de opdrachtomschrijving en het ingediende studentwerk. Vervolgens produceert het per criterium een score met motivatie, gedetailleerde feedback en een betrouwbaarheidsindicatie.
+            GradeAssist gebruikt geavanceerde AI-modellen om het werk van studenten te analyseren en te beoordelen op basis van uw graderingstabel. Het systeem leest drie documenten: de graderingstabel (rubric), de opdrachtomschrijving en het ingediende studentwerk (PDF of Word). Vervolgens produceert het per criterium een score met motivatie, gedetailleerde feedback en een betrouwbaarheidsindicatie.
           </p>
           <div className="mt-4 rounded-lg bg-primary/5 border border-primary/10 p-4">
             <p className="text-sm font-medium text-foreground">
@@ -163,7 +225,7 @@ export default function Guide() {
         </div>
       </section>
 
-      {/* Smart Features Table */}
+      {/* Smart Features */}
       <section className="space-y-4">
         <div className="flex items-center gap-2">
           <TrendingUp className="h-5 w-5 text-primary" />
@@ -185,24 +247,78 @@ export default function Guide() {
         </Card>
       </section>
 
-      {/* Validation */}
+      {/* Collaboration */}
       <section className="space-y-4">
         <div className="flex items-center gap-2">
-          <ShieldCheck className="h-5 w-5 text-primary" />
-          <h2 className="text-lg font-semibold text-foreground">Validatie en betrouwbaarheid</h2>
+          <Users className="h-5 w-5 text-primary" />
+          <h2 className="text-lg font-semibold text-foreground">Samenwerking</h2>
+        </div>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="space-y-4">
+              {collaborationFeatures.map((f) => (
+                <div key={f.title} className="flex gap-3">
+                  <span className="text-sm font-medium text-foreground min-w-[180px] shrink-0">
+                    {f.title}
+                  </span>
+                  <p className="text-sm text-muted-foreground">{f.description}</p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+
+      {/* Export */}
+      <section className="space-y-4">
+        <div className="flex items-center gap-2">
+          <FileText className="h-5 w-5 text-primary" />
+          <h2 className="text-lg font-semibold text-foreground">Exportmogelijkheden</h2>
+        </div>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="space-y-4">
+              {exportFeatures.map((f) => (
+                <div key={f.title} className="flex gap-3">
+                  <span className="text-sm font-medium text-foreground min-w-[180px] shrink-0">
+                    {f.title}
+                  </span>
+                  <p className="text-sm text-muted-foreground">{f.description}</p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+
+      {/* Analytics */}
+      <section className="space-y-4">
+        <div className="flex items-center gap-2">
+          <BarChart3 className="h-5 w-5 text-primary" />
+          <h2 className="text-lg font-semibold text-foreground">Analytics dashboard</h2>
+        </div>
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-sm text-muted-foreground">
+              Het statistiekenpaneel biedt een overzicht per project of over alle projecten heen. U vindt er scoreverdelingen (histogram), gemiddelde, mediaan, standaarddeviatie, minimum en maximum. Er is ook een overzicht van AI-betrouwbaarheid per criterium en een top-studenten ranglijst. Selecteer een specifiek project of bekijk de geaggregeerde statistieken.
+            </p>
+          </CardContent>
+        </Card>
+      </section>
+
+      {/* Validation & Security */}
+      <section className="space-y-4">
+        <div className="flex items-center gap-2">
+          <Lock className="h-5 w-5 text-primary" />
+          <h2 className="text-lg font-semibold text-foreground">Beveiliging en validatie</h2>
         </div>
         <Card>
           <CardContent className="pt-6">
             <p className="text-sm text-muted-foreground mb-4">
-              De AI is krachtig, maar niet onfeilbaar. Daarom heeft GradeAssist meerdere veiligheidslagen ingebouwd:
+              GradeAssist heeft meerdere beveiligings- en validatielagen ingebouwd:
             </p>
             <ul className="space-y-3">
-              {[
-                "Server-side scorevalidatie: Elke score wordt gecontroleerd tegen het maximum en de gedefinieerde rubric-niveaus. Ongeldige scores worden automatisch gecorrigeerd en de docent krijgt een melding.",
-                "Betrouwbaarheidsindicator: Scores waar de AI onzeker over is, worden gemarkeerd met een waarschuwingsicoon. Dit zijn de scores die u als eerste moet controleren.",
-                "Validatiewaarschuwingen: Als scores zijn gecorrigeerd of criteria niet gekoppeld konden worden, verschijnt een samenvatting bovenaan de scorekaart.",
-                "Audit trail: Elke scorewijziging (door AI of handmatig) wordt gelogd met tijdstip, oude waarde en nieuwe waarde. Zo is altijd traceerbaar wie wat heeft aangepast.",
-              ].map((item, i) => (
+              {securityFeatures.map((item, i) => (
                 <li key={i} className="flex gap-2 text-sm text-muted-foreground">
                   <CheckCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" />
                   <span>{item}</span>
@@ -233,11 +349,26 @@ export default function Guide() {
         </div>
       </section>
 
+      {/* Supported file types */}
+      <section className="space-y-4">
+        <div className="flex items-center gap-2">
+          <Upload className="h-5 w-5 text-primary" />
+          <h2 className="text-lg font-semibold text-foreground">Ondersteunde bestandstypen</h2>
+        </div>
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-sm text-muted-foreground">
+              GradeAssist ondersteunt <strong>PDF</strong>, <strong>Word (.docx)</strong> en <strong>Word (.doc)</strong> bestanden voor zowel rubrics, opdrachtomschrijvingen als studentwerk. Bestanden worden veilig opgeslagen en zijn alleen toegankelijk voor de eigenaar en geautoriseerde reviewers.
+            </p>
+          </CardContent>
+        </Card>
+      </section>
+
       {/* Closing */}
       <Card className="bg-primary/5 border-primary/10">
         <CardContent className="pt-6">
           <p className="text-sm text-foreground leading-relaxed">
-            GradeAssist combineert de analytische kracht van AI met uw professioneel oordeel als docent. De AI leest grondig, redeneert stap voor stap, en levert onderbouwde scores met verifieerbare feedback. U behoudt altijd de controle.
+            GradeAssist combineert de analytische kracht van AI met uw professioneel oordeel als docent. De AI leest grondig, redeneert stap voor stap, en levert onderbouwde scores met verifieerbare feedback. U behoudt altijd de controle — van eerste beoordeling tot definitieve export.
           </p>
         </CardContent>
       </Card>
