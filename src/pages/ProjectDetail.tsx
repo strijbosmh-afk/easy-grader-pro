@@ -473,6 +473,7 @@ const ProjectDetail = () => {
           return { studentId: student.id, elapsed };
         } finally {
           activeStudentsRef.current.delete(student.naam);
+          studentStartTimesRef.current.delete(student.id);
           progress.currentStudentName = Array.from(activeStudentsRef.current).join(", ") || "Afronden...";
           setBatchProgress({ ...progress });
         }
