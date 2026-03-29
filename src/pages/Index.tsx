@@ -6,21 +6,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, FolderOpen, Users, TrendingUp, Sparkles, Cpu, Archive, ArchiveRestore, Share2 } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
+import { Plus, Search, FolderOpen, Users, TrendingUp, Archive, ArchiveRestore, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { ShareProjectDialog } from "@/components/ShareProjectDialog";
+import { NewProjectWizard } from "@/components/NewProjectWizard";
 
 const Index = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const [search, setSearch] = useState("");
-  const [newProjectName, setNewProjectName] = useState("");
-  const [selectedProvider, setSelectedProvider] = useState<string>("lovable");
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [wizardOpen, setWizardOpen] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
   const [shareProject, setShareProject] = useState<{ id: string; naam: string } | null>(null);
 
@@ -42,27 +39,6 @@ const Index = () => {
       if (error) throw error;
       return data;
     },
-  });
-
-  const createProject = useMutation({
-    mutationFn: async (naam: string) => {
-      const { data, error } = await supabase
-        .from("projects")
-        .insert({ naam, ai_provider: selectedProvider, user_id: user?.id })
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["projects"] });
-      setDialogOpen(false);
-      setNewProjectName("");
-      setSelectedProvider("lovable");
-      toast.success("Project aangemaakt!");
-      navigate(`/project/${data.id}`);
-    },
-    onError: () => toast.error("Fout bij aanmaken project"),
   });
 
   const toggleArchive = useMutation({
@@ -112,81 +88,10 @@ const Index = () => {
             <h1 className="text-2xl font-bold text-foreground">Projecten</h1>
             <p className="text-muted-foreground text-sm mt-1">Beheer je beoordelingsprojecten</p>
           </div>
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Nieuw Project
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-lg">
-              <DialogHeader>
-                <DialogTitle>Nieuw Project Aanmaken</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-5 pt-4">
-                <div>
-                  <Label htmlFor="projectName">Projectnaam</Label>
-                  <Input
-                    id="projectName"
-                    placeholder="Bijv. Wiskunde Hoofdstuk 3"
-                    value={newProjectName}
-                    onChange={(e) => setNewProjectName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && newProjectName.trim()) {
-                        createProject.mutate(newProjectName.trim());
-                      }
-                    }}
-                  />
-                </div>
-                <div>
-                  <Label className="mb-3 block">AI Model voor analyse</Label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedProvider("lovable")}
-                      className={`relative rounded-lg border-2 p-4 text-left transition-all ${
-                        selectedProvider === "lovable"
-                          ? "border-primary bg-primary/5"
-                          : "border-border hover:border-primary/40"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 mb-2">
-                        <Sparkles className="h-4 w-4 text-primary" />
-                        <span className="font-semibold text-sm text-foreground">Gemini 2.5 Flash</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground leading-relaxed">
-                        Snel & voordelig. Goed voor standaard beoordelingen en multimodale analyses.
-                      </p>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedProvider("anthropic")}
-                      className={`relative rounded-lg border-2 p-4 text-left transition-all ${
-                        selectedProvider === "anthropic"
-                          ? "border-primary bg-primary/5"
-                          : "border-border hover:border-primary/40"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 mb-2">
-                        <Cpu className="h-4 w-4 text-primary" />
-                        <span className="font-semibold text-sm text-foreground">Claude Sonnet 4</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground leading-relaxed">
-                        Diepgaande analyse. Sterk in nuance, complexe teksten en gedetailleerde feedback.
-                      </p>
-                    </button>
-                  </div>
-                </div>
-                <Button
-                  className="w-full"
-                  onClick={() => createProject.mutate(newProjectName.trim())}
-                  disabled={!newProjectName.trim() || createProject.isPending}
-                >
-                  {createProject.isPending ? "Aanmaken..." : "Aanmaken"}
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+          <Button onClick={() => setWizardOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Nieuw Project
+          </Button>
         </div>
 
         <div className="flex items-center gap-4 mb-8">
@@ -231,7 +136,7 @@ const Index = () => {
               {search ? "Probeer een andere zoekterm" : showArchived ? "Archiveer projecten om ze hier te zien" : "Maak je eerste project aan om te beginnen"}
             </p>
             {!search && !showArchived && (
-              <Button onClick={() => setDialogOpen(true)}>
+              <Button onClick={() => setWizardOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
                 Nieuw Project
               </Button>
@@ -327,6 +232,8 @@ const Index = () => {
           onOpenChange={(open) => !open && setShareProject(null)}
         />
       )}
+
+      <NewProjectWizard open={wizardOpen} onOpenChange={setWizardOpen} />
     </div>
   );
 };
