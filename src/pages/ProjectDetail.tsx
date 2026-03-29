@@ -616,8 +616,6 @@ const ProjectDetail = () => {
   const progress = totalStudents > 0 ? (gradedCount / totalStudents) * 100 : 0;
 
   const isDemo = (project as any)?.is_demo === true;
-
-  const isDemo = (project as any)?.is_demo === true;
   const isOwner = project?.user_id === user?.id;
   const isReviewer = !!myReviewerRecord && myReviewerRecord.status === "accepted";
   const isReviewerPending = !!myReviewerRecord && myReviewerRecord.status === "pending";
