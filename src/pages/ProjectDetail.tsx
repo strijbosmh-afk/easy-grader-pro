@@ -365,6 +365,7 @@ const ProjectDetail = () => {
   const [finalizing, setFinalizing] = useState(false);
   const cancelRef = useRef(false);
   const activeStudentsRef = useRef<Set<string>>(new Set());
+  const studentStartTimesRef = useRef<Map<string, number>>(new Map());
 
   // Retry wrapper for transient errors
   const invokeWithRetry = async (
