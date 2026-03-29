@@ -7,6 +7,7 @@ import { MessageSquare, Send, Loader2, ChevronDown, ChevronUp, RefreshCw, Sparkl
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { invokeEdgeFunction } from "@/lib/supabase-helpers";
 
 type Message = { role: "user" | "assistant"; content: string };
 
@@ -40,7 +41,7 @@ export function GradingChat({ projectId, onReAnalyzeRequested, onInstructionsCle
     setIsLoading(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke("chat-grading", {
+      const { data, error } = await invokeEdgeFunction("chat-grading", {
         body: { messages: newMessages, projectId },
       });
 

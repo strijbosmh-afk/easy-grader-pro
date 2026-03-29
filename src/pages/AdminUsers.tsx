@@ -22,6 +22,7 @@ import { toast } from "sonner";
 import { Loader2, Shield, ShieldCheck, Users, Ban, UserX, UserCheck, MoreHorizontal, Trash2, CircleCheck, CircleOff } from "lucide-react";
 import { Navigate } from "react-router-dom";
 import {
+import { invokeEdgeFunction } from "@/lib/supabase-helpers";
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -96,7 +97,7 @@ export default function AdminUsers() {
   const { data: userStatuses } = useQuery({
     queryKey: ["admin-user-statuses"],
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke("admin-users", {
+      const { data, error } = await invokeEdgeFunction("admin-users", {
         body: { action: "list" },
       });
       if (error) throw error;
@@ -127,7 +128,7 @@ export default function AdminUsers() {
 
   const adminAction = useMutation({
     mutationFn: async ({ action, targetUserId }: { action: string; targetUserId: string }) => {
-      const { data, error } = await supabase.functions.invoke("admin-users", {
+      const { data, error } = await invokeEdgeFunction("admin-users", {
         body: { action, targetUserId },
       });
       if (error) throw error;
