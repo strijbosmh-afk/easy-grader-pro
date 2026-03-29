@@ -517,6 +517,27 @@ const ProjectDetail = () => {
     }
   };
 
+  const deleteDemo = useMutation({
+    mutationFn: async () => {
+      const { data: studentIds } = await supabase.from("students").select("id").eq("project_id", id!);
+      if (studentIds && studentIds.length > 0) {
+        const ids = studentIds.map(s => s.id);
+        await supabase.from("student_scores").delete().in("student_id", ids);
+        await supabase.from("score_audit_log").delete().in("student_id", ids);
+      }
+      await supabase.from("students").delete().eq("project_id", id!);
+      await supabase.from("grading_criteria").delete().eq("project_id", id!);
+      await supabase.from("project_shares").delete().eq("project_id", id!);
+      await supabase.from("projects").delete().eq("id", id!);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      toast.success("Demo-project verwijderd");
+      navigate("/");
+    },
+    onError: () => toast.error("Fout bij verwijderen"),
+  });
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -537,8 +558,29 @@ const ProjectDetail = () => {
   const totalStudents = students?.length || 0;
   const progress = totalStudents > 0 ? (gradedCount / totalStudents) * 100 : 0;
 
+  const isDemo = (project as any)?.is_demo === true;
+
+
   return (
     <div className="min-h-screen bg-background">
+      {/* Demo banner */}
+      {isDemo && (
+        <div className="bg-primary/10 border-b border-primary/20">
+          <div className="container mx-auto px-6 py-2 flex items-center justify-between">
+            <p className="text-sm text-primary">
+              Dit is een demo-project. Je kunt het verwijderen wanneer je wilt.
+            </p>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => deleteDemo.mutate()}
+              disabled={deleteDemo.isPending}
+            >
+              Demo verwijderen
+            </Button>
+          </div>
+        </div>
+      )}
       {/* Header */}
       <header className="border-b bg-card">
         <div className="container mx-auto px-6 py-4">
