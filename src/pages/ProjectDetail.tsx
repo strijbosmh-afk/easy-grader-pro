@@ -461,13 +461,7 @@ const ProjectDetail = () => {
         progress.failed = failCount;
         progress.failedNames = [...failedNames];
         progress.studentTimes = [...times];
-        // Show names of students still in progress
-        const done = successCount + failCount;
-        const activeNames = eligible
-          .slice(done, done + concurrency)
-          .map((s) => s.naam)
-          .filter(Boolean);
-        progress.currentStudentName = activeNames.length > 0 ? activeNames.join(", ") : "Afronden...";
+        // currentStudentName is managed by activeStudentsRef in the worker
         setBatchProgress({ ...progress });
         debouncedInvalidateStudents();
       },
