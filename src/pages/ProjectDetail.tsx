@@ -692,6 +692,12 @@ const ProjectDetail = () => {
             </div>
             {/* Header actions: export & overview */}
             <div className="flex items-center gap-2 shrink-0 pt-1">
+              {isOwner && (
+                <Button variant="outline" size="sm" onClick={() => setShowInviteReviewer(true)}>
+                  <ShieldCheck className="h-4 w-4 mr-2" />
+                  Reviewer uitnodigen
+                </Button>
+              )}
               {students && students.length > 0 && criteria && criteria.length > 0 && (
                 <>
                   <Button
