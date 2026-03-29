@@ -31,14 +31,16 @@ const Index = () => {
   const [showArchived, setShowArchived] = useState(false);
   const [shareProject, setShareProject] = useState<{ id: string; naam: string } | null>(null);
   const [onboardingDismissed, setOnboardingDismissed] = useState(false);
+  const [nameInput, setNameInput] = useState("");
+  const [savingName, setSavingName] = useState(false);
 
-  // Check onboarding status
+  // Check onboarding status and display_name
   const { data: profile } = useQuery({
     queryKey: ["profile-onboarding", user?.id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("onboarding_completed")
+        .select("onboarding_completed, display_name")
         .eq("id", user!.id)
         .single();
       if (error) throw error;
@@ -46,6 +48,25 @@ const Index = () => {
     },
     enabled: !!user,
   });
+
+  const needsName = !!profile && !profile.display_name;
+
+  const saveName = async () => {
+    if (!nameInput.trim() || !user) return;
+    setSavingName(true);
+    const { error } = await supabase
+      .from("profiles")
+      .update({ display_name: nameInput.trim() })
+      .eq("id", user.id);
+    setSavingName(false);
+    if (error) {
+      toast.error("Kon naam niet opslaan");
+    } else {
+      queryClient.invalidateQueries({ queryKey: ["profile-onboarding", user.id] });
+      queryClient.invalidateQueries({ queryKey: ["profile", user.id] });
+      toast.success("Welkom, " + nameInput.trim() + "!");
+    }
+  };
 
   useEffect(() => {
     if (!user) return;
