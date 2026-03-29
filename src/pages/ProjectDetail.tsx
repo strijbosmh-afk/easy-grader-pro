@@ -2,12 +2,14 @@ import { useState, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, Upload, FileText, Pencil, Check, X, Loader2, Bot, Download, Settings, LayoutGrid, RefreshCw, AlertTriangle, Users, FolderOpen, Search, Eye, Trash2, FileDown, CheckCircle, Circle, Sparkles, Cpu } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ArrowLeft, Upload, FileText, Pencil, Check, X, Loader2, Bot, Download, Settings, LayoutGrid, RefreshCw, AlertTriangle, Users, FolderOpen, Search, Eye, Trash2, FileDown, CheckCircle, Circle, Sparkles, Cpu, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
@@ -19,6 +21,9 @@ import { exportStudentsBatchToWord, extractStudentName } from "@/lib/export-word
 import { Checkbox } from "@/components/ui/checkbox";
 import { GradingChat } from "@/components/GradingChat";
 import { BatchProgressOverlay, type BatchProgress, type BatchSummary } from "@/components/BatchProgressOverlay";
+import { InviteReviewerDialog } from "@/components/InviteReviewerDialog";
+import { ModerationTab } from "@/components/ModerationTab";
+import { StudentReviewView } from "@/components/StudentReviewView";
 import {
   Dialog,
   DialogContent,
