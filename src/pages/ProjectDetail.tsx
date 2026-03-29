@@ -2,12 +2,14 @@ import { useState, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, Upload, FileText, Pencil, Check, X, Loader2, Bot, Download, Settings, LayoutGrid, RefreshCw, AlertTriangle, Users, FolderOpen, Search, Eye, Trash2, FileDown, CheckCircle, Circle, Sparkles, Cpu } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ArrowLeft, Upload, FileText, Pencil, Check, X, Loader2, Bot, Download, Settings, LayoutGrid, RefreshCw, AlertTriangle, Users, FolderOpen, Search, Eye, Trash2, FileDown, CheckCircle, Circle, Sparkles, Cpu, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
@@ -19,6 +21,9 @@ import { exportStudentsBatchToWord, extractStudentName } from "@/lib/export-word
 import { Checkbox } from "@/components/ui/checkbox";
 import { GradingChat } from "@/components/GradingChat";
 import { BatchProgressOverlay, type BatchProgress, type BatchSummary } from "@/components/BatchProgressOverlay";
+import { InviteReviewerDialog } from "@/components/InviteReviewerDialog";
+import { ModerationTab } from "@/components/ModerationTab";
+import { StudentReviewView } from "@/components/StudentReviewView";
 import {
   Dialog,
   DialogContent,
@@ -48,6 +53,7 @@ const ProjectDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const [editingName, setEditingName] = useState(false);
   const [newName, setNewName] = useState("");
   const [dragOver, setDragOver] = useState(false);
@@ -73,6 +79,8 @@ const ProjectDetail = () => {
 
   // AI model picker state
   const [showModelPicker, setShowModelPicker] = useState(false);
+  const [showInviteReviewer, setShowInviteReviewer] = useState(false);
+  const [reviewStudentId, setReviewStudentId] = useState<string | null>(null);
   const [modelPickerAction, setModelPickerAction] = useState<"grading" | "reanalyze" | "batch">("grading");
   const [pendingGradingFile, setPendingGradingFile] = useState<File | null>(null);
 
@@ -112,6 +120,36 @@ const ProjectDetail = () => {
         .order("volgorde", { ascending: true });
       if (error) throw error;
       return data;
+    },
+  });
+
+  // Reviewer queries (must be before early returns)
+  const { data: myReviewerRecord } = useQuery({
+    queryKey: ["my-reviewer-status", id, user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("project_reviewers")
+        .select("*")
+        .eq("project_id", id!)
+        .eq("reviewer_id", user!.id)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user?.id,
+  });
+
+  const { data: hasReviewers } = useQuery({
+    queryKey: ["has-reviewers", id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("project_reviewers")
+        .select("id")
+        .eq("project_id", id!)
+        .eq("status", "accepted")
+        .limit(1);
+      if (error) return false;
+      return (data?.length || 0) > 0;
     },
   });
 
@@ -578,7 +616,9 @@ const ProjectDetail = () => {
   const progress = totalStudents > 0 ? (gradedCount / totalStudents) * 100 : 0;
 
   const isDemo = (project as any)?.is_demo === true;
-
+  const isOwner = project?.user_id === user?.id;
+  const isReviewer = !!myReviewerRecord && myReviewerRecord.status === "accepted";
+  const isReviewerPending = !!myReviewerRecord && myReviewerRecord.status === "pending";
 
   return (
     <div className="min-h-screen bg-background">
@@ -597,6 +637,52 @@ const ProjectDetail = () => {
             >
               Demo verwijderen
             </Button>
+          </div>
+        </div>
+      )}
+      {/* Reviewer pending banner */}
+      {isReviewerPending && (
+        <div className="bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200 dark:border-amber-800">
+          <div className="container mx-auto px-6 py-2 flex items-center justify-between">
+            <p className="text-sm text-amber-800 dark:text-amber-200">
+              Je bent uitgenodigd als reviewer voor dit project.
+            </p>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                onClick={async () => {
+                  await supabase.from("project_reviewers").update({ status: "accepted", accepted_at: new Date().toISOString() } as any)
+                    .eq("project_id", id!).eq("reviewer_id", user!.id);
+                  queryClient.invalidateQueries({ queryKey: ["my-reviewer-status", id] });
+                  toast.success("Uitnodiging geaccepteerd!");
+                }}
+              >
+                Accepteren
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={async () => {
+                  await supabase.from("project_reviewers").update({ status: "declined" } as any)
+                    .eq("project_id", id!).eq("reviewer_id", user!.id);
+                  queryClient.invalidateQueries({ queryKey: ["my-reviewer-status", id] });
+                  toast.info("Uitnodiging geweigerd");
+                }}
+              >
+                Weigeren
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Reviewer badge */}
+      {isReviewer && (
+        <div className="bg-blue-50 dark:bg-blue-950/30 border-b border-blue-200 dark:border-blue-800">
+          <div className="container mx-auto px-6 py-2">
+            <p className="text-sm text-blue-800 dark:text-blue-200 flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4" />
+              Je bent reviewer voor dit project. Klik op een student om te reviewen.
+            </p>
           </div>
         </div>
       )}
@@ -652,6 +738,12 @@ const ProjectDetail = () => {
             </div>
             {/* Header actions: export & overview */}
             <div className="flex items-center gap-2 shrink-0 pt-1">
+              {isOwner && (
+                <Button variant="outline" size="sm" onClick={() => setShowInviteReviewer(true)}>
+                  <ShieldCheck className="h-4 w-4 mr-2" />
+                  Reviewer uitnodigen
+                </Button>
+              )}
               {students && students.length > 0 && criteria && criteria.length > 0 && (
                 <>
                   <Button
@@ -1111,7 +1203,11 @@ const ProjectDetail = () => {
                         const missing = getMissingScores(student);
                         const isEditing = editingStudentId === student.id;
                         return (
-                          <TableRow key={student.id} className={`cursor-pointer ${student.status === "graded" ? "bg-green-50/50 dark:bg-green-950/20" : ""}`} onClick={() => !isEditing && navigate(`/project/${id}/student/${student.id}`)}>
+                          <TableRow key={student.id} className={`cursor-pointer ${student.status === "graded" ? "bg-green-50/50 dark:bg-green-950/20" : ""}`} onClick={() => {
+                            if (isEditing) return;
+                            if (isReviewer) { setReviewStudentId(student.id); return; }
+                            navigate(`/project/${id}/student/${student.id}`);
+                          }}>
                             <TableCell onClick={(e) => e.stopPropagation()}>
                               <Checkbox
                                 checked={selectedStudents.has(student.id)}
@@ -1228,7 +1324,36 @@ const ProjectDetail = () => {
             )}
           </CardContent>
         </Card>
+
+        {/* Moderation tab (owner only, when reviewers exist) */}
+        {isOwner && hasReviewers && students && criteria && (
+          <ModerationTab projectId={id!} students={students} criteria={criteria} />
+        )}
       </main>
+
+      {/* Reviewer review overlay */}
+      {reviewStudentId && (
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm">
+          <div className="container mx-auto px-6 py-8 max-w-4xl h-full overflow-y-auto">
+            <StudentReviewView
+              studentId={reviewStudentId}
+              projectId={id!}
+              onBack={() => {
+                setReviewStudentId(null);
+                queryClient.invalidateQueries({ queryKey: ["students", id] });
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Invite reviewer dialog */}
+      <InviteReviewerDialog
+        projectId={id!}
+        projectName={project?.naam || ""}
+        open={showInviteReviewer}
+        onOpenChange={setShowInviteReviewer}
+      />
 
       {/* Grading table confirmation dialog */}
       <Dialog open={showGradingDialog} onOpenChange={(open) => !open && dismissGradingDialog()}>

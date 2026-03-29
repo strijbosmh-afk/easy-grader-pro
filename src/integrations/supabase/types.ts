@@ -115,6 +115,44 @@ export type Database = {
         }
         Relationships: []
       }
+      project_reviewers: {
+        Row: {
+          accepted_at: string | null
+          id: string
+          invited_at: string
+          project_id: string
+          reviewer_id: string
+          role: string
+          status: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          id?: string
+          invited_at?: string
+          project_id: string
+          reviewer_id: string
+          role?: string
+          status?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          id?: string
+          invited_at?: string
+          project_id?: string
+          reviewer_id?: string
+          role?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_reviewers_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_shares: {
         Row: {
           created_at: string
@@ -255,6 +293,47 @@ export type Database = {
           },
         ]
       }
+      score_reviews: {
+        Row: {
+          adjusted_score: number | null
+          comment: string | null
+          created_at: string
+          id: string
+          original_score: number | null
+          reviewer_id: string
+          status: string
+          student_score_id: string
+        }
+        Insert: {
+          adjusted_score?: number | null
+          comment?: string | null
+          created_at?: string
+          id?: string
+          original_score?: number | null
+          reviewer_id: string
+          status?: string
+          student_score_id: string
+        }
+        Update: {
+          adjusted_score?: number | null
+          comment?: string | null
+          created_at?: string
+          id?: string
+          original_score?: number | null
+          reviewer_id?: string
+          status?: string
+          student_score_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "score_reviews_student_score_id_fkey"
+            columns: ["student_score_id"]
+            isOneToOne: false
+            referencedRelation: "student_scores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       student_scores: {
         Row: {
           ai_confidence: string | null
@@ -265,6 +344,7 @@ export type Database = {
           final_score: number | null
           id: string
           opmerkingen: string | null
+          review_status: string
           student_id: string
         }
         Insert: {
@@ -276,6 +356,7 @@ export type Database = {
           final_score?: number | null
           id?: string
           opmerkingen?: string | null
+          review_status?: string
           student_id: string
         }
         Update: {
@@ -287,6 +368,7 @@ export type Database = {
           final_score?: number | null
           id?: string
           opmerkingen?: string | null
+          review_status?: string
           student_id?: string
         }
         Relationships: [
