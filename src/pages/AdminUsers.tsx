@@ -143,6 +143,7 @@ export default function AdminUsers() {
       toast.success(msgs[variables.action] || "Actie uitgevoerd");
       queryClient.invalidateQueries({ queryKey: ["admin-profiles"] });
       queryClient.invalidateQueries({ queryKey: ["admin-roles"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-user-statuses"] });
       setConfirmAction(null);
     },
     onError: (err: any) => {
