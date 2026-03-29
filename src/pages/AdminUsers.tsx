@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -7,9 +8,26 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Loader2, Shield, ShieldCheck, Users } from "lucide-react";
+import { Loader2, Shield, ShieldCheck, Users, Ban, UserX, UserCheck, MoreHorizontal, Trash2 } from "lucide-react";
 import { Navigate } from "react-router-dom";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 
 interface UserProfile {
   id: string;
@@ -27,6 +45,11 @@ interface UserRole {
 export default function AdminUsers() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const [confirmAction, setConfirmAction] = useState<{
+    type: "ban" | "unban" | "delete";
+    userId: string;
+    userName: string;
+  } | null>(null);
 
   // Check if current user is admin
   const { data: isAdmin, isLoading: checkingAdmin } = useQuery({
@@ -71,14 +94,12 @@ export default function AdminUsers() {
 
   const updateRole = useMutation({
     mutationFn: async ({ userId, newRole }: { userId: string; newRole: string }) => {
-      // Delete existing role
       const { error: delError } = await supabase
         .from("user_roles")
         .delete()
         .eq("user_id", userId);
       if (delError) throw delError;
 
-      // Insert new role
       const { error: insError } = await supabase
         .from("user_roles")
         .insert({ user_id: userId, role: newRole } as any);
@@ -89,6 +110,32 @@ export default function AdminUsers() {
       toast.success("Rol bijgewerkt!");
     },
     onError: () => toast.error("Fout bij aanpassen rol"),
+  });
+
+  const adminAction = useMutation({
+    mutationFn: async ({ action, targetUserId }: { action: string; targetUserId: string }) => {
+      const { data, error } = await supabase.functions.invoke("admin-users", {
+        body: { action, targetUserId },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: (_, variables) => {
+      const msgs: Record<string, string> = {
+        ban: "Gebruiker gedeactiveerd",
+        unban: "Gebruiker geheractiveerd",
+        delete: "Gebruiker verwijderd",
+      };
+      toast.success(msgs[variables.action] || "Actie uitgevoerd");
+      queryClient.invalidateQueries({ queryKey: ["admin-profiles"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-roles"] });
+      setConfirmAction(null);
+    },
+    onError: (err: any) => {
+      toast.error(err.message || "Fout bij uitvoeren actie");
+      setConfirmAction(null);
+    },
   });
 
   if (checkingAdmin) {
@@ -123,6 +170,18 @@ export default function AdminUsers() {
       case "moderator": return "secondary" as const;
       default: return "outline" as const;
     }
+  };
+
+  const confirmTitle: Record<string, string> = {
+    ban: "Gebruiker deactiveren",
+    unban: "Gebruiker heractiveren",
+    delete: "Gebruiker permanent verwijderen",
+  };
+
+  const confirmDesc: Record<string, string> = {
+    ban: "Deze gebruiker kan niet meer inloggen. Je kunt dit later ongedaan maken.",
+    unban: "Deze gebruiker kan weer inloggen.",
+    delete: "Dit verwijdert het account en alle bijbehorende data permanent. Dit kan niet ongedaan worden gemaakt.",
   };
 
   return (
@@ -160,7 +219,8 @@ export default function AdminUsers() {
                   <TableHead>E-mail</TableHead>
                   <TableHead>Rol</TableHead>
                   <TableHead>Geregistreerd</TableHead>
-                  <TableHead className="w-[140px]">Acties</TableHead>
+                  <TableHead className="w-[140px]">Rol wijzigen</TableHead>
+                  <TableHead className="w-[60px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -214,6 +274,57 @@ export default function AdminUsers() {
                           </SelectContent>
                         </Select>
                       </TableCell>
+                      <TableCell>
+                        {!isSelf && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  setConfirmAction({
+                                    type: "ban",
+                                    userId: profile.id,
+                                    userName: profile.display_name || profile.email || "deze gebruiker",
+                                  })
+                                }
+                              >
+                                <Ban className="h-4 w-4 mr-2" />
+                                Deactiveren
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  setConfirmAction({
+                                    type: "unban",
+                                    userId: profile.id,
+                                    userName: profile.display_name || profile.email || "deze gebruiker",
+                                  })
+                                }
+                              >
+                                <UserCheck className="h-4 w-4 mr-2" />
+                                Heractiveren
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="text-destructive focus:text-destructive"
+                                onClick={() =>
+                                  setConfirmAction({
+                                    type: "delete",
+                                    userId: profile.id,
+                                    userName: profile.display_name || profile.email || "deze gebruiker",
+                                  })
+                                }
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Verwijderen
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+                      </TableCell>
                     </TableRow>
                   );
                 })}
@@ -222,6 +333,42 @@ export default function AdminUsers() {
           )}
         </CardContent>
       </Card>
+
+      {/* Confirmation dialog */}
+      <AlertDialog open={!!confirmAction} onOpenChange={() => setConfirmAction(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {confirmAction && confirmTitle[confirmAction.type]}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              <strong>{confirmAction?.userName}</strong>
+              <br />
+              {confirmAction && confirmDesc[confirmAction.type]}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={adminAction.isPending}>Annuleren</AlertDialogCancel>
+            <AlertDialogAction
+              className={confirmAction?.type === "delete" ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""}
+              disabled={adminAction.isPending}
+              onClick={() => {
+                if (confirmAction) {
+                  adminAction.mutate({
+                    action: confirmAction.type,
+                    targetUserId: confirmAction.userId,
+                  });
+                }
+              }}
+            >
+              {adminAction.isPending ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : null}
+              {confirmAction?.type === "delete" ? "Permanent verwijderen" : "Bevestigen"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
