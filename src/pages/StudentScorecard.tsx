@@ -12,6 +12,7 @@ import { ArrowLeft, ArrowRight, Loader2, Bot, Check, Download, RefreshCw, FileTe
 import { toast } from "sonner";
 import { useState, useEffect, useCallback } from "react";
 import { exportStudentToPdf } from "@/lib/export";
+import { downloadStudentReport } from "@/lib/export-pdf";
 import { exportStudentToWord } from "@/lib/export-word";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -450,6 +451,13 @@ const StudentScorecard = () => {
           )}
           {criteria && criteria.length > 0 && (
             <>
+              <Button
+                variant="outline"
+                onClick={() => downloadStudentReport(student, project!, criteria, scores || [])}
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                Download Rapport
+              </Button>
               <Button
                 variant="outline"
                 onClick={() => exportStudentToPdf(student, project!, criteria, scores || [], getScoreForCriterium, feedbackValue)}
