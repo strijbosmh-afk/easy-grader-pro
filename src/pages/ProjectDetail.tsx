@@ -1203,7 +1203,11 @@ const ProjectDetail = () => {
                         const missing = getMissingScores(student);
                         const isEditing = editingStudentId === student.id;
                         return (
-                          <TableRow key={student.id} className={`cursor-pointer ${student.status === "graded" ? "bg-green-50/50 dark:bg-green-950/20" : ""}`} onClick={() => !isEditing && navigate(`/project/${id}/student/${student.id}`)}>
+                          <TableRow key={student.id} className={`cursor-pointer ${student.status === "graded" ? "bg-green-50/50 dark:bg-green-950/20" : ""}`} onClick={() => {
+                            if (isEditing) return;
+                            if (isReviewer) { setReviewStudentId(student.id); return; }
+                            navigate(`/project/${id}/student/${student.id}`);
+                          }}>
                             <TableCell onClick={(e) => e.stopPropagation()}>
                               <Checkbox
                                 checked={selectedStudents.has(student.id)}
