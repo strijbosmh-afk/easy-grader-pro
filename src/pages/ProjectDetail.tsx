@@ -214,6 +214,11 @@ const ProjectDetail = () => {
     } else {
       await updateProject.mutateAsync({ opdracht_pdf_url: signedUrl });
       toast.success("Opdracht geüpload");
+
+      // Auto-extract education context if not yet set
+      if (!(project as any).education_context) {
+        extractEducationContext(signedUrl);
+      }
     }
   };
 
@@ -329,6 +334,26 @@ const ProjectDetail = () => {
       toast.success("Studenten toegevoegd!");
     } finally {
       setUploading(false);
+    }
+  };
+
+  // Auto-extract education context from assignment
+  const [extractedContext, setExtractedContext] = useState<string | null>(null);
+  const [extractingContext, setExtractingContext] = useState(false);
+
+  const extractEducationContext = async (pdfUrl: string) => {
+    setExtractingContext(true);
+    try {
+      const { data, error } = await invokeEdgeFunction("extract-context", {
+        body: { pdfUrl },
+      });
+      if (error || !data?.context) return;
+      setExtractedContext(data.context);
+      toast.info("Onderwijscontext geëxtraheerd uit de opdracht — bekijk de suggestie bij Instellingen.", { duration: 5000 });
+    } catch {
+      // Silent fail — extraction is a nice-to-have
+    } finally {
+      setExtractingContext(false);
     }
   };
 
@@ -1023,6 +1048,41 @@ const ProjectDetail = () => {
                   {((project as any).education_context || "").length} / 500
                 </span>
               </div>
+              {extractingContext && (
+                <p className="text-xs text-primary mt-2 flex items-center gap-1.5">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Onderwijscontext wordt geëxtraheerd uit de opdracht...
+                </p>
+              )}
+              {extractedContext && !(project as any).education_context && (
+                <div className="mt-2 p-2.5 rounded-md border border-primary/30 bg-primary/5 space-y-2">
+                  <p className="text-xs font-medium text-primary">Suggestie uit opdracht:</p>
+                  <p className="text-xs text-foreground">{extractedContext}</p>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="default"
+                      className="h-7 text-xs"
+                      onClick={async () => {
+                        await updateProject.mutateAsync({ education_context: extractedContext } as any);
+                        setExtractedContext(null);
+                        toast.success("Onderwijscontext overgenomen");
+                        queryClient.invalidateQueries({ queryKey: ["project", id] });
+                      }}
+                    >
+                      Overnemen
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 text-xs"
+                      onClick={() => setExtractedContext(null)}
+                    >
+                      Negeren
+                    </Button>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
