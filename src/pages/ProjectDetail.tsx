@@ -53,6 +53,7 @@ const ProjectDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const [editingName, setEditingName] = useState(false);
   const [newName, setNewName] = useState("");
   const [dragOver, setDragOver] = useState(false);
