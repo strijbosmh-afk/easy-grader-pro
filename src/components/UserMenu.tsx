@@ -10,11 +10,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { User, Shield, LogOut, ChevronDown } from "lucide-react";
+import { User, Shield, LogOut, ChevronDown, Moon, Sun } from "lucide-react";
+import { useTheme } from "next-themes";
 
 export function UserMenu() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const { theme, setTheme } = useTheme();
 
   const { data: isAdmin } = useQuery({
     queryKey: ["is-admin", user?.id],
@@ -45,6 +47,7 @@ export function UserMenu() {
   const displayName = profile?.display_name || user?.email || "Gebruiker";
   const avatarUrl = profile?.avatar_url || user?.user_metadata?.avatar_url;
   const initials = displayName.slice(0, 2).toUpperCase();
+  const isDark = theme === "dark";
 
   return (
     <DropdownMenu>
@@ -71,6 +74,11 @@ export function UserMenu() {
             Gebruikersbeheer
           </DropdownMenuItem>
         )}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => setTheme(isDark ? "light" : "dark")}>
+          {isDark ? <Sun className="h-4 w-4 mr-2" /> : <Moon className="h-4 w-4 mr-2" />}
+          {isDark ? "Licht thema" : "Donker thema"}
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
           onClick={logout}

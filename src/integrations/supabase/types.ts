@@ -79,9 +79,42 @@ export type Database = {
         }
         Relationships: []
       }
+      project_shares: {
+        Row: {
+          created_at: string
+          id: string
+          permission: string
+          project_id: string
+          shared_with_user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          permission?: string
+          project_id: string
+          shared_with_user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          permission?: string
+          project_id?: string
+          shared_with_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_shares_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       projects: {
         Row: {
           ai_provider: string
+          archived: boolean
           beoordelingsniveau: string
           created_at: string
           custom_instructions: string | null
@@ -94,6 +127,7 @@ export type Database = {
         }
         Insert: {
           ai_provider?: string
+          archived?: boolean
           beoordelingsniveau?: string
           created_at?: string
           custom_instructions?: string | null
@@ -106,6 +140,7 @@ export type Database = {
         }
         Update: {
           ai_provider?: string
+          archived?: boolean
           beoordelingsniveau?: string
           created_at?: string
           custom_instructions?: string | null
