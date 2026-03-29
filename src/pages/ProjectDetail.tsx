@@ -1464,17 +1464,43 @@ const ProjectDetail = () => {
                               ) : "—"}
                             </TableCell>
                             <TableCell>
-                              {student.status === "pending" ? (
-                                <Circle className="h-4 w-4 text-muted-foreground" />
-                              ) : student.status === "analyzing" ? (
-                                <Loader2 className="h-4 w-4 animate-spin text-yellow-500" />
-                              ) : missing.length > 0 ? (
-                                <AlertTriangle className="h-4 w-4 text-yellow-500" />
-                              ) : student.status === "graded" ? (
-                                <CheckCircle className="h-4 w-4 text-green-600" />
-                              ) : (
-                                <Circle className="h-4 w-4 text-yellow-500" />
-                              )}
+                              {(() => {
+                                const warnings: string[] = Array.isArray((student as any).ai_validation_warnings) ? (student as any).ai_validation_warnings : [];
+                                const hasWarnings = warnings.length > 0;
+                                const hasIssues = missing.length > 0 || hasWarnings;
+
+                                if (student.status === "pending") return <Circle className="h-4 w-4 text-muted-foreground" />;
+                                if (student.status === "analyzing") return <Loader2 className="h-4 w-4 animate-spin text-primary" />;
+
+                                if (hasIssues) {
+                                  const tooltipLines = [
+                                    ...missing.map((m: string) => `Score ontbreekt: ${m}`),
+                                    ...warnings,
+                                  ];
+                                  return (
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <AlertTriangle className="h-4 w-4 text-yellow-500 cursor-help" />
+                                        </TooltipTrigger>
+                                        <TooltipContent side="left" className="max-w-xs">
+                                          <ul className="text-xs space-y-0.5">
+                                            {tooltipLines.map((line, i) => (
+                                              <li key={i} className="flex items-start gap-1">
+                                                <span className="text-yellow-500 mt-0.5">•</span>
+                                                <span>{line}</span>
+                                              </li>
+                                            ))}
+                                          </ul>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
+                                  );
+                                }
+
+                                if (student.status === "graded") return <CheckCircle className="h-4 w-4 text-green-600" />;
+                                return <Circle className="h-4 w-4 text-yellow-500" />;
+                              })()}
                             </TableCell>
                             <TableCell className="text-right">
                               <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
