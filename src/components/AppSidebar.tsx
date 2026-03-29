@@ -217,9 +217,6 @@ export function AppSidebar() {
             size="sm"
             className="w-full justify-start text-sidebar-foreground/70 hover:text-destructive"
             onClick={async () => {
-              const { useAuth } = await import("@/contexts/AuthContext");
-              // Can't use hook here — call supabase directly
-              const { supabase } = await import("@/integrations/supabase/client");
               await supabase.auth.signOut();
             }}
           >
