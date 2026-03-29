@@ -60,6 +60,8 @@ const ProjectDetail = () => {
   const [deletingStudentId, setDeletingStudentId] = useState<string | null>(null);
   const [selectedStudents, setSelectedStudents] = useState<Set<string>>(new Set());
   const [exportingWord, setExportingWord] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
+  const [pdfProgress, setPdfProgress] = useState("");
 
   // Grading table parse state
   const [parsingGrading, setParsingGrading] = useState(false);
