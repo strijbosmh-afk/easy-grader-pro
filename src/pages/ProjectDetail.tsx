@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Upload, FileText, Pencil, Check, X, Loader2, Bot, Download, Settings, LayoutGrid, RefreshCw, AlertTriangle, Users, FolderOpen, Search, Eye, Trash2, FileDown, CheckCircle, Circle, Sparkles, Cpu, ShieldCheck, Info, Share2, MessageSquare, ChevronDown, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { ArrowLeft, Upload, FileText, Pencil, Check, X, Loader2, Bot, Download, Settings, LayoutGrid, RefreshCw, AlertTriangle, Users, FolderOpen, Search, Eye, Trash2, FileDown, CheckCircle, Circle, Sparkles, Cpu, ShieldCheck, Info, Share2, MessageSquare, ChevronDown, ArrowUpDown, ArrowUp, ArrowDown, Zap, Brain } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
@@ -1022,27 +1022,54 @@ const ProjectDetail = () => {
       <main className="container mx-auto px-6 py-8 space-y-6">
         {/* Project configuratie: instellingen + documenten in één rij */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* AI Model */}
-          <Card>
+          {/* AI Kwaliteit */}
+          <Card className="lg:col-span-2">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
-                <Bot className="h-4 w-4" />
-                AI Model
+                <Settings className="h-4 w-4" />
+                AI Kwaliteit
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="h-3.5 w-3.5 text-muted-foreground/60 cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="max-w-xs text-xs">
+                      De AI-kwaliteit bepaalt hoe grondig studentwerk wordt geanalyseerd. 'Snel' is voldoende voor de meeste opdrachten.
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <Select
-                value={(project as any).ai_provider || "lovable"}
-                onValueChange={(value) => updateProject.mutateAsync({ ai_provider: value })}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="lovable">Gemini 2.5 Flash</SelectItem>
-                  <SelectItem value="anthropic">Anthropic Claude Sonnet 4</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="grid grid-cols-3 gap-2">
+                {([
+                  { value: "lovable", label: "Snel", subtitle: "Snelle beoordeling, geschikt voor de meeste opdrachten", Icon: Zap },
+                  { value: "lovable-pro", label: "Uitgebreid", subtitle: "Grondiger analyse, ideaal voor complexe opdrachten", Icon: Brain },
+                  { value: "anthropic", label: "Premium", subtitle: "Meest nauwkeurige beoordeling, duurt iets langer", Icon: Sparkles },
+                ] as const).map(({ value, label, subtitle, Icon }) => {
+                  const currentProvider = (project as any).ai_provider || "lovable";
+                  const isSelected = currentProvider === value || (currentProvider === "gemini" && value === "lovable");
+                  return (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => updateProject.mutateAsync({ ai_provider: value })}
+                      className={`relative rounded-lg border-2 p-3 text-left transition-all hover:border-primary/60 ${
+                        isSelected ? "border-primary bg-primary/5" : "border-border"
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <Icon className={`h-4 w-4 ${isSelected ? "text-primary" : "text-muted-foreground"}`} />
+                        <span className="text-sm font-semibold text-foreground">{label}</span>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground leading-tight">{subtitle}</p>
+                      {isSelected && (
+                        <span className="absolute top-1.5 right-1.5 text-[9px] bg-primary text-primary-foreground px-1 py-0.5 rounded">Actief</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
             </CardContent>
           </Card>
 
@@ -1812,7 +1839,7 @@ const ProjectDetail = () => {
         </DialogContent>
       </Dialog>
 
-      {/* AI Model Picker Dialog */}
+      {/* AI Quality Picker Dialog */}
       <Dialog open={showModelPicker} onOpenChange={(open) => {
         if (!open) {
           setShowModelPicker(false);
@@ -1822,60 +1849,48 @@ const ProjectDetail = () => {
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Bot className="h-5 w-5 text-primary" />
-              Kies AI Model
+              <Settings className="h-5 w-5 text-primary" />
+              Kies AI Kwaliteit
             </DialogTitle>
             <DialogDescription>
               {modelPickerAction === "grading"
-                ? "Welk AI model wil je gebruiken om de graderingstabel te analyseren en het beoordelingsbeleid op te stellen?"
-                : "Welk AI model wil je gebruiken voor de analyse van de studenten?"}
+                ? "Welke AI-kwaliteit wil je gebruiken om de graderingstabel te analyseren?"
+                : "Welke AI-kwaliteit wil je gebruiken voor de analyse van de studenten?"}
             </DialogDescription>
           </DialogHeader>
-          <div className="grid grid-cols-2 gap-4 py-4">
-            <button
-              type="button"
-              onClick={() => handleModelPickerConfirm("lovable")}
-              className={`relative rounded-lg border-2 p-5 text-left transition-all hover:border-primary/60 ${
-                (project as any)?.ai_provider === "lovable" || !(project as any)?.ai_provider
-                  ? "border-primary bg-primary/5"
-                  : "border-border"
-              }`}
-            >
-              <div className="flex items-center gap-2 mb-2">
-                <Sparkles className="h-5 w-5 text-primary" />
-                <span className="font-semibold text-foreground">Gemini 2.5 Flash</span>
-              </div>
-              <ul className="text-xs text-muted-foreground space-y-1">
-                <li>✦ Snel & voordelig</li>
-                <li>✦ Goed in multimodale PDF-analyse</li>
-                <li>✦ Geschikt voor standaard beoordelingen</li>
-              </ul>
-              {((project as any)?.ai_provider === "lovable" || !(project as any)?.ai_provider) && (
-                <span className="absolute top-2 right-2 text-[10px] bg-primary text-primary-foreground px-1.5 py-0.5 rounded">Huidig</span>
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={() => handleModelPickerConfirm("anthropic")}
-              className={`relative rounded-lg border-2 p-5 text-left transition-all hover:border-primary/60 ${
-                (project as any)?.ai_provider === "anthropic"
-                  ? "border-primary bg-primary/5"
-                  : "border-border"
-              }`}
-            >
-              <div className="flex items-center gap-2 mb-2">
-                <Cpu className="h-5 w-5 text-primary" />
-                <span className="font-semibold text-foreground">Claude Sonnet 4</span>
-              </div>
-              <ul className="text-xs text-muted-foreground space-y-1">
-                <li>✦ Diepgaande, genuanceerde analyse</li>
-                <li>✦ Sterk in complexe teksten</li>
-                <li>✦ Gedetailleerdere feedback</li>
-              </ul>
-              {(project as any)?.ai_provider === "anthropic" && (
-                <span className="absolute top-2 right-2 text-[10px] bg-primary text-primary-foreground px-1.5 py-0.5 rounded">Huidig</span>
-              )}
-            </button>
+          <div className="grid grid-cols-3 gap-3 py-4">
+            {([
+              { value: "lovable", label: "Snel", subtitle: "Snelle beoordeling, geschikt voor de meeste opdrachten", Icon: Zap, features: ["Snel & voordelig", "Goed voor standaard opdrachten", "Beste prijs-kwaliteit"] },
+              { value: "lovable-pro", label: "Uitgebreid", subtitle: "Grondiger analyse, ideaal voor complexe opdrachten", Icon: Brain, features: ["Diepgaandere analyse", "Complexe teksten beter begrepen", "Nauwkeuriger bij nuance"] },
+              { value: "anthropic", label: "Premium", subtitle: "Meest nauwkeurige beoordeling, duurt iets langer", Icon: Sparkles, features: ["Meest nauwkeurig", "Gedetailleerdste feedback", "Sterkst in complexe analyses"] },
+            ] as const).map(({ value, label, subtitle, Icon, features }) => {
+              const currentProvider = (project as any)?.ai_provider || "lovable";
+              const isSelected = currentProvider === value;
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => handleModelPickerConfirm(value)}
+                  className={`relative rounded-lg border-2 p-4 text-left transition-all hover:border-primary/60 ${
+                    isSelected ? "border-primary bg-primary/5" : "border-border"
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <Icon className={`h-5 w-5 ${isSelected ? "text-primary" : "text-muted-foreground"}`} />
+                    <span className="font-semibold text-foreground">{label}</span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mb-2">{subtitle}</p>
+                  <ul className="text-xs text-muted-foreground space-y-1">
+                    {features.map((f, i) => (
+                      <li key={i}>✦ {f}</li>
+                    ))}
+                  </ul>
+                  {isSelected && (
+                    <span className="absolute top-2 right-2 text-[10px] bg-primary text-primary-foreground px-1.5 py-0.5 rounded">Huidig</span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </DialogContent>
       </Dialog>
