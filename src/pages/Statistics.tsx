@@ -636,6 +636,14 @@ const Statistics = () => {
           </Card>
         )}
 
+        {/* Class Insights */}
+        {totalStudents >= 2 && (
+          <ClassInsights
+            projectId={isSingleProject ? resolvedProjectId : undefined}
+            projectIds={!isSingleProject && projects ? projects.map(p => p.id) : undefined}
+          />
+        )}
+
         {/* Empty state */}
         {totalStudents === 0 && (
           <div className="text-center py-16">
