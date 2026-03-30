@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Upload, FileText, Pencil, Check, X, Loader2, Bot, Download, Settings, LayoutGrid, RefreshCw, AlertTriangle, Users, FolderOpen, Search, Eye, Trash2, FileDown, CheckCircle, Circle, Sparkles, Cpu, ShieldCheck, Info, Share2, MessageSquare, ChevronDown } from "lucide-react";
+import { ArrowLeft, Upload, FileText, Pencil, Check, X, Loader2, Bot, Download, Settings, LayoutGrid, RefreshCw, AlertTriangle, Users, FolderOpen, Search, Eye, Trash2, FileDown, CheckCircle, Circle, Sparkles, Cpu, ShieldCheck, Info, Share2, MessageSquare, ChevronDown, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
@@ -114,6 +114,8 @@ const ProjectDetail = () => {
   const [dragOver, setDragOver] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [sortColumn, setSortColumn] = useState<"naam" | "status" | "score" | null>(null);
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [pdfViewerUrl, setPdfViewerUrl] = useState<string | null>(null);
   const [pdfViewerTitle, setPdfViewerTitle] = useState("");
   const [editingStudentId, setEditingStudentId] = useState<string | null>(null);
