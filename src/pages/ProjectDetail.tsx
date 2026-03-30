@@ -25,6 +25,8 @@ import { BatchProgressOverlay, type BatchProgress, type BatchSummary } from "@/c
 import { InviteReviewerDialog } from "@/components/InviteReviewerDialog";
 import { ModerationTab } from "@/components/ModerationTab";
 import { StudentReviewView } from "@/components/StudentReviewView";
+import { ShareFeedbackDialog } from "@/components/ShareFeedbackDialog";
+import { StudentReactionsTab } from "@/components/StudentReactionsTab";
 import { invokeEdgeFunction } from "@/lib/supabase-helpers";
 import { concurrencyPool } from "@/lib/concurrencyPool";
 import {
