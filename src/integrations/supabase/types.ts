@@ -106,6 +106,61 @@ export type Database = {
         }
         Relationships: []
       }
+      plagiarism_results: {
+        Row: {
+          created_at: string
+          flagged: boolean
+          id: string
+          method: string
+          project_id: string
+          similarity_score: number
+          student_a_id: string
+          student_b_id: string
+        }
+        Insert: {
+          created_at?: string
+          flagged?: boolean
+          id?: string
+          method?: string
+          project_id: string
+          similarity_score: number
+          student_a_id: string
+          student_b_id: string
+        }
+        Update: {
+          created_at?: string
+          flagged?: boolean
+          id?: string
+          method?: string
+          project_id?: string
+          similarity_score?: number
+          student_a_id?: string
+          student_b_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plagiarism_results_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plagiarism_results_student_a_id_fkey"
+            columns: ["student_a_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plagiarism_results_student_b_id_fkey"
+            columns: ["student_b_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -221,6 +276,7 @@ export type Database = {
           naam: string
           opdracht_pdf_url: string | null
           scoring_system_summary: string | null
+          similarity_threshold: number
           updated_at: string
           user_id: string | null
         }
@@ -238,6 +294,7 @@ export type Database = {
           naam: string
           opdracht_pdf_url?: string | null
           scoring_system_summary?: string | null
+          similarity_threshold?: number
           updated_at?: string
           user_id?: string | null
         }
@@ -255,6 +312,7 @@ export type Database = {
           naam?: string
           opdracht_pdf_url?: string | null
           scoring_system_summary?: string | null
+          similarity_threshold?: number
           updated_at?: string
           user_id?: string | null
         }
