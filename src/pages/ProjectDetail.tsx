@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Upload, FileText, Pencil, Check, X, Loader2, Bot, Download, Settings, LayoutGrid, RefreshCw, AlertTriangle, Users, FolderOpen, Search, Eye, Trash2, FileDown, CheckCircle, Circle, Sparkles, Cpu, ShieldCheck, Info } from "lucide-react";
+import { ArrowLeft, Upload, FileText, Pencil, Check, X, Loader2, Bot, Download, Settings, LayoutGrid, RefreshCw, AlertTriangle, Users, FolderOpen, Search, Eye, Trash2, FileDown, CheckCircle, Circle, Sparkles, Cpu, ShieldCheck, Info, Share2, MessageSquare } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
@@ -25,6 +25,8 @@ import { BatchProgressOverlay, type BatchProgress, type BatchSummary } from "@/c
 import { InviteReviewerDialog } from "@/components/InviteReviewerDialog";
 import { ModerationTab } from "@/components/ModerationTab";
 import { StudentReviewView } from "@/components/StudentReviewView";
+import { ShareFeedbackDialog } from "@/components/ShareFeedbackDialog";
+import { StudentReactionsTab } from "@/components/StudentReactionsTab";
 import { invokeEdgeFunction } from "@/lib/supabase-helpers";
 import { concurrencyPool } from "@/lib/concurrencyPool";
 import {
@@ -133,6 +135,8 @@ const ProjectDetail = () => {
   const [showModelPicker, setShowModelPicker] = useState(false);
   const [showInviteReviewer, setShowInviteReviewer] = useState(false);
   const [reviewStudentId, setReviewStudentId] = useState<string | null>(null);
+  const [shareStudent, setShareStudent] = useState<any>(null);
+  const [sharingAll, setSharingAll] = useState(false);
   const [modelPickerAction, setModelPickerAction] = useState<"grading" | "reanalyze" | "batch">("grading");
   const [pendingGradingFile, setPendingGradingFile] = useState<File | null>(null);
 
@@ -205,6 +209,21 @@ const ProjectDetail = () => {
       if (error) return false;
       return (data?.length || 0) > 0;
     },
+  });
+
+  const { data: reactionsCount } = useQuery({
+    queryKey: ["reactions-count", id],
+    queryFn: async () => {
+      const studentIds = students?.map((s) => s.id) || [];
+      if (studentIds.length === 0) return 0;
+      const { count, error } = await supabase
+        .from("student_reactions")
+        .select("*", { count: "exact", head: true })
+        .in("student_id", studentIds);
+      if (error) return 0;
+      return count || 0;
+    },
+    enabled: !!students && students.length > 0,
   });
 
   const updateProject = useMutation({
@@ -1293,19 +1312,47 @@ const ProjectDetail = () => {
                     )}
                   </div>
 
-                  {/* Finaliseer button */}
-                  {selectedStudents.size > 0 && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={finalizeSelected}
-                      disabled={finalizing}
-                      className="border-green-300 text-green-700 hover:bg-green-50"
-                    >
-                      {finalizing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />}
-                      Finaliseer ({selectedStudents.size})
-                    </Button>
-                  )}
+                   {/* Groep 3: Delen & Finaliseren */}
+                   <div className="flex items-center gap-2">
+                     <Button
+                       variant="outline"
+                       size="sm"
+                       disabled={sharingAll}
+                       onClick={async () => {
+                         const eligible = students?.filter((s) => s.status === "reviewed" || s.status === "graded") || [];
+                         if (eligible.length === 0) { toast.info("Geen beoordeelde studenten om te delen"); return; }
+                         setSharingAll(true);
+                         try {
+                           for (const s of eligible) {
+                             if (!s.share_token) {
+                               await supabase.from("students").update({ share_token: crypto.randomUUID(), share_enabled: true }).eq("id", s.id);
+                             } else if (!s.share_enabled) {
+                               await supabase.from("students").update({ share_enabled: true }).eq("id", s.id);
+                             }
+                           }
+                           queryClient.invalidateQueries({ queryKey: ["students", id] });
+                           toast.success(`Feedback gedeeld met ${eligible.length} student(en)`);
+                         } catch { toast.error("Delen mislukt"); }
+                         finally { setSharingAll(false); }
+                       }}
+                     >
+                       {sharingAll ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Share2 className="h-4 w-4 mr-1.5" />}
+                       Deel feedback met alle studenten
+                     </Button>
+
+                     {selectedStudents.size > 0 && (
+                       <Button
+                         variant="outline"
+                         size="sm"
+                         onClick={finalizeSelected}
+                         disabled={finalizing}
+                         className="border-green-300 text-green-700 hover:bg-green-50"
+                       >
+                         {finalizing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />}
+                         Finaliseer ({selectedStudents.size})
+                       </Button>
+                     )}
+                   </div>
                 </div>
               )}
             </div>
@@ -1522,6 +1569,21 @@ const ProjectDetail = () => {
                                   <Bot className="h-4 w-4 mr-1" />
                                   Analyseer
                                 </Button>
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        size="icon"
+                                        variant="ghost"
+                                        className="h-8 w-8"
+                                        onClick={() => setShareStudent(student)}
+                                      >
+                                        <Share2 className="h-3.5 w-3.5" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent><span className="text-xs">Deel feedback</span></TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
                                 <Button
                                   size="icon"
                                   variant="ghost"
@@ -1572,6 +1634,11 @@ const ProjectDetail = () => {
         {isOwner && hasReviewers && students && criteria && (
           <ModerationTab projectId={id!} students={students} criteria={criteria} />
         )}
+
+        {/* Studentreacties tab */}
+        {isOwner && students && students.length > 0 && criteria && criteria.length > 0 && (
+          <StudentReactionsTab projectId={id!} students={students} criteria={criteria} />
+        )}
       </main>
 
       {/* Reviewer review overlay */}
@@ -1596,6 +1663,21 @@ const ProjectDetail = () => {
         projectName={project?.naam || ""}
         open={showInviteReviewer}
         onOpenChange={setShowInviteReviewer}
+      />
+
+      {/* Share feedback dialog */}
+      <ShareFeedbackDialog
+        open={!!shareStudent}
+        onOpenChange={(open) => !open && setShareStudent(null)}
+        student={shareStudent}
+        onUpdated={() => {
+          queryClient.invalidateQueries({ queryKey: ["students", id] });
+          // Refresh the student object in dialog
+          if (shareStudent && students) {
+            const fresh = students.find((s) => s.id === shareStudent.id);
+            if (fresh) setShareStudent({ ...fresh });
+          }
+        }}
       />
 
       {/* Grading table confirmation dialog */}
