@@ -1676,6 +1676,18 @@ const ProjectDetail = () => {
         {isOwner && students && students.length > 0 && criteria && criteria.length > 0 && (
           <StudentReactionsTab projectId={id!} students={students} criteria={criteria} />
         )}
+
+        {/* Plagiarism check tab */}
+        {isOwner && students && students.length >= 2 && (
+          <PlagiarismTab
+            projectId={id!}
+            threshold={(project as any).similarity_threshold ?? 70}
+            onThresholdChange={async (val) => {
+              await supabase.from("projects").update({ similarity_threshold: val } as any).eq("id", id!);
+              queryClient.invalidateQueries({ queryKey: ["project", id] });
+            }}
+          />
+        )}
       </main>
 
       {/* Reviewer review overlay */}
