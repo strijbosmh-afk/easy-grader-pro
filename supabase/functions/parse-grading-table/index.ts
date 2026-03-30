@@ -137,7 +137,7 @@ const toolDef = {
   },
 };
 
-async function callLovableAI(docBase64: string, mimeType: string) {
+async function callLovableAI(docBase64: string, mimeType: string, modelOverride?: string) {
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
   if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
@@ -148,7 +148,7 @@ async function callLovableAI(docBase64: string, mimeType: string) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
+      model: modelOverride || "google/gemini-2.5-flash",
       messages: [
         { role: "system", content: systemPrompt },
         {
@@ -274,7 +274,8 @@ serve(async (req) => {
     if (provider === "anthropic") {
       result = await callAnthropicAI(docBase64, mimeType);
     } else {
-      result = await callLovableAI(docBase64, mimeType);
+      const model = provider === "lovable-pro" ? "google/gemini-2.5-pro" : undefined;
+      result = await callLovableAI(docBase64, mimeType, model);
     }
 
     console.log("Parsed criteria:", result.criteria?.length, "items");
