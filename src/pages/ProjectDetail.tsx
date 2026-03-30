@@ -1462,7 +1462,6 @@ const ProjectDetail = () => {
                                   {statusLabels[student.status as StudentStatus]}
                                 </Badge>
                               )}
-                              )}
                             </TableCell>
                             <TableCell>
                               {total !== null ? (
