@@ -182,17 +182,17 @@ export default function StudentFeedback() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="border-b bg-card">
-        <div className="max-w-3xl mx-auto px-4 py-6">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-5 sm:py-6">
           <div className="flex items-center gap-3 mb-2">
-            <GraduationCap className="h-6 w-6 text-primary" />
-            <h1 className="text-2xl font-bold text-foreground">{student.naam}</h1>
+            <GraduationCap className="h-5 w-5 sm:h-6 sm:w-6 text-primary shrink-0" />
+            <h1 className="text-xl sm:text-2xl font-bold text-foreground truncate">{student.naam}</h1>
           </div>
           {project && (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground truncate">
               {project.naam}
             </p>
           )}
-          <div className="mt-3 flex items-center gap-4">
+          <div className="mt-3 flex flex-wrap items-center gap-2 sm:gap-4">
             <Badge variant="secondary" className="text-sm">
               Totaal: {totalScore} / {maxTotal}
             </Badge>
@@ -216,7 +216,7 @@ export default function StudentFeedback() {
 
       {/* AI General Feedback */}
       {student.ai_feedback && (
-        <div className="max-w-3xl mx-auto px-4 mt-6">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 mt-6">
           <Card>
             <CardContent className="pt-5">
               <h2 className="font-semibold text-foreground mb-2 flex items-center gap-2">
@@ -233,7 +233,7 @@ export default function StudentFeedback() {
 
       {/* Docent Feedback */}
       {student.docent_feedback && (
-        <div className="max-w-3xl mx-auto px-4 mt-4">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 mt-4">
           <Card>
             <CardContent className="pt-5">
               <h2 className="font-semibold text-foreground mb-2">Feedback docent</h2>
@@ -246,8 +246,8 @@ export default function StudentFeedback() {
       )}
 
       {/* Criteria Scores */}
-      <div className="max-w-3xl mx-auto px-4 py-6 space-y-4">
-        <h2 className="text-lg font-semibold text-foreground">Beoordeling per criterium</h2>
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-5 sm:py-6 space-y-4">
+        <h2 className="text-base sm:text-lg font-semibold text-foreground">Beoordeling per criterium</h2>
 
         {normalCriteria.map((crit) => {
           const sc = scores?.find((s) => s.criterium_id === crit.id);
@@ -258,7 +258,7 @@ export default function StudentFeedback() {
 
           return (
             <Card key={crit.id}>
-              <CardContent className="pt-4 space-y-3">
+              <CardContent className="pt-4 pb-4 px-4 sm:px-6 space-y-3">
                 {/* Criterion header */}
                 <div className="flex items-start justify-between">
                   <div className="space-y-1">
@@ -336,7 +336,7 @@ export default function StudentFeedback() {
                 {/* Reaction buttons (only if no existing reaction) */}
                 {!existingReaction && (
                   <div className="space-y-2">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <Button
                         size="sm"
                         variant={pending?.type === "agree" ? "default" : "outline"}
@@ -418,7 +418,7 @@ export default function StudentFeedback() {
 
       {/* Footer */}
       <div className="border-t bg-card">
-        <div className="max-w-3xl mx-auto px-4 py-4 text-center text-xs text-muted-foreground">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4 text-center text-xs text-muted-foreground">
           Beoordeeld met GradeAssist — {gradedDate.toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" })}
         </div>
       </div>
