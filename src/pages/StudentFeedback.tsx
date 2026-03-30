@@ -170,8 +170,13 @@ export default function StudentFeedback() {
   }
 
   const normalCriteria = criteria?.filter((c) => !c.is_eindscore) || [];
-  const totalScore = scores?.reduce((sum, s) => sum + (s.final_score ?? s.ai_suggested_score ?? 0), 0) ?? 0;
+  const scoredCriteria = normalCriteria.filter((c) => scores?.some((s) => s.criterium_id === c.id));
+  const totalScore = scoredCriteria.reduce((sum, c) => {
+    const sc = scores?.find((s) => s.criterium_id === c.id);
+    return sum + (sc?.final_score ?? sc?.ai_suggested_score ?? 0);
+  }, 0);
   const maxTotal = normalCriteria.reduce((sum, c) => sum + c.max_score, 0);
+  const gradedDate = student.created_at ? new Date(student.created_at) : new Date();
 
   return (
     <div className="min-h-screen bg-background">
@@ -256,20 +261,45 @@ export default function StudentFeedback() {
               <CardContent className="pt-4 space-y-3">
                 {/* Criterion header */}
                 <div className="flex items-start justify-between">
-                  <p className="font-medium text-foreground">{crit.criterium_naam}</p>
+                  <div className="space-y-1">
+                    <p className="font-medium text-foreground">{crit.criterium_naam}</p>
+                    {/* Rubric level description if available */}
+                    {crit.rubric_levels && Array.isArray(crit.rubric_levels) && (
+                      <p className="text-xs text-muted-foreground">
+                        {(crit.rubric_levels as any[]).find(
+                          (l: any) => score != null && l.score !== undefined && Number(l.score) === Number(score)
+                        )?.description || ""}
+                      </p>
+                    )}
+                  </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <span
-                      className={`text-sm font-bold ${
-                        scorePct >= 70
-                          ? "text-green-600 dark:text-green-400"
-                          : scorePct >= 50
-                          ? "text-yellow-600 dark:text-yellow-400"
-                          : "text-red-600 dark:text-red-400"
-                      }`}
-                    >
-                      {score ?? "–"}
-                    </span>
-                    <span className="text-xs text-muted-foreground">/ {crit.max_score}</span>
+                    {/* Show both AI and final score when they differ */}
+                    {sc?.final_score != null && sc?.ai_suggested_score != null && sc.final_score !== sc.ai_suggested_score ? (
+                      <div className="text-right">
+                        <span className={`text-sm font-bold ${
+                          scorePct >= 70 ? "text-green-600 dark:text-green-400"
+                            : scorePct >= 50 ? "text-yellow-600 dark:text-yellow-400"
+                            : "text-red-600 dark:text-red-400"
+                        }`}>
+                          {sc.final_score}
+                        </span>
+                        <span className="text-xs text-muted-foreground"> / {crit.max_score}</span>
+                        <p className="text-[10px] text-muted-foreground line-through">
+                          AI: {sc.ai_suggested_score}
+                        </p>
+                      </div>
+                    ) : (
+                      <>
+                        <span className={`text-sm font-bold ${
+                          scorePct >= 70 ? "text-green-600 dark:text-green-400"
+                            : scorePct >= 50 ? "text-yellow-600 dark:text-yellow-400"
+                            : "text-red-600 dark:text-red-400"
+                        }`}>
+                          {score ?? "–"}
+                        </span>
+                        <span className="text-xs text-muted-foreground">/ {crit.max_score}</span>
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -277,11 +307,7 @@ export default function StudentFeedback() {
                 <div className="h-2 rounded-full bg-muted overflow-hidden">
                   <div
                     className={`h-full rounded-full transition-all ${
-                      scorePct >= 70
-                        ? "bg-green-500"
-                        : scorePct >= 50
-                        ? "bg-yellow-500"
-                        : "bg-red-500"
+                      scorePct >= 70 ? "bg-green-500" : scorePct >= 50 ? "bg-yellow-500" : "bg-red-500"
                     }`}
                     style={{ width: `${scorePct}%` }}
                   />
@@ -289,7 +315,7 @@ export default function StudentFeedback() {
 
                 {/* AI detail feedback */}
                 {(sc?.ai_detail_feedback || sc?.ai_motivatie) && (
-                  <div className="bg-muted/50 rounded-md p-3 text-sm text-muted-foreground">
+                  <div className="bg-muted/50 rounded-md p-3 text-sm text-muted-foreground whitespace-pre-wrap">
                     {sc.ai_detail_feedback || sc.ai_motivatie}
                   </div>
                 )}
@@ -393,7 +419,7 @@ export default function StudentFeedback() {
       {/* Footer */}
       <div className="border-t bg-card">
         <div className="max-w-3xl mx-auto px-4 py-4 text-center text-xs text-muted-foreground">
-          Gegenereerd door GradeAssist
+          Beoordeeld met GradeAssist — {gradedDate.toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" })}
         </div>
       </div>
     </div>
