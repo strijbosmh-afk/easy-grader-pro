@@ -144,6 +144,24 @@ const ProjectDetail = () => {
   const [modelPickerAction, setModelPickerAction] = useState<"grading" | "reanalyze" | "batch">("grading");
   const [pendingGradingFile, setPendingGradingFile] = useState<File | null>(null);
 
+  // Collapsible section states with localStorage persistence
+  const storageKey = `project-sections-${id}`;
+  const [sectionStates, setSectionStates] = useState<Record<string, boolean>>(() => {
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return { instellingen: false, documenten: true, studenten: true };
+  });
+
+  const updateSectionState = useCallback((key: string, open: boolean) => {
+    setSectionStates((prev) => {
+      const next = { ...prev, [key]: open };
+      try { localStorage.setItem(storageKey, JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }, [storageKey]);
+
   const { data: project, isLoading } = useQuery({
     queryKey: ["project", id],
     queryFn: async () => {
