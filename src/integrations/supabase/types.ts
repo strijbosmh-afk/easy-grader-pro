@@ -355,6 +355,48 @@ export type Database = {
           },
         ]
       }
+      student_reactions: {
+        Row: {
+          comment: string | null
+          created_at: string
+          criterion_id: string
+          id: string
+          reaction_type: Database["public"]["Enums"]["student_reaction_type"]
+          student_id: string
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          criterion_id: string
+          id?: string
+          reaction_type: Database["public"]["Enums"]["student_reaction_type"]
+          student_id: string
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          criterion_id?: string
+          id?: string
+          reaction_type?: Database["public"]["Enums"]["student_reaction_type"]
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_reactions_criterion_id_fkey"
+            columns: ["criterion_id"]
+            isOneToOne: false
+            referencedRelation: "grading_criteria"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_reactions_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       student_scores: {
         Row: {
           ai_confidence: string | null
@@ -420,6 +462,8 @@ export type Database = {
           naam: string
           pdf_url: string | null
           project_id: string
+          share_enabled: boolean
+          share_token: string | null
           status: Database["public"]["Enums"]["student_status"]
           verslag: string | null
         }
@@ -433,6 +477,8 @@ export type Database = {
           naam: string
           pdf_url?: string | null
           project_id: string
+          share_enabled?: boolean
+          share_token?: string | null
           status?: Database["public"]["Enums"]["student_status"]
           verslag?: string | null
         }
@@ -446,6 +492,8 @@ export type Database = {
           naam?: string
           pdf_url?: string | null
           project_id?: string
+          share_enabled?: boolean
+          share_token?: string | null
           status?: Database["public"]["Enums"]["student_status"]
           verslag?: string | null
         }
@@ -495,6 +543,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
+      student_reaction_type: "agree" | "disagree" | "question"
       student_status: "pending" | "analyzing" | "reviewed" | "graded"
     }
     CompositeTypes: {
@@ -624,6 +673,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "moderator", "user"],
+      student_reaction_type: ["agree", "disagree", "question"],
       student_status: ["pending", "analyzing", "reviewed", "graded"],
     },
   },
