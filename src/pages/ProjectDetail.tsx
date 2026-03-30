@@ -1665,6 +1665,21 @@ const ProjectDetail = () => {
         onOpenChange={setShowInviteReviewer}
       />
 
+      {/* Share feedback dialog */}
+      <ShareFeedbackDialog
+        open={!!shareStudent}
+        onOpenChange={(open) => !open && setShareStudent(null)}
+        student={shareStudent}
+        onUpdated={() => {
+          queryClient.invalidateQueries({ queryKey: ["students", id] });
+          // Refresh the student object in dialog
+          if (shareStudent && students) {
+            const fresh = students.find((s) => s.id === shareStudent.id);
+            if (fresh) setShareStudent({ ...fresh });
+          }
+        }}
+      />
+
       {/* Grading table confirmation dialog */}
       <Dialog open={showGradingDialog} onOpenChange={(open) => !open && dismissGradingDialog()}>
         <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
