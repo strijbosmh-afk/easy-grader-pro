@@ -144,6 +144,24 @@ const ProjectDetail = () => {
   const [modelPickerAction, setModelPickerAction] = useState<"grading" | "reanalyze" | "batch">("grading");
   const [pendingGradingFile, setPendingGradingFile] = useState<File | null>(null);
 
+  // Collapsible section states with localStorage persistence
+  const storageKey = `project-sections-${id}`;
+  const [sectionStates, setSectionStates] = useState<Record<string, boolean>>(() => {
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return { instellingen: false, documenten: true, studenten: true };
+  });
+
+  const updateSectionState = useCallback((key: string, open: boolean) => {
+    setSectionStates((prev) => {
+      const next = { ...prev, [key]: open };
+      try { localStorage.setItem(storageKey, JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }, [storageKey]);
+
   const { data: project, isLoading } = useQuery({
     queryKey: ["project", id],
     queryFn: async () => {
@@ -799,6 +817,7 @@ const ProjectDetail = () => {
   const gradedCount = students?.filter((s) => s.status === "graded").length || 0;
   const totalStudents = students?.length || 0;
   const progress = totalStudents > 0 ? (gradedCount / totalStudents) * 100 : 0;
+  const docsUploaded = (project?.opdracht_pdf_url ? 1 : 0) + (project?.graderingstabel_pdf_url ? 1 : 0);
 
   const isDemo = (project as any)?.is_demo === true;
   const isOwner = project?.user_id === user?.id;
@@ -1019,280 +1038,284 @@ const ProjectDetail = () => {
         </div>
       </header>
 
-      <main className="container mx-auto px-6 py-8 space-y-6">
-        {/* Project configuratie: instellingen + documenten in één rij */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* AI Kwaliteit */}
-          <Card className="lg:col-span-2">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
-                <Settings className="h-4 w-4" />
-                AI Kwaliteit
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Info className="h-3.5 w-3.5 text-muted-foreground/60 cursor-help" />
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="max-w-xs text-xs">
-                      De AI-kwaliteit bepaalt hoe grondig studentwerk wordt geanalyseerd. 'Snel' is voldoende voor de meeste opdrachten.
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-3 gap-2">
-                {([
-                  { value: "lovable", label: "Snel", subtitle: "Snelle beoordeling, geschikt voor de meeste opdrachten", Icon: Zap },
-                  { value: "lovable-pro", label: "Uitgebreid", subtitle: "Grondiger analyse, ideaal voor complexe opdrachten", Icon: Brain },
-                  { value: "anthropic", label: "Premium", subtitle: "Meest nauwkeurige beoordeling, duurt iets langer", Icon: Sparkles },
-                ] as const).map(({ value, label, subtitle, Icon }) => {
-                  const currentProvider = (project as any).ai_provider || "lovable";
-                  const isSelected = currentProvider === value || (currentProvider === "gemini" && value === "lovable");
-                  return (
-                    <button
-                      key={value}
-                      type="button"
-                      onClick={() => updateProject.mutateAsync({ ai_provider: value })}
-                      className={`relative rounded-lg border-2 p-3 text-left transition-all hover:border-primary/60 ${
-                        isSelected ? "border-primary bg-primary/5" : "border-border"
-                      }`}
+      <main className="container mx-auto px-6 py-8 space-y-4">
+        {/* ── Section 1: Instellingen ── */}
+        <Collapsible
+          open={sectionStates.instellingen}
+          onOpenChange={(open) => updateSectionState("instellingen", open)}
+        >
+          <Card>
+            <CollapsibleTrigger asChild className="group">
+              <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg py-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-medium flex items-center gap-2">
+                    <Settings className="h-4 w-4 text-muted-foreground" />
+                    Instellingen
+                    <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                  </CardTitle>
+                  <Badge variant="secondary" className="text-[10px] font-normal">
+                    {(() => {
+                      const p = (project as any).ai_provider || "lovable";
+                      if (p === "lovable-pro") return "Uitgebreid";
+                      if (p === "anthropic") return "Premium";
+                      return "Snel";
+                    })()}
+                  </Badge>
+                </div>
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent className="pt-0 space-y-4">
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+                  {/* AI Kwaliteit */}
+                  <div className="lg:col-span-2 space-y-1.5">
+                    <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                      AI Kwaliteit
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info className="h-3 w-3 text-muted-foreground/60 cursor-help" />
+                          </TooltipTrigger>
+                          <TooltipContent side="bottom" className="max-w-xs text-xs">
+                            De AI-kwaliteit bepaalt hoe grondig studentwerk wordt geanalyseerd. 'Snel' is voldoende voor de meeste opdrachten.
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {([
+                        { value: "lovable", label: "Snel", subtitle: "Snelle beoordeling, geschikt voor de meeste opdrachten", Icon: Zap },
+                        { value: "lovable-pro", label: "Uitgebreid", subtitle: "Grondiger analyse, ideaal voor complexe opdrachten", Icon: Brain },
+                        { value: "anthropic", label: "Premium", subtitle: "Meest nauwkeurige beoordeling, duurt iets langer", Icon: Sparkles },
+                      ] as const).map(({ value, label, subtitle, Icon }) => {
+                        const currentProvider = (project as any).ai_provider || "lovable";
+                        const isSelected = currentProvider === value || (currentProvider === "gemini" && value === "lovable");
+                        return (
+                          <button
+                            key={value}
+                            type="button"
+                            onClick={() => updateProject.mutateAsync({ ai_provider: value })}
+                            className={`relative rounded-lg border-2 p-2.5 text-left transition-all hover:border-primary/60 ${
+                              isSelected ? "border-primary bg-primary/5" : "border-border"
+                            }`}
+                          >
+                            <div className="flex items-center gap-1.5 mb-0.5">
+                              <Icon className={`h-3.5 w-3.5 ${isSelected ? "text-primary" : "text-muted-foreground"}`} />
+                              <span className="text-xs font-semibold text-foreground">{label}</span>
+                            </div>
+                            <p className="text-[10px] text-muted-foreground leading-tight">{subtitle}</p>
+                            {isSelected && (
+                              <span className="absolute top-1 right-1 text-[8px] bg-primary text-primary-foreground px-1 py-0.5 rounded">Actief</span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Beoordelingsperspectief */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted-foreground">Beoordelingsperspectief</label>
+                    <Select
+                      value={(project as any).beoordelingsniveau || "streng"}
+                      onValueChange={(value) => updateProject.mutateAsync({ beoordelingsniveau: value })}
                     >
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <Icon className={`h-4 w-4 ${isSelected ? "text-primary" : "text-muted-foreground"}`} />
-                        <span className="text-sm font-semibold text-foreground">{label}</span>
-                      </div>
-                      <p className="text-[11px] text-muted-foreground leading-tight">{subtitle}</p>
-                      {isSelected && (
-                        <span className="absolute top-1.5 right-1.5 text-[9px] bg-primary text-primary-foreground px-1 py-0.5 rounded">Actief</span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="streng">Streng — kritisch</SelectItem>
+                        <SelectItem value="neutraal">Neutraal — evenwichtig</SelectItem>
+                        <SelectItem value="mild">Mild — stimulerend</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-          {/* Beoordelingsperspectief */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
-                <Settings className="h-4 w-4" />
-                Beoordelingsperspectief
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Select
-                value={(project as any).beoordelingsniveau || "streng"}
-                onValueChange={(value) => updateProject.mutateAsync({ beoordelingsniveau: value })}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="streng">Streng — kritisch</SelectItem>
-                  <SelectItem value="neutraal">Neutraal — evenwichtig</SelectItem>
-                  <SelectItem value="mild">Mild — stimulerend</SelectItem>
-                </SelectContent>
-              </Select>
-            </CardContent>
-          </Card>
+                  {/* Feedbacktaal */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted-foreground">Feedbacktaal</label>
+                    <Select
+                      value={(project as any).feedback_language || "nl"}
+                      onValueChange={(value) => {
+                        updateProject.mutateAsync({ feedback_language: value } as any);
+                        toast.success("Feedbacktaal opgeslagen");
+                      }}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="nl">Nederlands</SelectItem>
+                        <SelectItem value="en">English</SelectItem>
+                        <SelectItem value="fr">Français</SelectItem>
+                        <SelectItem value="de">Deutsch</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-[10px] text-muted-foreground">De taal waarin de AI feedback schrijft</p>
+                  </div>
+                </div>
 
-          {/* Feedbacktaal */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
-                <Settings className="h-4 w-4" />
-                Feedbacktaal
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Select
-                value={(project as any).feedback_language || "nl"}
-                onValueChange={(value) => {
-                  updateProject.mutateAsync({ feedback_language: value } as any);
-                  toast.success("Feedbacktaal opgeslagen");
-                }}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="nl">Nederlands</SelectItem>
-                  <SelectItem value="en">English</SelectItem>
-                  <SelectItem value="fr">Français</SelectItem>
-                  <SelectItem value="de">Deutsch</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground mt-1">De taal waarin de AI feedback schrijft aan studenten</p>
-            </CardContent>
-          </Card>
-          {/* Onderwijscontext */}
-          <Collapsible defaultOpen={false} className="lg:col-span-4">
-            <Card>
-              <CollapsibleTrigger asChild className="group">
-                <CardHeader className="pb-3 cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg">
-                  <CardTitle className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
-                    <Settings className="h-4 w-4" />
+                {/* Onderwijscontext */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
                     Onderwijscontext (optioneel)
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <Info className="h-3.5 w-3.5 text-muted-foreground/60 cursor-help" />
+                          <Info className="h-3 w-3 text-muted-foreground/60 cursor-help" />
                         </TooltipTrigger>
                         <TooltipContent side="right" className="max-w-xs text-xs">
-                          De AI gebruikt deze context als achtergrondinformatie bij het schrijven van feedback. Het verandert niets aan de scores of beoordelingscriteria — die komen altijd uit je graderingstabel.
+                          De AI gebruikt deze context als achtergrondinformatie bij het schrijven van feedback.
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
-                    <ChevronDown className="h-4 w-4 ml-auto transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                  </label>
+                  <textarea
+                    className="w-full min-h-[60px] text-sm rounded-md border border-input bg-muted/30 px-3 py-2 ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    placeholder="Bv: Bacheloropleiding kleuteronderwijs, 2e jaar. Studenten schrijven een reflectieverslag over hun stage-ervaring."
+                    defaultValue={(project as any).education_context || ""}
+                    maxLength={500}
+                    onBlur={(e) => {
+                      const val = e.target.value.trim().slice(0, 500);
+                      if (val !== ((project as any).education_context || "")) {
+                        updateProject.mutateAsync({ education_context: val || null } as any);
+                        toast.success("Onderwijscontext opgeslagen");
+                      }
+                    }}
+                    onInput={(e) => {
+                      const el = e.target as HTMLTextAreaElement;
+                      const counter = el.parentElement?.querySelector('[data-counter]');
+                      if (counter) counter.textContent = `${el.value.length} / 500`;
+                    }}
+                  />
+                  <div className="flex justify-between">
+                    <p className="text-[10px] text-muted-foreground">Helpt de AI om feedback beter af te stemmen op het niveau.</p>
+                    <span data-counter className="text-[10px] text-muted-foreground whitespace-nowrap ml-2">
+                      {((project as any).education_context || "").length} / 500
+                    </span>
+                  </div>
+                  {extractingContext && (
+                    <p className="text-xs text-primary flex items-center gap-1.5">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      Onderwijscontext wordt geëxtraheerd uit de opdracht...
+                    </p>
+                  )}
+                  {extractedContext && !(project as any).education_context && (
+                    <div className="p-2.5 rounded-md border border-primary/30 bg-primary/5 space-y-2">
+                      <p className="text-xs font-medium text-primary">Suggestie uit opdracht:</p>
+                      <p className="text-xs text-foreground">{extractedContext}</p>
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="default" className="h-7 text-xs" onClick={async () => {
+                          await updateProject.mutateAsync({ education_context: extractedContext } as any);
+                          setExtractedContext(null);
+                          toast.success("Onderwijscontext overgenomen");
+                          queryClient.invalidateQueries({ queryKey: ["project", id] });
+                        }}>
+                          Overnemen
+                        </Button>
+                        <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setExtractedContext(null)}>
+                          Negeren
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
+
+        {/* ── Section 2: Documenten ── */}
+        <Collapsible
+          open={sectionStates.documenten}
+          onOpenChange={(open) => updateSectionState("documenten", open)}
+        >
+          <Card>
+            <CollapsibleTrigger asChild className="group">
+              <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg py-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-medium flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-muted-foreground" />
+                    Documenten
+                    <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
                   </CardTitle>
-                </CardHeader>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <CardContent>
-              <textarea
-                className="w-full min-h-[60px] text-sm rounded-md border border-input bg-muted/30 px-3 py-2 ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                placeholder="Bv: Bacheloropleiding kleuteronderwijs, 2e jaar. Studenten schrijven een reflectieverslag over hun stage-ervaring in een Vlaamse kleuterschool."
-                defaultValue={(project as any).education_context || ""}
-                maxLength={500}
-                onBlur={(e) => {
-                  const val = e.target.value.trim().slice(0, 500);
-                  if (val !== ((project as any).education_context || "")) {
-                    updateProject.mutateAsync({ education_context: val || null } as any);
-                    toast.success("Onderwijscontext opgeslagen");
-                  }
-                }}
-                onInput={(e) => {
-                  const el = e.target as HTMLTextAreaElement;
-                  const counter = el.parentElement?.querySelector('[data-counter]');
-                  if (counter) counter.textContent = `${el.value.length} / 500`;
-                }}
-              />
-              <div className="flex justify-between mt-1">
-                <p className="text-xs text-muted-foreground">Beschrijf kort de opleiding, het niveau en het type student. Dit helpt de AI om feedback beter af te stemmen.</p>
-                <span data-counter className="text-xs text-muted-foreground whitespace-nowrap ml-2">
-                  {((project as any).education_context || "").length} / 500
-                </span>
-              </div>
-              {extractingContext && (
-                <p className="text-xs text-primary mt-2 flex items-center gap-1.5">
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                  Onderwijscontext wordt geëxtraheerd uit de opdracht...
-                </p>
-              )}
-              {extractedContext && !(project as any).education_context && (
-                <div className="mt-2 p-2.5 rounded-md border border-primary/30 bg-primary/5 space-y-2">
-                  <p className="text-xs font-medium text-primary">Suggestie uit opdracht:</p>
-                  <p className="text-xs text-foreground">{extractedContext}</p>
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="default"
-                      className="h-7 text-xs"
-                      onClick={async () => {
-                        await updateProject.mutateAsync({ education_context: extractedContext } as any);
-                        setExtractedContext(null);
-                        toast.success("Onderwijscontext overgenomen");
-                        queryClient.invalidateQueries({ queryKey: ["project", id] });
-                      }}
-                    >
-                      Overnemen
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-7 text-xs"
-                      onClick={() => setExtractedContext(null)}
-                    >
-                      Negeren
-                    </Button>
+                  <Badge
+                    variant={docsUploaded === 2 ? "default" : "destructive"}
+                    className="text-[10px] font-normal"
+                  >
+                    {docsUploaded}/2 geüpload
+                  </Badge>
+                </div>
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent className="pt-0">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Opdracht PDF */}
+                  <div className="rounded-lg border p-4 space-y-2">
+                    <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                      <FileText className="h-4 w-4" />
+                      Opdracht
+                    </div>
+                    {project.opdracht_pdf_url ? (
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => { setPdfViewerUrl(project.opdracht_pdf_url!); setPdfViewerTitle("Opdracht"); }}
+                          className="text-sm text-primary hover:underline truncate flex-1 text-left flex items-center gap-1.5"
+                        >
+                          <Eye className="h-3.5 w-3.5 shrink-0" />
+                          Bekijk opdracht
+                        </button>
+                        <Label htmlFor="opdracht-upload" className="cursor-pointer text-xs text-muted-foreground hover:text-foreground">
+                          Vervang
+                        </Label>
+                      </div>
+                    ) : (
+                      <Label htmlFor="opdracht-upload" className="cursor-pointer text-sm text-muted-foreground hover:text-foreground block text-center py-3 border border-dashed rounded-md">
+                        Klik om te uploaden
+                      </Label>
+                    )}
+                    <input id="opdracht-upload" type="file" accept=".pdf,.docx,.doc" className="hidden"
+                      onChange={(e) => e.target.files?.[0] && uploadPdf(e.target.files[0], "opdracht")} />
+                  </div>
+
+                  {/* Graderingstabel PDF */}
+                  <div className="rounded-lg border p-4 space-y-2">
+                    <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                      <FolderOpen className="h-4 w-4" />
+                      Graderingstabel
+                    </div>
+                    {parsingGrading ? (
+                      <div className="flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                        <span className="text-sm text-muted-foreground">Wordt geanalyseerd...</span>
+                      </div>
+                    ) : project.graderingstabel_pdf_url ? (
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => { setPdfViewerUrl(project.graderingstabel_pdf_url!); setPdfViewerTitle("Graderingstabel"); }}
+                          className="text-sm text-primary hover:underline truncate flex-1 text-left flex items-center gap-1.5"
+                        >
+                          <Eye className="h-3.5 w-3.5 shrink-0" />
+                          Bekijk graderingstabel
+                        </button>
+                        <Label htmlFor="graderingstabel-upload" className="cursor-pointer text-xs text-muted-foreground hover:text-foreground">
+                          Vervang
+                        </Label>
+                      </div>
+                    ) : (
+                      <Label htmlFor="graderingstabel-upload" className="cursor-pointer text-sm text-muted-foreground hover:text-foreground block text-center py-3 border border-dashed rounded-md">
+                        Klik om te uploaden
+                      </Label>
+                    )}
+                    <input id="graderingstabel-upload" type="file" accept=".pdf,.docx,.doc" className="hidden"
+                      onChange={(e) => e.target.files?.[0] && uploadPdf(e.target.files[0], "graderingstabel")} />
                   </div>
                 </div>
-              )}
               </CardContent>
-              </CollapsibleContent>
-            </Card>
-          </Collapsible>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
-                <FileText className="h-4 w-4" />
-                Opdracht PDF
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {project.opdracht_pdf_url ? (
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => { setPdfViewerUrl(project.opdracht_pdf_url!); setPdfViewerTitle("Opdracht"); }}
-                    className="text-sm text-primary hover:underline truncate flex-1 text-left flex items-center gap-1.5"
-                  >
-                    <Eye className="h-3.5 w-3.5 shrink-0" />
-                    Bekijk opdracht
-                  </button>
-                  <Label htmlFor="opdracht-upload" className="cursor-pointer text-xs text-muted-foreground hover:text-foreground">
-                    Vervang
-                  </Label>
-                </div>
-              ) : (
-                <Label htmlFor="opdracht-upload" className="cursor-pointer text-sm text-muted-foreground hover:text-foreground block text-center py-2 border border-dashed rounded-md">
-                  Klik om te uploaden
-                </Label>
-              )}
-              <input
-                id="opdracht-upload"
-                type="file"
-                accept=".pdf,.docx,.doc"
-                className="hidden"
-                onChange={(e) => e.target.files?.[0] && uploadPdf(e.target.files[0], "opdracht")}
-              />
-            </CardContent>
+            </CollapsibleContent>
           </Card>
-
-          {/* Graderingstabel PDF */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
-                <FolderOpen className="h-4 w-4" />
-                Graderingstabel PDF
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {parsingGrading ? (
-                <div className="flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                  <span className="text-sm text-muted-foreground">Wordt geanalyseerd...</span>
-                </div>
-              ) : project.graderingstabel_pdf_url ? (
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => { setPdfViewerUrl(project.graderingstabel_pdf_url!); setPdfViewerTitle("Graderingstabel"); }}
-                    className="text-sm text-primary hover:underline truncate flex-1 text-left flex items-center gap-1.5"
-                  >
-                    <Eye className="h-3.5 w-3.5 shrink-0" />
-                    Bekijk graderingstabel
-                  </button>
-                  <Label htmlFor="graderingstabel-upload" className="cursor-pointer text-xs text-muted-foreground hover:text-foreground">
-                    Vervang
-                  </Label>
-                </div>
-              ) : (
-                <Label htmlFor="graderingstabel-upload" className="cursor-pointer text-sm text-muted-foreground hover:text-foreground block text-center py-2 border border-dashed rounded-md">
-                  Klik om te uploaden
-                </Label>
-              )}
-              <input
-                id="graderingstabel-upload"
-                type="file"
-                accept=".pdf,.docx,.doc"
-                className="hidden"
-                onChange={(e) => e.target.files?.[0] && uploadPdf(e.target.files[0], "graderingstabel")}
-              />
-            </CardContent>
-          </Card>
-        </div>
+        </Collapsible>
 
         {/* AI Chat */}
         <GradingChat
@@ -1302,412 +1325,337 @@ const ProjectDetail = () => {
           customInstructions={project?.custom_instructions}
         />
 
-        {/* Studenten sectie */}
-        <Card>
-          <CardHeader>
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Users className="h-4 w-4" />
-                Studenten
-                {totalStudents > 0 && (
-                  <Badge variant="secondary" className="ml-1 font-normal">{totalStudents}</Badge>
-                )}
-              </CardTitle>
-
-              {/* Actieknoppen: logisch gegroepeerd */}
-              {students && students.length > 0 && (
-                <div className="flex flex-wrap items-center gap-3">
-                  {/* Groep 1: Analyse acties */}
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="default"
-                      size="sm"
-                      disabled={batchAnalyzing || reAnalyzing || !project.opdracht_pdf_url || !project.graderingstabel_pdf_url}
-                      onClick={() => {
-                        const pending = students?.filter((s) => s.status === "pending" || s.status === "reviewed") || [];
-                        if (pending.length === 0) {
-                          toast.info("Geen studenten om te analyseren");
-                          return;
-                        }
-                        setModelPickerAction("batch");
-                        setShowModelPicker(true);
-                      }}
-                    >
-                      {batchAnalyzing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Bot className="h-4 w-4 mr-2" />}
-                      {selectedStudents.size > 0 ? `Analyseer (${selectedStudents.size})` : "Analyseer alle"}
-                    </Button>
-
-                    {students.some((s) => s.status === "reviewed" || s.status === "graded") && (
-                      <>
-                        <Separator orientation="vertical" className="h-6" />
-                        <div className="flex items-center gap-1.5">
-                          <Select value={reAnalyzeNiveau} onValueChange={setReAnalyzeNiveau}>
-                            <SelectTrigger className="w-[100px] h-8 text-xs">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="streng">Streng</SelectItem>
-                              <SelectItem value="neutraal">Neutraal</SelectItem>
-                              <SelectItem value="mild">Mild</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={reAnalyzing || batchAnalyzing}
-                            onClick={batchReAnalyze}
-                          >
-                            {reAnalyzing ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-1.5" />}
-                            {selectedStudents.size > 0 ? `Heranalyse (${selectedStudents.size})` : "Heranalyse"}
-                          </Button>
-                        </div>
-                      </>
-                    )}
-                  </div>
-
-                   {/* Groep 3: Delen & Finaliseren */}
-                   <div className="flex items-center gap-2">
-                     <Button
-                       variant="outline"
-                       size="sm"
-                       disabled={sharingAll}
-                       onClick={async () => {
-                         const eligible = students?.filter((s) => s.status === "reviewed" || s.status === "graded") || [];
-                         if (eligible.length === 0) { toast.info("Geen beoordeelde studenten om te delen"); return; }
-                         setSharingAll(true);
-                         try {
-                           for (const s of eligible) {
-                             if (!s.share_token) {
-                               await supabase.from("students").update({ share_token: crypto.randomUUID(), share_enabled: true }).eq("id", s.id);
-                             } else if (!s.share_enabled) {
-                               await supabase.from("students").update({ share_enabled: true }).eq("id", s.id);
-                             }
-                           }
-                           queryClient.invalidateQueries({ queryKey: ["students", id] });
-                           toast.success(`Feedback gedeeld met ${eligible.length} student(en)`);
-                         } catch { toast.error("Delen mislukt"); }
-                         finally { setSharingAll(false); }
-                       }}
-                     >
-                       {sharingAll ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Share2 className="h-4 w-4 mr-1.5" />}
-                       Deel feedback met alle studenten
-                     </Button>
-
-                     {selectedStudents.size > 0 && (
-                       <Button
-                         variant="outline"
-                         size="sm"
-                         onClick={finalizeSelected}
-                         disabled={finalizing}
-                         className="border-green-300 text-green-700 hover:bg-green-50"
-                       >
-                         {finalizing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />}
-                         Finaliseer ({selectedStudents.size})
-                       </Button>
-                     )}
-                   </div>
+        {/* ── Section 3: Studenten ── */}
+        <Collapsible
+          open={sectionStates.studenten}
+          onOpenChange={(open) => updateSectionState("studenten", open)}
+        >
+          <Card>
+            <CollapsibleTrigger asChild className="group">
+              <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg py-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-medium flex items-center gap-2">
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                    Studenten
+                    <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                  </CardTitle>
+                  <Badge variant="secondary" className="text-[10px] font-normal">
+                    {totalStudents} student{totalStudents !== 1 ? "en" : ""}
+                  </Badge>
                 </div>
-              )}
-            </div>
-          </CardHeader>
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent className="pt-0">
+                {/* Action buttons */}
+                {students && students.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-3 mb-4 pb-4 border-b">
+                    {/* Groep 1: Analyse acties */}
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="default"
+                        size="sm"
+                        disabled={batchAnalyzing || reAnalyzing || !project.opdracht_pdf_url || !project.graderingstabel_pdf_url}
+                        onClick={() => {
+                          const pending = students?.filter((s) => s.status === "pending" || s.status === "reviewed") || [];
+                          if (pending.length === 0) {
+                            toast.info("Geen studenten om te analyseren");
+                            return;
+                          }
+                          setModelPickerAction("batch");
+                          setShowModelPicker(true);
+                        }}
+                      >
+                        {batchAnalyzing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Bot className="h-4 w-4 mr-2" />}
+                        {selectedStudents.size > 0 ? `Analyseer (${selectedStudents.size})` : "Analyseer alle"}
+                      </Button>
 
-          {/* Batch progress overlay */}
-          <BatchProgressOverlay
-            progress={batchProgress}
-            onCancel={() => { cancelRef.current = true; }}
-            summary={batchSummary}
-            onCloseSummary={() => {
-              setBatchSummary(null);
-              queryClient.invalidateQueries({ queryKey: ["students", id] });
-            }}
-          />
+                      {students.some((s) => s.status === "reviewed" || s.status === "graded") && (
+                        <>
+                          <Separator orientation="vertical" className="h-6" />
+                          <div className="flex items-center gap-1.5">
+                            <Select value={reAnalyzeNiveau} onValueChange={setReAnalyzeNiveau}>
+                              <SelectTrigger className="w-[100px] h-8 text-xs">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="streng">Streng</SelectItem>
+                                <SelectItem value="neutraal">Neutraal</SelectItem>
+                                <SelectItem value="mild">Mild</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <Button variant="outline" size="sm" disabled={reAnalyzing || batchAnalyzing} onClick={batchReAnalyze}>
+                              {reAnalyzing ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-1.5" />}
+                              {selectedStudents.size > 0 ? `Heranalyse (${selectedStudents.size})` : "Heranalyse"}
+                            </Button>
+                          </div>
+                        </>
+                      )}
+                    </div>
 
-          <CardContent className="space-y-6">
-            {/* Drag & drop zone */}
-            <div
-              className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
-                dragOver ? "border-primary bg-primary/5" : "border-border"
-              }`}
-              onDragOver={(e) => {
-                e.preventDefault();
-                setDragOver(true);
-              }}
-              onDragLeave={() => setDragOver(false)}
-              onDrop={handleDrop}
-            >
-              {uploading ? (
-                <div className="flex items-center justify-center gap-2">
-                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                  <span className="text-muted-foreground">Uploaden...</span>
-                </div>
-              ) : (
-                <>
-                  <Upload className="h-6 w-6 text-muted-foreground mx-auto mb-2" />
-                  <p className="text-sm text-muted-foreground">
-                    Sleep PDF- of Word-bestanden hierheen of{" "}
-                    <label htmlFor="student-upload" className="text-primary cursor-pointer hover:underline">
-                      blader
-                    </label>
-                  </p>
-                  <input
-                    id="student-upload"
-                    type="file"
-                    accept=".pdf,.docx,.doc"
-                    multiple
-                    className="hidden"
-                    onChange={(e) => e.target.files && uploadStudentPdfs(e.target.files)}
-                  />
-                </>
-              )}
-            </div>
-
-            {/* Zoekbalk + Studenten tabel */}
-            {students && students.length > 0 && (
-              <>
-                {students.length > 3 && (
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Zoek student..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-9 max-w-xs"
-                    />
-                  </div>
-                )}
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-10">
-                        <Checkbox
-                          checked={selectedStudents.size === students.length && students.length > 0}
-                          onCheckedChange={(checked) => {
-                            if (checked) {
-                              setSelectedStudents(new Set(students.map((s) => s.id)));
-                            } else {
-                              setSelectedStudents(new Set());
+                    {/* Groep 2: Delen & Finaliseren */}
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={sharingAll}
+                        onClick={async () => {
+                          const eligible = students?.filter((s) => s.status === "reviewed" || s.status === "graded") || [];
+                          if (eligible.length === 0) { toast.info("Geen beoordeelde studenten om te delen"); return; }
+                          setSharingAll(true);
+                          try {
+                            for (const s of eligible) {
+                              if (!s.share_token) {
+                                await supabase.from("students").update({ share_token: crypto.randomUUID(), share_enabled: true }).eq("id", s.id);
+                              } else if (!s.share_enabled) {
+                                await supabase.from("students").update({ share_enabled: true }).eq("id", s.id);
+                              }
                             }
-                          }}
-                        />
-                      </TableHead>
-                      <TableHead className="cursor-pointer select-none hover:bg-muted/50" onClick={() => {
-                        if (sortColumn === "naam") setSortDirection(d => d === "asc" ? "desc" : "asc");
-                        else { setSortColumn("naam"); setSortDirection("asc"); }
-                      }}>
-                        <span className="flex items-center gap-1">Student {sortColumn === "naam" ? (sortDirection === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 text-muted-foreground/50" />}</span>
-                      </TableHead>
-                      <TableHead className="cursor-pointer select-none hover:bg-muted/50" onClick={() => {
-                        if (sortColumn === "status") setSortDirection(d => d === "asc" ? "desc" : "asc");
-                        else { setSortColumn("status"); setSortDirection("asc"); }
-                      }}>
-                        <span className="flex items-center gap-1">Status {sortColumn === "status" ? (sortDirection === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 text-muted-foreground/50" />}</span>
-                      </TableHead>
-                      <TableHead className="cursor-pointer select-none hover:bg-muted/50" onClick={() => {
-                        if (sortColumn === "score") setSortDirection(d => d === "asc" ? "desc" : "asc");
-                        else { setSortColumn("score"); setSortDirection("desc"); }
-                      }}>
-                        <span className="flex items-center gap-1">Score {sortColumn === "score" ? (sortDirection === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 text-muted-foreground/50" />}</span>
-                      </TableHead>
-                      <TableHead>Voortgang</TableHead>
-                      <TableHead className="text-right">Acties</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {students
-                      .filter((s) => s.naam.toLowerCase().includes(searchQuery.toLowerCase()))
-                      .sort((a, b) => {
-                        if (!sortColumn) return 0;
-                        const dir = sortDirection === "asc" ? 1 : -1;
-                        if (sortColumn === "naam") return dir * a.naam.localeCompare(b.naam);
-                        if (sortColumn === "status") {
-                          const order: Record<string, number> = { pending: 0, analyzing: 1, reviewed: 2, graded: 3 };
-                          return dir * ((order[a.status] ?? 0) - (order[b.status] ?? 0));
-                        }
-                        if (sortColumn === "score") return dir * ((getTotalScore(a) ?? -1) - (getTotalScore(b) ?? -1));
-                        return 0;
-                      })
-                      .map((student) => {
-                        const total = getTotalScore(student);
-                        const max = getMaxTotal();
-                        const missing = getMissingScores(student);
-                        const isEditing = editingStudentId === student.id;
-                        return (
-                          <TableRow key={student.id} className={`cursor-pointer ${student.status === "graded" ? "bg-green-50/50 dark:bg-green-950/20" : ""}`} onClick={() => {
-                            if (isEditing) return;
-                            if (isReviewer) { setReviewStudentId(student.id); return; }
-                            navigate(`/project/${id}/student/${student.id}`);
+                            queryClient.invalidateQueries({ queryKey: ["students", id] });
+                            toast.success(`Feedback gedeeld met ${eligible.length} student(en)`);
+                          } catch { toast.error("Delen mislukt"); }
+                          finally { setSharingAll(false); }
+                        }}
+                      >
+                        {sharingAll ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Share2 className="h-4 w-4 mr-1.5" />}
+                        Deel feedback met alle studenten
+                      </Button>
+
+                      {selectedStudents.size > 0 && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={finalizeSelected}
+                          disabled={finalizing}
+                          className="border-green-300 text-green-700 hover:bg-green-50"
+                        >
+                          {finalizing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />}
+                          Finaliseer ({selectedStudents.size})
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Batch progress overlay */}
+                <BatchProgressOverlay
+                  progress={batchProgress}
+                  onCancel={() => { cancelRef.current = true; }}
+                  summary={batchSummary}
+                  onCloseSummary={() => {
+                    setBatchSummary(null);
+                    queryClient.invalidateQueries({ queryKey: ["students", id] });
+                  }}
+                />
+
+                {/* Drag & drop zone */}
+                <div
+                  className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+                    dragOver ? "border-primary bg-primary/5" : "border-border"
+                  }`}
+                  onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                  onDragLeave={() => setDragOver(false)}
+                  onDrop={handleDrop}
+                >
+                  {uploading ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                      <span className="text-muted-foreground">Uploaden...</span>
+                    </div>
+                  ) : (
+                    <>
+                      <Upload className="h-6 w-6 text-muted-foreground mx-auto mb-2" />
+                      <p className="text-sm text-muted-foreground">
+                        Sleep PDF- of Word-bestanden hierheen of{" "}
+                        <label htmlFor="student-upload" className="text-primary cursor-pointer hover:underline">blader</label>
+                      </p>
+                      <input id="student-upload" type="file" accept=".pdf,.docx,.doc" multiple className="hidden"
+                        onChange={(e) => e.target.files && uploadStudentPdfs(e.target.files)} />
+                    </>
+                  )}
+                </div>
+
+                {/* Zoekbalk + Studenten tabel */}
+                {students && students.length > 0 && (
+                  <div className="mt-4 space-y-3">
+                    {students.length > 3 && (
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input placeholder="Zoek student..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9 max-w-xs" />
+                      </div>
+                    )}
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-10">
+                            <Checkbox
+                              checked={selectedStudents.size === students.length && students.length > 0}
+                              onCheckedChange={(checked) => {
+                                if (checked) setSelectedStudents(new Set(students.map((s) => s.id)));
+                                else setSelectedStudents(new Set());
+                              }}
+                            />
+                          </TableHead>
+                          <TableHead className="cursor-pointer select-none hover:bg-muted/50" onClick={() => {
+                            if (sortColumn === "naam") setSortDirection(d => d === "asc" ? "desc" : "asc");
+                            else { setSortColumn("naam"); setSortDirection("asc"); }
                           }}>
-                            <TableCell onClick={(e) => e.stopPropagation()}>
-                              <Checkbox
-                                checked={selectedStudents.has(student.id)}
-                                onCheckedChange={(checked) => {
-                                  setSelectedStudents((prev) => {
-                                    const next = new Set(prev);
-                                    if (checked) next.add(student.id);
-                                    else next.delete(student.id);
-                                    return next;
-                                  });
-                                }}
-                              />
-                            </TableCell>
-                            <TableCell className="font-medium">
-                              {isEditing ? (
-                                <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                                  <Input
-                                    value={editStudentName}
-                                    onChange={(e) => setEditStudentName(e.target.value)}
-                                    onKeyDown={(e) => e.key === "Enter" && renameStudent(student.id, editStudentName)}
-                                    className="h-7 text-sm w-48"
-                                    autoFocus
+                            <span className="flex items-center gap-1">Student {sortColumn === "naam" ? (sortDirection === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 text-muted-foreground/50" />}</span>
+                          </TableHead>
+                          <TableHead className="cursor-pointer select-none hover:bg-muted/50" onClick={() => {
+                            if (sortColumn === "status") setSortDirection(d => d === "asc" ? "desc" : "asc");
+                            else { setSortColumn("status"); setSortDirection("asc"); }
+                          }}>
+                            <span className="flex items-center gap-1">Status {sortColumn === "status" ? (sortDirection === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 text-muted-foreground/50" />}</span>
+                          </TableHead>
+                          <TableHead className="cursor-pointer select-none hover:bg-muted/50" onClick={() => {
+                            if (sortColumn === "score") setSortDirection(d => d === "asc" ? "desc" : "asc");
+                            else { setSortColumn("score"); setSortDirection("desc"); }
+                          }}>
+                            <span className="flex items-center gap-1">Score {sortColumn === "score" ? (sortDirection === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 text-muted-foreground/50" />}</span>
+                          </TableHead>
+                          <TableHead>Voortgang</TableHead>
+                          <TableHead className="text-right">Acties</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {students
+                          .filter((s) => s.naam.toLowerCase().includes(searchQuery.toLowerCase()))
+                          .sort((a, b) => {
+                            if (!sortColumn) return 0;
+                            const dir = sortDirection === "asc" ? 1 : -1;
+                            if (sortColumn === "naam") return dir * a.naam.localeCompare(b.naam);
+                            if (sortColumn === "status") {
+                              const order: Record<string, number> = { pending: 0, analyzing: 1, reviewed: 2, graded: 3 };
+                              return dir * ((order[a.status] ?? 0) - (order[b.status] ?? 0));
+                            }
+                            if (sortColumn === "score") return dir * ((getTotalScore(a) ?? -1) - (getTotalScore(b) ?? -1));
+                            return 0;
+                          })
+                          .map((student) => {
+                            const total = getTotalScore(student);
+                            const max = getMaxTotal();
+                            const missing = getMissingScores(student);
+                            const isEditingSt = editingStudentId === student.id;
+                            return (
+                              <TableRow key={student.id} className={`cursor-pointer ${student.status === "graded" ? "bg-green-50/50 dark:bg-green-950/20" : ""}`} onClick={() => {
+                                if (isEditingSt) return;
+                                if (isReviewer) { setReviewStudentId(student.id); return; }
+                                navigate(`/project/${id}/student/${student.id}`);
+                              }}>
+                                <TableCell onClick={(e) => e.stopPropagation()}>
+                                  <Checkbox
+                                    checked={selectedStudents.has(student.id)}
+                                    onCheckedChange={(checked) => {
+                                      setSelectedStudents((prev) => {
+                                        const next = new Set(prev);
+                                        if (checked) next.add(student.id); else next.delete(student.id);
+                                        return next;
+                                      });
+                                    }}
                                   />
-                                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => renameStudent(student.id, editStudentName)}>
-                                    <Check className="h-3 w-3" />
-                                  </Button>
-                                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditingStudentId(null)}>
-                                    <X className="h-3 w-3" />
-                                  </Button>
-                                </div>
-                              ) : (
-                                student.naam
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              {student.status === "analyzing" ? (
-                                <StudentAnalyzingProgress
-                                  studentId={student.id}
-                                  startTimesRef={studentStartTimesRef}
-                                  avgTime={batchProgress?.studentTimes && batchProgress.studentTimes.length > 0
-                                    ? batchProgress.studentTimes.reduce((a, b) => a + b, 0) / batchProgress.studentTimes.length
-                                    : 0}
-                                />
-                              ) : queuedStudentIds.has(student.id) ? (
-                                <div className="flex items-center gap-1.5">
-                                  <div className="h-2 w-2 rounded-full bg-muted-foreground animate-pulse" />
-                                  <span className="text-xs text-muted-foreground font-medium">Wachtrij</span>
-                                </div>
-                              ) : (
-                                <Badge variant={statusVariants[student.status as StudentStatus]}>
-                                  {statusLabels[student.status as StudentStatus]}
-                                </Badge>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              {total !== null ? (
-                                <span className={missing.length > 0 ? "text-destructive font-semibold" : ""}>
-                                  {total}/{max}
-                                </span>
-                              ) : "—"}
-                            </TableCell>
-                            <TableCell>
-                              {(() => {
-                                const warnings: string[] = Array.isArray((student as any).ai_validation_warnings) ? (student as any).ai_validation_warnings : [];
-                                const hasWarnings = warnings.length > 0;
-                                const hasIssues = missing.length > 0 || hasWarnings;
-
-                                if (student.status === "pending") return <Circle className="h-4 w-4 text-muted-foreground" />;
-                                if (student.status === "analyzing") return <Loader2 className="h-4 w-4 animate-spin text-primary" />;
-
-                                if (hasIssues) {
-                                  const tooltipLines = [
-                                    ...missing.map((m: any) => `Score ontbreekt: ${m.criterium_naam}`),
-                                    ...warnings,
-                                  ];
-                                  return (
-                                    <TooltipProvider>
-                                      <Tooltip>
-                                        <TooltipTrigger asChild>
+                                </TableCell>
+                                <TableCell className="font-medium">
+                                  {isEditingSt ? (
+                                    <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                                      <Input value={editStudentName} onChange={(e) => setEditStudentName(e.target.value)}
+                                        onKeyDown={(e) => e.key === "Enter" && renameStudent(student.id, editStudentName)} className="h-7 text-sm w-48" autoFocus />
+                                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => renameStudent(student.id, editStudentName)}><Check className="h-3 w-3" /></Button>
+                                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditingStudentId(null)}><X className="h-3 w-3" /></Button>
+                                    </div>
+                                  ) : student.naam}
+                                </TableCell>
+                                <TableCell>
+                                  {student.status === "analyzing" ? (
+                                    <StudentAnalyzingProgress studentId={student.id} startTimesRef={studentStartTimesRef}
+                                      avgTime={batchProgress?.studentTimes && batchProgress.studentTimes.length > 0
+                                        ? batchProgress.studentTimes.reduce((a, b) => a + b, 0) / batchProgress.studentTimes.length : 0} />
+                                  ) : queuedStudentIds.has(student.id) ? (
+                                    <div className="flex items-center gap-1.5">
+                                      <div className="h-2 w-2 rounded-full bg-muted-foreground animate-pulse" />
+                                      <span className="text-xs text-muted-foreground font-medium">Wachtrij</span>
+                                    </div>
+                                  ) : (
+                                    <Badge variant={statusVariants[student.status as StudentStatus]}>
+                                      {statusLabels[student.status as StudentStatus]}
+                                    </Badge>
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  {total !== null ? (
+                                    <span className={missing.length > 0 ? "text-destructive font-semibold" : ""}>{total}/{max}</span>
+                                  ) : "—"}
+                                </TableCell>
+                                <TableCell>
+                                  {(() => {
+                                    const warnings: string[] = Array.isArray((student as any).ai_validation_warnings) ? (student as any).ai_validation_warnings : [];
+                                    const hasWarnings = warnings.length > 0;
+                                    const hasIssues = missing.length > 0 || hasWarnings;
+                                    if (student.status === "pending") return <Circle className="h-4 w-4 text-muted-foreground" />;
+                                    if (student.status === "analyzing") return <Loader2 className="h-4 w-4 animate-spin text-primary" />;
+                                    if (hasIssues) {
+                                      const tooltipLines = [...missing.map((m: any) => `Score ontbreekt: ${m.criterium_naam}`), ...warnings];
+                                      return (
+                                        <TooltipProvider><Tooltip><TooltipTrigger asChild>
                                           <AlertTriangle className="h-4 w-4 text-yellow-500 cursor-help" />
-                                        </TooltipTrigger>
-                                        <TooltipContent side="left" className="max-w-xs">
-                                          <ul className="text-xs space-y-0.5">
-                                            {tooltipLines.map((line, i) => (
-                                              <li key={i} className="flex items-start gap-1">
-                                                <span className="text-yellow-500 mt-0.5">•</span>
-                                                <span>{line}</span>
-                                              </li>
-                                            ))}
-                                          </ul>
-                                        </TooltipContent>
-                                      </Tooltip>
-                                    </TooltipProvider>
-                                  );
-                                }
-
-                                if (student.status === "graded") return <CheckCircle className="h-4 w-4 text-green-600" />;
-                                return <Circle className="h-4 w-4 text-yellow-500" />;
-                              })()}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  disabled={!project.opdracht_pdf_url || !project.graderingstabel_pdf_url || student.status === "analyzing"}
-                                  onClick={() => runBatchSequential([student], {}, setBatchAnalyzing)}
-                                >
-                                  <Bot className="h-4 w-4 mr-1" />
-                                  Analyseer
-                                </Button>
-                                <TooltipProvider>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Button
-                                        size="icon"
-                                        variant="ghost"
-                                        className="h-8 w-8"
-                                        onClick={() => setShareStudent(student)}
-                                      >
+                                        </TooltipTrigger><TooltipContent side="left" className="max-w-xs">
+                                          <ul className="text-xs space-y-0.5">{tooltipLines.map((line, i) => (
+                                            <li key={i} className="flex items-start gap-1"><span className="text-yellow-500 mt-0.5">•</span><span>{line}</span></li>
+                                          ))}</ul>
+                                        </TooltipContent></Tooltip></TooltipProvider>
+                                      );
+                                    }
+                                    if (student.status === "graded") return <CheckCircle className="h-4 w-4 text-green-600" />;
+                                    return <Circle className="h-4 w-4 text-yellow-500" />;
+                                  })()}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                                    <Button size="sm" variant="outline"
+                                      disabled={!project.opdracht_pdf_url || !project.graderingstabel_pdf_url || student.status === "analyzing"}
+                                      onClick={() => runBatchSequential([student], {}, setBatchAnalyzing)}>
+                                      <Bot className="h-4 w-4 mr-1" />Analyseer
+                                    </Button>
+                                    <TooltipProvider><Tooltip><TooltipTrigger asChild>
+                                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setShareStudent(student)}>
                                         <Share2 className="h-3.5 w-3.5" />
                                       </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent><span className="text-xs">Deel feedback</span></TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  className="h-8 w-8"
-                                  onClick={() => { setEditingStudentId(student.id); setEditStudentName(student.naam); }}
-                                >
-                                  <Pencil className="h-3.5 w-3.5" />
-                                </Button>
-                                {deletingStudentId === student.id ? (
-                                  <div className="flex items-center gap-1">
-                                    <Button size="sm" variant="destructive" className="h-8 text-xs" onClick={() => deleteStudent(student.id)}>
-                                      Bevestig
+                                    </TooltipTrigger><TooltipContent><span className="text-xs">Deel feedback</span></TooltipContent></Tooltip></TooltipProvider>
+                                    <Button size="icon" variant="ghost" className="h-8 w-8"
+                                      onClick={() => { setEditingStudentId(student.id); setEditStudentName(student.naam); }}>
+                                      <Pencil className="h-3.5 w-3.5" />
                                     </Button>
-                                    <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setDeletingStudentId(null)}>
-                                      <X className="h-3.5 w-3.5" />
-                                    </Button>
+                                    {deletingStudentId === student.id ? (
+                                      <div className="flex items-center gap-1">
+                                        <Button size="sm" variant="destructive" className="h-8 text-xs" onClick={() => deleteStudent(student.id)}>Bevestig</Button>
+                                        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setDeletingStudentId(null)}><X className="h-3.5 w-3.5" /></Button>
+                                      </div>
+                                    ) : (
+                                      <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                        onClick={() => setDeletingStudentId(student.id)}>
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                      </Button>
+                                    )}
                                   </div>
-                                ) : (
-                                  <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                                    onClick={() => setDeletingStudentId(student.id)}
-                                  >
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                  </Button>
-                                )}
-                              </div>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        {students.filter((s) => s.naam.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 && (
+                          <TableRow>
+                            <TableCell colSpan={6} className="text-center text-muted-foreground py-6">
+                              Geen studenten gevonden voor "{searchQuery}"
                             </TableCell>
                           </TableRow>
-                        );
-                      })}
-                    {students.filter((s) => s.naam.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={5} className="text-center text-muted-foreground py-6">
-                          Geen studenten gevonden voor "{searchQuery}"
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </>
-            )}
-          </CardContent>
-        </Card>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
 
         {/* Moderation tab (owner only, when reviewers exist) */}
         {isOwner && hasReviewers && students && criteria && (
