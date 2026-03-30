@@ -211,6 +211,21 @@ const ProjectDetail = () => {
     },
   });
 
+  const { data: reactionsCount } = useQuery({
+    queryKey: ["reactions-count", id],
+    queryFn: async () => {
+      const studentIds = students?.map((s) => s.id) || [];
+      if (studentIds.length === 0) return 0;
+      const { count, error } = await supabase
+        .from("student_reactions")
+        .select("*", { count: "exact", head: true })
+        .in("student_id", studentIds);
+      if (error) return 0;
+      return count || 0;
+    },
+    enabled: !!students && students.length > 0,
+  });
+
   const updateProject = useMutation({
     mutationFn: async (updates: Record<string, any>) => {
       const { error } = await supabase.from("projects").update(updates).eq("id", id!);
