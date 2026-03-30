@@ -1569,6 +1569,21 @@ const ProjectDetail = () => {
                                   <Bot className="h-4 w-4 mr-1" />
                                   Analyseer
                                 </Button>
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        size="icon"
+                                        variant="ghost"
+                                        className="h-8 w-8"
+                                        onClick={() => setShareStudent(student)}
+                                      >
+                                        <Share2 className="h-3.5 w-3.5" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent><span className="text-xs">Deel feedback</span></TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
                                 <Button
                                   size="icon"
                                   variant="ghost"
