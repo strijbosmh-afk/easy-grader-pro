@@ -1181,28 +1181,7 @@ const ProjectDetail = () => {
                     </Select>
                   </div>
 
-                  {/* Feedbacktaal */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-muted-foreground">Feedbacktaal</label>
-                    <Select
-                      value={(project as any).feedback_language || "nl"}
-                      onValueChange={(value) => {
-                        updateProject.mutateAsync({ feedback_language: value } as any);
-                        toast.success("Feedbacktaal opgeslagen");
-                      }}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="nl">Nederlands</SelectItem>
-                        <SelectItem value="en">English</SelectItem>
-                        <SelectItem value="fr">Français</SelectItem>
-                        <SelectItem value="de">Deutsch</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <p className="text-[10px] text-muted-foreground">De taal waarin de AI feedback schrijft</p>
-                  </div>
+                  {/* Feedbacktaal — tijdelijk uitgeschakeld */}
                 </div>
 
                 {/* Onderwijscontext */}
@@ -1713,10 +1692,7 @@ const ProjectDetail = () => {
           <ModerationTab projectId={id!} students={students} criteria={criteria} />
         )}
 
-        {/* Studentreacties tab */}
-        {isOwner && students && students.length > 0 && criteria && criteria.length > 0 && (
-          <StudentReactionsTab projectId={id!} students={students} criteria={criteria} />
-        )}
+        {/* Studentreacties tab — tijdelijk uitgeschakeld */}
 
         {/* Plagiarism check tab */}
         {isOwner && students && students.length >= 2 && (
