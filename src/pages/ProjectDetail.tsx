@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -31,6 +31,8 @@ import { StudentReactionsTab } from "@/components/StudentReactionsTab";
 import { PlagiarismTab } from "@/components/PlagiarismTab";
 import { invokeEdgeFunction } from "@/lib/supabase-helpers";
 import { concurrencyPool } from "@/lib/concurrencyPool";
+import { useKeyboardShortcuts, type Shortcut } from "@/hooks/useKeyboardShortcuts";
+import { KeyboardShortcutsDialog } from "@/components/KeyboardShortcutsDialog";
 import {
   Dialog,
   DialogContent,
@@ -247,6 +249,54 @@ const ProjectDetail = () => {
     },
     enabled: !!students && students.length > 0,
   });
+
+  // Keyboard navigation for student list
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
+
+  const filteredStudents = useMemo(() => {
+    if (!students) return [];
+    let list = students.filter((s) => s.naam.toLowerCase().includes(searchQuery.toLowerCase()));
+    if (sortColumn) {
+      const dir = sortDirection === "asc" ? 1 : -1;
+      list = [...list].sort((a, b) => {
+        if (sortColumn === "naam") return dir * a.naam.localeCompare(b.naam);
+        return 0;
+      });
+    }
+    return list;
+  }, [students, searchQuery, sortColumn, sortDirection]);
+
+  const projectShortcuts: Shortcut[] = useMemo(() => [
+    {
+      key: "ArrowDown", action: () => {
+        setHighlightedIndex((prev) => Math.min(prev + 1, filteredStudents.length - 1));
+      }, label: "Volgende student selecteren", category: "Navigatie"
+    },
+    {
+      key: "ArrowUp", action: () => {
+        setHighlightedIndex((prev) => Math.max(prev - 1, 0));
+      }, label: "Vorige student selecteren", category: "Navigatie"
+    },
+    {
+      key: "Enter", action: () => {
+        if (highlightedIndex >= 0 && highlightedIndex < filteredStudents.length) {
+          const s = filteredStudents[highlightedIndex];
+          navigate(`/project/${id}/student/${s.id}`);
+        }
+      }, label: "Student openen", category: "Navigatie"
+    },
+    {
+      key: "Escape", action: () => {
+        if (highlightedIndex >= 0) {
+          setHighlightedIndex(-1);
+        } else {
+          navigate("/");
+        }
+      }, label: "Terug naar overzicht", category: "Navigatie"
+    },
+  ], [filteredStudents, highlightedIndex, id]);
+
+  useKeyboardShortcuts(projectShortcuts);
 
   const updateProject = useMutation({
     mutationFn: async (updates: Record<string, any>) => {
@@ -1532,13 +1582,14 @@ const ProjectDetail = () => {
                             if (sortColumn === "score") return dir * ((getTotalScore(a) ?? -1) - (getTotalScore(b) ?? -1));
                             return 0;
                           })
-                          .map((student) => {
+                          .map((student, idx) => {
                             const total = getTotalScore(student);
                             const max = getMaxTotal();
                             const missing = getMissingScores(student);
                             const isEditingSt = editingStudentId === student.id;
+                            const isHighlighted = idx === highlightedIndex;
                             return (
-                              <TableRow key={student.id} className={`cursor-pointer ${student.status === "graded" ? "bg-green-50/50 dark:bg-green-950/20" : ""}`} onClick={() => {
+                              <TableRow key={student.id} className={`cursor-pointer ${student.status === "graded" ? "bg-green-50/50 dark:bg-green-950/20" : ""} ${isHighlighted ? "ring-2 ring-primary ring-inset bg-accent/50" : ""}`} onClick={() => {
                                 if (isEditingSt) return;
                                 if (isReviewer) { setReviewStudentId(student.id); return; }
                                 navigate(`/project/${id}/student/${student.id}`);
@@ -1859,6 +1910,7 @@ const ProjectDetail = () => {
           </div>
         </DialogContent>
       </Dialog>
+      <KeyboardShortcutsDialog shortcuts={projectShortcuts} />
     </div>
   );
 };
