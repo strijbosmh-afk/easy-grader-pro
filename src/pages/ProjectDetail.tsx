@@ -1582,13 +1582,14 @@ const ProjectDetail = () => {
                             if (sortColumn === "score") return dir * ((getTotalScore(a) ?? -1) - (getTotalScore(b) ?? -1));
                             return 0;
                           })
-                          .map((student) => {
+                          .map((student, idx) => {
                             const total = getTotalScore(student);
                             const max = getMaxTotal();
                             const missing = getMissingScores(student);
                             const isEditingSt = editingStudentId === student.id;
+                            const isHighlighted = idx === highlightedIndex;
                             return (
-                              <TableRow key={student.id} className={`cursor-pointer ${student.status === "graded" ? "bg-green-50/50 dark:bg-green-950/20" : ""}`} onClick={() => {
+                              <TableRow key={student.id} className={`cursor-pointer ${student.status === "graded" ? "bg-green-50/50 dark:bg-green-950/20" : ""} ${isHighlighted ? "ring-2 ring-primary ring-inset bg-accent/50" : ""}`} onClick={() => {
                                 if (isEditingSt) return;
                                 if (isReviewer) { setReviewStudentId(student.id); return; }
                                 navigate(`/project/${id}/student/${student.id}`);
@@ -1909,6 +1910,7 @@ const ProjectDetail = () => {
           </div>
         </DialogContent>
       </Dialog>
+      <KeyboardShortcutsDialog shortcuts={projectShortcuts} />
     </div>
   );
 };
