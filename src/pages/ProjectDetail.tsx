@@ -1447,9 +1447,24 @@ const ProjectDetail = () => {
                           }}
                         />
                       </TableHead>
-                      <TableHead>Student</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Score</TableHead>
+                      <TableHead className="cursor-pointer select-none hover:bg-muted/50" onClick={() => {
+                        if (sortColumn === "naam") setSortDirection(d => d === "asc" ? "desc" : "asc");
+                        else { setSortColumn("naam"); setSortDirection("asc"); }
+                      }}>
+                        <span className="flex items-center gap-1">Student {sortColumn === "naam" ? (sortDirection === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 text-muted-foreground/50" />}</span>
+                      </TableHead>
+                      <TableHead className="cursor-pointer select-none hover:bg-muted/50" onClick={() => {
+                        if (sortColumn === "status") setSortDirection(d => d === "asc" ? "desc" : "asc");
+                        else { setSortColumn("status"); setSortDirection("asc"); }
+                      }}>
+                        <span className="flex items-center gap-1">Status {sortColumn === "status" ? (sortDirection === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 text-muted-foreground/50" />}</span>
+                      </TableHead>
+                      <TableHead className="cursor-pointer select-none hover:bg-muted/50" onClick={() => {
+                        if (sortColumn === "score") setSortDirection(d => d === "asc" ? "desc" : "asc");
+                        else { setSortColumn("score"); setSortDirection("desc"); }
+                      }}>
+                        <span className="flex items-center gap-1">Score {sortColumn === "score" ? (sortDirection === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 text-muted-foreground/50" />}</span>
+                      </TableHead>
                       <TableHead>Voortgang</TableHead>
                       <TableHead className="text-right">Acties</TableHead>
                     </TableRow>
