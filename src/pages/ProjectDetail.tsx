@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Upload, FileText, Pencil, Check, X, Loader2, Bot, Download, Settings, LayoutGrid, RefreshCw, AlertTriangle, Users, FolderOpen, Search, Eye, Trash2, FileDown, CheckCircle, Circle, Sparkles, Cpu, ShieldCheck, Info, Share2, MessageSquare } from "lucide-react";
+import { ArrowLeft, Upload, FileText, Pencil, Check, X, Loader2, Bot, Download, Settings, LayoutGrid, RefreshCw, AlertTriangle, Users, FolderOpen, Search, Eye, Trash2, FileDown, CheckCircle, Circle, Sparkles, Cpu, ShieldCheck, Info, Share2, MessageSquare, ChevronDown } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
@@ -1082,24 +1083,29 @@ const ProjectDetail = () => {
             </CardContent>
           </Card>
           {/* Onderwijscontext */}
-          <Card className="lg:col-span-4">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
-                <Settings className="h-4 w-4" />
-                Onderwijscontext (optioneel)
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Info className="h-3.5 w-3.5 text-muted-foreground/60 cursor-help" />
-                    </TooltipTrigger>
-                    <TooltipContent side="right" className="max-w-xs text-xs">
-                      De AI gebruikt deze context als achtergrondinformatie bij het schrijven van feedback. Het verandert niets aan de scores of beoordelingscriteria — die komen altijd uit je graderingstabel.
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
+          <Collapsible defaultOpen={false} className="lg:col-span-4">
+            <Card>
+              <CollapsibleTrigger asChild className="group">
+                <CardHeader className="pb-3 cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg">
+                  <CardTitle className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
+                    <Settings className="h-4 w-4" />
+                    Onderwijscontext (optioneel)
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="h-3.5 w-3.5 text-muted-foreground/60 cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent side="right" className="max-w-xs text-xs">
+                          De AI gebruikt deze context als achtergrondinformatie bij het schrijven van feedback. Het verandert niets aan de scores of beoordelingscriteria — die komen altijd uit je graderingstabel.
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                    <ChevronDown className="h-4 w-4 ml-auto transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                  </CardTitle>
+                </CardHeader>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <CardContent>
               <textarea
                 className="w-full min-h-[60px] text-sm rounded-md border border-input bg-muted/30 px-3 py-2 ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 placeholder="Bv: Bacheloropleiding kleuteronderwijs, 2e jaar. Studenten schrijven een reflectieverslag over hun stage-ervaring in een Vlaamse kleuterschool."
@@ -1159,8 +1165,10 @@ const ProjectDetail = () => {
                   </div>
                 </div>
               )}
-            </CardContent>
-          </Card>
+              </CardContent>
+              </CollapsibleContent>
+            </Card>
+          </Collapsible>
 
           <Card>
             <CardHeader className="pb-3">
