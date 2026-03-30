@@ -16,6 +16,8 @@ import { downloadStudentReport } from "@/lib/export-pdf";
 import { exportStudentToWord } from "@/lib/export-word";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { invokeEdgeFunction } from "@/lib/supabase-helpers";
+import { useScoreHistory } from "@/hooks/useScoreHistory";
+import { Undo2 } from "lucide-react";
 
 function extractStoragePath(url: string): string | null {
   const match = url.match(/\/storage\/v1\/object\/(?:public|sign)\/pdfs\/(.+?)(?:\?|$)/);
@@ -36,6 +38,7 @@ const StudentScorecard = () => {
   const [showPdfPanel, setShowPdfPanel] = useState(true);
 
   const [isDirty, setIsDirty] = useState(false);
+  const scoreHistory = useScoreHistory(projectId);
 
   const { data: project } = useQuery({
     queryKey: ["project", projectId],
@@ -216,8 +219,8 @@ const StudentScorecard = () => {
         }
       }
 
-      // Log score changes to audit trail
-      const auditRows = criteria
+      // Push previous scores onto undo stack before saving
+      const undoChanges = criteria
         .filter((c) => {
           const oldScore = scores?.find((s) => s.criterium_id === c.id);
           const oldVal = oldScore?.final_score ?? oldScore?.ai_suggested_score;
@@ -226,17 +229,31 @@ const StudentScorecard = () => {
         })
         .map((c) => {
           const oldScore = scores?.find((s) => s.criterium_id === c.id);
-          const vals = localScores[c.id] || getScoreForCriterium(c.id);
           return {
-            student_id: studentId!,
-            criterium_id: c.id,
-            old_score: oldScore?.final_score ?? oldScore?.ai_suggested_score ?? null,
-            new_score: vals.final_score !== "" ? parseFloat(vals.final_score) : null,
-            old_opmerkingen: oldScore?.opmerkingen ?? null,
-            new_opmerkingen: vals.opmerkingen || null,
-            change_type: "manual",
+            studentId: studentId!,
+            studentName: student?.naam || "",
+            criteriumId: c.id,
+            criteriumName: c.criterium_naam,
+            previousScore: (oldScore?.final_score ?? oldScore?.ai_suggested_score)?.toString() ?? "",
+            previousOpmerkingen: oldScore?.opmerkingen ?? "",
+            timestamp: Date.now(),
           };
         });
+      scoreHistory.pushChanges(undoChanges);
+
+      // Log score changes to audit trail
+      const auditRows = undoChanges.map((uc) => {
+        const vals = localScores[uc.criteriumId] || getScoreForCriterium(uc.criteriumId);
+        return {
+          student_id: studentId!,
+          criterium_id: uc.criteriumId,
+          old_score: uc.previousScore !== "" ? parseFloat(uc.previousScore) : null,
+          new_score: vals.final_score !== "" ? parseFloat(vals.final_score) : null,
+          old_opmerkingen: uc.previousOpmerkingen || null,
+          new_opmerkingen: vals.opmerkingen || null,
+          change_type: "manual",
+        };
+      });
       if (auditRows.length > 0) {
         await supabase.from("score_audit_log").insert(auditRows);
       }
@@ -277,10 +294,30 @@ const StudentScorecard = () => {
         e.preventDefault();
         if (!saving) saveScores();
       }
+      // Ctrl/Cmd+Z for undo (only when not in input/textarea)
+      if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
+        const tag = (e.target as HTMLElement)?.tagName;
+        if (tag !== "INPUT" && tag !== "TEXTAREA") {
+          e.preventDefault();
+          if (scoreHistory.canUndo) {
+            scoreHistory.undo((change) => {
+              // Update local state to reflect the undo
+              setLocalScores((prev) => ({
+                ...prev,
+                [change.criteriumId]: {
+                  final_score: change.previousScore,
+                  opmerkingen: change.previousOpmerkingen,
+                },
+              }));
+              queryClient.invalidateQueries({ queryKey: ["scores", studentId] });
+            });
+          }
+        }
+      }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [saving, localScores, docentFeedback]);
+  }, [saving, localScores, docentFeedback, scoreHistory.canUndo]);
 
   // Prev/next navigation helpers
   const siblingIndex = siblings?.findIndex((s) => s.id === studentId) ?? -1;
@@ -729,6 +766,36 @@ const StudentScorecard = () => {
           </div>
         </div>
       </main>
+      {/* Floating Undo Button */}
+      {scoreHistory.canUndo && scoreHistory.visible && (
+        <div className="fixed bottom-6 left-6 z-50 animate-in slide-in-from-bottom-4 fade-in duration-300">
+          <Button
+            onClick={() => scoreHistory.undo((change) => {
+              setLocalScores((prev) => ({
+                ...prev,
+                [change.criteriumId]: {
+                  final_score: change.previousScore,
+                  opmerkingen: change.previousOpmerkingen,
+                },
+              }));
+              queryClient.invalidateQueries({ queryKey: ["scores", studentId] });
+            })}
+            disabled={scoreHistory.undoing}
+            className="shadow-lg gap-2"
+            variant="outline"
+          >
+            <Undo2 className="h-4 w-4" />
+            <span className="flex flex-col items-start text-left">
+              <span className="text-sm font-medium">Ongedaan maken</span>
+              {scoreHistory.lastChange && (
+                <span className="text-[10px] text-muted-foreground leading-tight">
+                  {scoreHistory.lastChange.criteriumName} — {scoreHistory.lastChange.studentName}
+                </span>
+              )}
+            </span>
+          </Button>
+        </div>
+      )}
     </div>
   );
 };
