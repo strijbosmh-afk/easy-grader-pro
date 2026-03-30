@@ -843,7 +843,8 @@ serve(async (req) => {
       if (aiProvider === "anthropic") {
         result = await callAnthropicAI(systemPrompt, contentParts);
       } else {
-        result = await callLovableAI(systemPrompt, contentParts);
+        const geminiModel = aiProvider === "lovable-pro" ? "google/gemini-2.5-pro" : "google/gemini-2.5-flash";
+        result = await callLovableAI(systemPrompt, contentParts, geminiModel);
       }
     } catch (err: any) {
       if (err.status === 429 || err.status === 402) {
