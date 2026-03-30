@@ -1634,6 +1634,11 @@ const ProjectDetail = () => {
         {isOwner && hasReviewers && students && criteria && (
           <ModerationTab projectId={id!} students={students} criteria={criteria} />
         )}
+
+        {/* Studentreacties tab */}
+        {isOwner && students && students.length > 0 && criteria && criteria.length > 0 && (
+          <StudentReactionsTab projectId={id!} students={students} criteria={criteria} />
+        )}
       </main>
 
       {/* Reviewer review overlay */}
