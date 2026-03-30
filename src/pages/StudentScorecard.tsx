@@ -294,10 +294,30 @@ const StudentScorecard = () => {
         e.preventDefault();
         if (!saving) saveScores();
       }
+      // Ctrl/Cmd+Z for undo (only when not in input/textarea)
+      if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
+        const tag = (e.target as HTMLElement)?.tagName;
+        if (tag !== "INPUT" && tag !== "TEXTAREA") {
+          e.preventDefault();
+          if (scoreHistory.canUndo) {
+            scoreHistory.undo((change) => {
+              // Update local state to reflect the undo
+              setLocalScores((prev) => ({
+                ...prev,
+                [change.criteriumId]: {
+                  final_score: change.previousScore,
+                  opmerkingen: change.previousOpmerkingen,
+                },
+              }));
+              queryClient.invalidateQueries({ queryKey: ["scores", studentId] });
+            });
+          }
+        }
+      }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [saving, localScores, docentFeedback]);
+  }, [saving, localScores, docentFeedback, scoreHistory.canUndo]);
 
   // Prev/next navigation helpers
   const siblingIndex = siblings?.findIndex((s) => s.id === studentId) ?? -1;
