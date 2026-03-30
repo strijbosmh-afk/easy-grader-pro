@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { ClassInsights } from "@/components/ClassInsights";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -633,6 +634,14 @@ const Statistics = () => {
               </Table>
             </CardContent>
           </Card>
+        )}
+
+        {/* Class Insights */}
+        {totalStudents >= 2 && (
+          <ClassInsights
+            projectId={isSingleProject ? resolvedProjectId : undefined}
+            projectIds={!isSingleProject && projects ? projects.map(p => p.id) : undefined}
+          />
         )}
 
         {/* Empty state */}
