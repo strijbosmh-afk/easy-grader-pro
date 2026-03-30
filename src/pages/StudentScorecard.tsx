@@ -766,6 +766,36 @@ const StudentScorecard = () => {
           </div>
         </div>
       </main>
+      {/* Floating Undo Button */}
+      {scoreHistory.canUndo && scoreHistory.visible && (
+        <div className="fixed bottom-6 left-6 z-50 animate-in slide-in-from-bottom-4 fade-in duration-300">
+          <Button
+            onClick={() => scoreHistory.undo((change) => {
+              setLocalScores((prev) => ({
+                ...prev,
+                [change.criteriumId]: {
+                  final_score: change.previousScore,
+                  opmerkingen: change.previousOpmerkingen,
+                },
+              }));
+              queryClient.invalidateQueries({ queryKey: ["scores", studentId] });
+            })}
+            disabled={scoreHistory.undoing}
+            className="shadow-lg gap-2"
+            variant="outline"
+          >
+            <Undo2 className="h-4 w-4" />
+            <span className="flex flex-col items-start text-left">
+              <span className="text-sm font-medium">Ongedaan maken</span>
+              {scoreHistory.lastChange && (
+                <span className="text-[10px] text-muted-foreground leading-tight">
+                  {scoreHistory.lastChange.criteriumName} — {scoreHistory.lastChange.studentName}
+                </span>
+              )}
+            </span>
+          </Button>
+        </div>
+      )}
     </div>
   );
 };
