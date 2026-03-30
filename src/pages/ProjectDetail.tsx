@@ -1472,6 +1472,17 @@ const ProjectDetail = () => {
                   <TableBody>
                     {students
                       .filter((s) => s.naam.toLowerCase().includes(searchQuery.toLowerCase()))
+                      .sort((a, b) => {
+                        if (!sortColumn) return 0;
+                        const dir = sortDirection === "asc" ? 1 : -1;
+                        if (sortColumn === "naam") return dir * a.naam.localeCompare(b.naam);
+                        if (sortColumn === "status") {
+                          const order: Record<string, number> = { pending: 0, analyzing: 1, reviewed: 2, graded: 3 };
+                          return dir * ((order[a.status] ?? 0) - (order[b.status] ?? 0));
+                        }
+                        if (sortColumn === "score") return dir * ((getTotalScore(a) ?? -1) - (getTotalScore(b) ?? -1));
+                        return 0;
+                      })
                       .map((student) => {
                         const total = getTotalScore(student);
                         const max = getMaxTotal();
