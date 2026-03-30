@@ -518,7 +518,7 @@ const ProjectDetail = () => {
             throw error;
           }
 
-          await supabase.from("students").update({ grading_status: "completed" } as any).eq("id", student.id);
+          await supabase.from("students").update({ status: "reviewed" as StudentStatus, grading_status: "completed" } as any).eq("id", student.id);
           return { studentId: student.id, elapsed };
         } finally {
           activeStudentsRef.current.delete(student.naam);
