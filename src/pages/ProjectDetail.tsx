@@ -28,6 +28,7 @@ import { ModerationTab } from "@/components/ModerationTab";
 import { StudentReviewView } from "@/components/StudentReviewView";
 import { ShareFeedbackDialog } from "@/components/ShareFeedbackDialog";
 import { StudentReactionsTab } from "@/components/StudentReactionsTab";
+import { PlagiarismTab } from "@/components/PlagiarismTab";
 import { invokeEdgeFunction } from "@/lib/supabase-helpers";
 import { concurrencyPool } from "@/lib/concurrencyPool";
 import {
