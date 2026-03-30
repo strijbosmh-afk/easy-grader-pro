@@ -74,6 +74,7 @@ const App = () => (
               <Routes>
                 <Route path="/login" element={<LoginRoute />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/student/feedback/:shareToken" element={<StudentFeedback />} />
                 <Route path="/*" element={<ProtectedRoutes />} />
               </Routes>
             </Suspense>
