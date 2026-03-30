@@ -419,7 +419,7 @@ export default function StudentFeedback() {
       {/* Footer */}
       <div className="border-t bg-card">
         <div className="max-w-3xl mx-auto px-4 py-4 text-center text-xs text-muted-foreground">
-          Gegenereerd door GradeAssist
+          Beoordeeld met GradeAssist — {gradedDate.toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" })}
         </div>
       </div>
     </div>
