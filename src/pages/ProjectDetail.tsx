@@ -250,6 +250,54 @@ const ProjectDetail = () => {
     enabled: !!students && students.length > 0,
   });
 
+  // Keyboard navigation for student list
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
+
+  const filteredStudents = useMemo(() => {
+    if (!students) return [];
+    let list = students.filter((s) => s.naam.toLowerCase().includes(searchQuery.toLowerCase()));
+    if (sortColumn) {
+      const dir = sortDirection === "asc" ? 1 : -1;
+      list = [...list].sort((a, b) => {
+        if (sortColumn === "naam") return dir * a.naam.localeCompare(b.naam);
+        return 0;
+      });
+    }
+    return list;
+  }, [students, searchQuery, sortColumn, sortDirection]);
+
+  const projectShortcuts: Shortcut[] = useMemo(() => [
+    {
+      key: "ArrowDown", action: () => {
+        setHighlightedIndex((prev) => Math.min(prev + 1, filteredStudents.length - 1));
+      }, label: "Volgende student selecteren", category: "Navigatie"
+    },
+    {
+      key: "ArrowUp", action: () => {
+        setHighlightedIndex((prev) => Math.max(prev - 1, 0));
+      }, label: "Vorige student selecteren", category: "Navigatie"
+    },
+    {
+      key: "Enter", action: () => {
+        if (highlightedIndex >= 0 && highlightedIndex < filteredStudents.length) {
+          const s = filteredStudents[highlightedIndex];
+          navigate(`/project/${id}/student/${s.id}`);
+        }
+      }, label: "Student openen", category: "Navigatie"
+    },
+    {
+      key: "Escape", action: () => {
+        if (highlightedIndex >= 0) {
+          setHighlightedIndex(-1);
+        } else {
+          navigate("/");
+        }
+      }, label: "Terug naar overzicht", category: "Navigatie"
+    },
+  ], [filteredStudents, highlightedIndex, id]);
+
+  useKeyboardShortcuts(projectShortcuts);
+
   const updateProject = useMutation({
     mutationFn: async (updates: Record<string, any>) => {
       const { error } = await supabase.from("projects").update(updates).eq("id", id!);
