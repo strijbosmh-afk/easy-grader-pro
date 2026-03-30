@@ -289,38 +289,6 @@ const StudentScorecard = () => {
     }
   };
 
-  // Keyboard shortcut: Ctrl/Cmd+S to save
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
-        e.preventDefault();
-        if (!saving) saveScores();
-      }
-      // Ctrl/Cmd+Z for undo (only when not in input/textarea)
-      if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
-        const tag = (e.target as HTMLElement)?.tagName;
-        if (tag !== "INPUT" && tag !== "TEXTAREA") {
-          e.preventDefault();
-          if (scoreHistory.canUndo) {
-            scoreHistory.undo((change) => {
-              // Update local state to reflect the undo
-              setLocalScores((prev) => ({
-                ...prev,
-                [change.criteriumId]: {
-                  final_score: change.previousScore,
-                  opmerkingen: change.previousOpmerkingen,
-                },
-              }));
-              queryClient.invalidateQueries({ queryKey: ["scores", studentId] });
-            });
-          }
-        }
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [saving, localScores, docentFeedback, scoreHistory.canUndo]);
-
   // Prev/next navigation helpers
   const siblingIndex = siblings?.findIndex((s) => s.id === studentId) ?? -1;
   const prevStudent = siblingIndex > 0 ? siblings![siblingIndex - 1] : null;
@@ -333,6 +301,67 @@ const StudentScorecard = () => {
     setIsDirty(false);
     navigate(`/project/${projectId}/student/${targetId}`);
   }, [isDirty, projectId, navigate]);
+
+  const handleUndo = useCallback(() => {
+    if (!scoreHistory.canUndo) return;
+    scoreHistory.undo((change) => {
+      setLocalScores((prev) => ({
+        ...prev,
+        [change.criteriumId]: {
+          final_score: change.previousScore,
+          opmerkingen: change.previousOpmerkingen,
+        },
+      }));
+      queryClient.invalidateQueries({ queryKey: ["scores", studentId] });
+    });
+  }, [scoreHistory.canUndo]);
+
+  const saveAndNext = useCallback(async () => {
+    if (!saving && nextStudent) {
+      await saveScores();
+      toast.info(`Student ${(siblingIndex ?? 0) + 2}/${siblings?.length}: ${nextStudent.naam}`);
+      navigateToStudent(nextStudent.id);
+    }
+  }, [saving, nextStudent, siblingIndex, siblings]);
+
+  // All keyboard shortcuts defined via hook
+  const shortcuts: Shortcut[] = useMemo(() => [
+    { key: "s", ctrl: true, global: true, action: () => { if (!saving) saveScores(); }, label: "Scores opslaan", category: "Acties" },
+    { key: "z", ctrl: true, action: handleUndo, label: "Ongedaan maken", category: "Acties" },
+    { key: "Enter", ctrl: true, global: true, action: saveAndNext, label: "Opslaan & volgende student", category: "Acties" },
+    { key: "ArrowDown", alt: true, action: () => {
+      if (nextStudent) {
+        toast.info(`Student ${(siblingIndex ?? 0) + 2}/${siblings?.length}: ${nextStudent.naam}`);
+        navigateToStudent(nextStudent.id);
+      }
+    }, label: "Volgende student", category: "Navigatie" },
+    { key: "j", alt: true, action: () => {
+      if (nextStudent) {
+        toast.info(`Student ${(siblingIndex ?? 0) + 2}/${siblings?.length}: ${nextStudent.naam}`);
+        navigateToStudent(nextStudent.id);
+      }
+    }, label: "Volgende student (alt)", category: "Navigatie" },
+    { key: "ArrowUp", alt: true, action: () => {
+      if (prevStudent) {
+        toast.info(`Student ${siblingIndex}/${siblings?.length}: ${prevStudent.naam}`);
+        navigateToStudent(prevStudent.id);
+      }
+    }, label: "Vorige student", category: "Navigatie" },
+    { key: "k", alt: true, action: () => {
+      if (prevStudent) {
+        toast.info(`Student ${siblingIndex}/${siblings?.length}: ${prevStudent.naam}`);
+        navigateToStudent(prevStudent.id);
+      }
+    }, label: "Vorige student (alt)", category: "Navigatie" },
+    { key: "Escape", action: () => {
+      if (isDirty) {
+        if (!window.confirm("Je hebt niet-opgeslagen wijzigingen. Toch verdergaan?")) return;
+      }
+      navigate(`/project/${projectId}`);
+    }, label: "Terug naar project", category: "Navigatie" },
+  ], [saving, handleUndo, saveAndNext, nextStudent, prevStudent, siblingIndex, siblings, isDirty, projectId]);
+
+  useKeyboardShortcuts(shortcuts);
 
   const analyzeStudent = useMutation({
     mutationFn: async (niveauOverride?: string) => {
