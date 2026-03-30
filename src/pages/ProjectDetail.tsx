@@ -160,6 +160,8 @@ const ProjectDetail = () => {
       if (error) throw error;
       return data;
     },
+    staleTime: 5_000,
+    refetchOnWindowFocus: true,
   });
 
   const { data: criteria } = useQuery({
