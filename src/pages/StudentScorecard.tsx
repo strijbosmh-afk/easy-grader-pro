@@ -801,16 +801,7 @@ const StudentScorecard = () => {
       {scoreHistory.canUndo && scoreHistory.visible && (
         <div className="fixed bottom-6 left-6 z-50 animate-in slide-in-from-bottom-4 fade-in duration-300">
           <Button
-            onClick={() => scoreHistory.undo((change) => {
-              setLocalScores((prev) => ({
-                ...prev,
-                [change.criteriumId]: {
-                  final_score: change.previousScore,
-                  opmerkingen: change.previousOpmerkingen,
-                },
-              }));
-              queryClient.invalidateQueries({ queryKey: ["scores", studentId] });
-            })}
+            onClick={handleUndo}
             disabled={scoreHistory.undoing}
             className="shadow-lg gap-2"
             variant="outline"
@@ -827,6 +818,7 @@ const StudentScorecard = () => {
           </Button>
         </div>
       )}
+      <KeyboardShortcutsDialog shortcuts={shortcuts} />
     </div>
   );
 };
