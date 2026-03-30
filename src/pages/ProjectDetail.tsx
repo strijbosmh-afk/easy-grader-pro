@@ -1312,19 +1312,47 @@ const ProjectDetail = () => {
                     )}
                   </div>
 
-                  {/* Finaliseer button */}
-                  {selectedStudents.size > 0 && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={finalizeSelected}
-                      disabled={finalizing}
-                      className="border-green-300 text-green-700 hover:bg-green-50"
-                    >
-                      {finalizing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />}
-                      Finaliseer ({selectedStudents.size})
-                    </Button>
-                  )}
+                   {/* Groep 3: Delen & Finaliseren */}
+                   <div className="flex items-center gap-2">
+                     <Button
+                       variant="outline"
+                       size="sm"
+                       disabled={sharingAll}
+                       onClick={async () => {
+                         const eligible = students?.filter((s) => s.status === "reviewed" || s.status === "graded") || [];
+                         if (eligible.length === 0) { toast.info("Geen beoordeelde studenten om te delen"); return; }
+                         setSharingAll(true);
+                         try {
+                           for (const s of eligible) {
+                             if (!s.share_token) {
+                               await supabase.from("students").update({ share_token: crypto.randomUUID(), share_enabled: true }).eq("id", s.id);
+                             } else if (!s.share_enabled) {
+                               await supabase.from("students").update({ share_enabled: true }).eq("id", s.id);
+                             }
+                           }
+                           queryClient.invalidateQueries({ queryKey: ["students", id] });
+                           toast.success(`Feedback gedeeld met ${eligible.length} student(en)`);
+                         } catch { toast.error("Delen mislukt"); }
+                         finally { setSharingAll(false); }
+                       }}
+                     >
+                       {sharingAll ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Share2 className="h-4 w-4 mr-1.5" />}
+                       Deel feedback met alle studenten
+                     </Button>
+
+                     {selectedStudents.size > 0 && (
+                       <Button
+                         variant="outline"
+                         size="sm"
+                         onClick={finalizeSelected}
+                         disabled={finalizing}
+                         className="border-green-300 text-green-700 hover:bg-green-50"
+                       >
+                         {finalizing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />}
+                         Finaliseer ({selectedStudents.size})
+                       </Button>
+                     )}
+                   </div>
                 </div>
               )}
             </div>
