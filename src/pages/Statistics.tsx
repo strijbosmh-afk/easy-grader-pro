@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { ClassInsights } from "@/components/ClassInsights";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
