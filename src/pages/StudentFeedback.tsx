@@ -170,8 +170,13 @@ export default function StudentFeedback() {
   }
 
   const normalCriteria = criteria?.filter((c) => !c.is_eindscore) || [];
-  const totalScore = scores?.reduce((sum, s) => sum + (s.final_score ?? s.ai_suggested_score ?? 0), 0) ?? 0;
+  const scoredCriteria = normalCriteria.filter((c) => scores?.some((s) => s.criterium_id === c.id));
+  const totalScore = scoredCriteria.reduce((sum, c) => {
+    const sc = scores?.find((s) => s.criterium_id === c.id);
+    return sum + (sc?.final_score ?? sc?.ai_suggested_score ?? 0);
+  }, 0);
   const maxTotal = normalCriteria.reduce((sum, c) => sum + c.max_score, 0);
+  const gradedDate = student.created_at ? new Date(student.created_at) : new Date();
 
   return (
     <div className="min-h-screen bg-background">
