@@ -610,6 +610,21 @@ const ProjectDetail = () => {
       avgConfidence: avgConf,
       validationWarnings: totalWarnings,
     });
+
+    // Auto-trigger plagiarism check after batch analysis if 2+ students succeeded
+    if (successCount >= 2) {
+      invokeEdgeFunction("check-plagiarism", {
+        body: {
+          projectId: id,
+          method: "tfidf",
+          threshold: (project as any)?.similarity_threshold ?? 70,
+        },
+      }).then(() => {
+        queryClient.invalidateQueries({ queryKey: ["plagiarism", id] });
+      }).catch(() => {
+        // Silent — plagiarism check is a post-step
+      });
+    }
   };
 
   const doBatchAnalyze = async () => {
