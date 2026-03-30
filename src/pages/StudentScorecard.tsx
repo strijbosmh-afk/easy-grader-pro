@@ -10,13 +10,15 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ArrowLeft, ArrowRight, Loader2, Bot, Check, Download, RefreshCw, FileText, FileDown, ChevronLeft, ChevronRight, Eye, X, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { exportStudentToPdf } from "@/lib/export";
 import { downloadStudentReport } from "@/lib/export-pdf";
 import { exportStudentToWord } from "@/lib/export-word";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { invokeEdgeFunction } from "@/lib/supabase-helpers";
 import { useScoreHistory } from "@/hooks/useScoreHistory";
+import { useKeyboardShortcuts, type Shortcut } from "@/hooks/useKeyboardShortcuts";
+import { KeyboardShortcutsDialog } from "@/components/KeyboardShortcutsDialog";
 import { Undo2 } from "lucide-react";
 
 function extractStoragePath(url: string): string | null {
