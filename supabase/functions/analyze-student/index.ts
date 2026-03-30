@@ -384,7 +384,7 @@ const toolSchema = {
 };
 
 // --- TWO-PHASE GRADING: LOVABLE/GEMINI ---
-async function callLovableAI(systemPrompt: string, contentParts: any[]) {
+async function callLovableAI(systemPrompt: string, contentParts: any[], modelOverride?: string) {
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
   if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
@@ -399,7 +399,7 @@ async function callLovableAI(systemPrompt: string, contentParts: any[]) {
     method: "POST",
     headers,
     body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
+      model: modelOverride || "google/gemini-2.5-flash",
       temperature: 0.2,
       max_tokens: 2048,
       messages: [
@@ -430,7 +430,7 @@ async function callLovableAI(systemPrompt: string, contentParts: any[]) {
     method: "POST",
     headers,
     body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
+      model: modelOverride || "google/gemini-2.5-flash",
       temperature: 0.2,
       messages: [
         { role: "system", content: systemPrompt },
