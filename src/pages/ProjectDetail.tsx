@@ -412,6 +412,7 @@ const ProjectDetail = () => {
   const [batchProgress, setBatchProgress] = useState<BatchProgress | null>(null);
   const [batchSummary, setBatchSummary] = useState<BatchSummary | null>(null);
   const [finalizing, setFinalizing] = useState(false);
+  const [queuedStudentIds, setQueuedStudentIds] = useState<Set<string>>(new Set());
   const cancelRef = useRef(false);
   const activeStudentsRef = useRef<Set<string>>(new Set());
   const studentStartTimesRef = useRef<Map<string, number>>(new Map());
@@ -464,6 +465,7 @@ const ProjectDetail = () => {
     cancelRef.current = false;
     activeStudentsRef.current.clear();
     studentStartTimesRef.current.clear();
+    setQueuedStudentIds(new Set(eligible.map((s) => s.id)));
 
     // Concurrency based on provider
     const providerSetting = (project as any)?.ai_provider || "lovable";
@@ -494,7 +496,8 @@ const ProjectDetail = () => {
       async (student) => {
         if (cancelRef.current) throw new Error("cancelled");
 
-        // Track active student
+        // Remove from queue, track as active
+        setQueuedStudentIds((prev) => { const next = new Set(prev); next.delete(student.id); return next; });
         activeStudentsRef.current.add(student.naam);
         studentStartTimesRef.current.set(student.id, Date.now());
         progress.currentStudentName = Array.from(activeStudentsRef.current).join(", ");
@@ -547,6 +550,7 @@ const ProjectDetail = () => {
 
     setBatchProgress(null);
     setRunning(false);
+    setQueuedStudentIds(new Set());
 
     // Final invalidation
     queryClient.invalidateQueries({ queryKey: ["students", id] });
@@ -1448,6 +1452,11 @@ const ProjectDetail = () => {
                                     ? batchProgress.studentTimes.reduce((a, b) => a + b, 0) / batchProgress.studentTimes.length
                                     : 0}
                                 />
+                              ) : queuedStudentIds.has(student.id) ? (
+                                <div className="flex items-center gap-1.5">
+                                  <div className="h-2 w-2 rounded-full bg-muted-foreground animate-pulse" />
+                                  <span className="text-xs text-muted-foreground font-medium">Wachtrij</span>
+                                </div>
                               ) : (
                                 <Badge variant={statusVariants[student.status as StudentStatus]}>
                                   {statusLabels[student.status as StudentStatus]}
