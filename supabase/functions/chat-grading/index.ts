@@ -10,18 +10,14 @@ const ALLOWED_ORIGINS = [
 
 function isAllowedOrigin(origin: string): boolean {
   if (ALLOWED_ORIGINS.includes(origin)) return true;
-
-  // Lovable preview domains
   if (origin.endsWith(".lovableproject.com")) return true;
   if (origin.endsWith(".lovable.app") && origin.includes("-preview--")) return true;
-
   return false;
 }
 
 function getCorsHeaders(req: Request) {
   const origin = req.headers.get("Origin") || "";
   const allowedOrigin = isAllowedOrigin(origin) ? origin : ALLOWED_ORIGINS[0];
-
   return {
     "Access-Control-Allow-Origin": allowedOrigin,
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version, x-requested-by",
@@ -34,8 +30,6 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: getCorsHeaders(req) });
 
   try {
-
-    // Verify custom header
     const requestedBy = req.headers.get("x-requested-by");
     if (requestedBy !== "GradeAssist") {
       return new Response(JSON.stringify({ error: "Geen toegang" }), {
@@ -45,7 +39,6 @@ serve(async (req) => {
     }
     const { messages, projectId } = await req.json();
 
-    // Extract user from Authorization header
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Niet ingelogd" }), {
@@ -53,12 +46,10 @@ serve(async (req) => {
       });
     }
 
-    // Fetch project context
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Verify JWT
     const token = authHeader.replace("Bearer ", "");
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !user) {
@@ -67,7 +58,7 @@ serve(async (req) => {
       });
     }
 
-    // Rate limiting: max 60 AI calls per hour per user
+    // Rate limiting
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
     const { count: usageCount } = await supabase
       .from('api_usage')
@@ -116,7 +107,6 @@ serve(async (req) => {
 
     const aiProvider = project?.ai_provider || "lovable";
 
-    // Build context about the project
     const criteriaInfo = criteria?.map((c: any) =>
       `- ${c.criterium_naam} (max: ${c.max_score}${c.is_eindscore ? ", eindscore" : ""})`
     ).join("\n") || "Geen criteria gedefinieerd";
@@ -169,13 +159,14 @@ BELANGRIJK: Wanneer de gebruiker instructies geeft voor de beoordeling, gebruik 
       },
     };
 
-    let response: Response;
+    // --- Build the streaming AI request ---
+    let aiResponse: Response;
 
     if (aiProvider === "anthropic") {
       const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
       if (!ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY niet geconfigureerd");
 
-      response = await fetch("https://api.anthropic.com/v1/messages", {
+      aiResponse = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: {
           "x-api-key": ANTHROPIC_API_KEY,
@@ -185,6 +176,7 @@ BELANGRIJK: Wanneer de gebruiker instructies geeft voor de beoordeling, gebruik 
         body: JSON.stringify({
           model: "claude-sonnet-4-20250514",
           max_tokens: 1024,
+          stream: true,
           system: systemPrompt,
           messages: messages.map((m: any) => ({ role: m.role, content: m.content })),
           tools: [{
@@ -195,9 +187,8 @@ BELANGRIJK: Wanneer de gebruiker instructies geeft voor de beoordeling, gebruik 
         }),
       });
     } else {
-      // Lovable / Gemini
       if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
-      response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${LOVABLE_API_KEY}`,
@@ -205,6 +196,7 @@ BELANGRIJK: Wanneer de gebruiker instructies geeft voor de beoordeling, gebruik 
         },
         body: JSON.stringify({
           model: "google/gemini-2.5-flash",
+          stream: true,
           messages: [
             { role: "system", content: systemPrompt },
             ...messages,
@@ -214,79 +206,222 @@ BELANGRIJK: Wanneer de gebruiker instructies geeft voor de beoordeling, gebruik 
       });
     }
 
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error("AI error:", response.status, errText);
-      if (response.status === 429) {
+    if (!aiResponse.ok) {
+      const errText = await aiResponse.text();
+      console.error("AI error:", aiResponse.status, errText);
+      if (aiResponse.status === 429) {
         return new Response(JSON.stringify({ error: "AI is tijdelijk overbelast, probeer het later opnieuw." }), {
           status: 429, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
         });
       }
-      if (response.status === 402) {
+      if (aiResponse.status === 402) {
         return new Response(JSON.stringify({ error: "AI credits op. Voeg credits toe via Settings > Workspace > Usage." }), {
           status: 402, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
         });
       }
-      throw new Error(`AI fout: ${response.status}`);
+      throw new Error(`AI fout: ${aiResponse.status}`);
     }
 
-    const data = await response.json();
-
-    // Extract tool call and reply — handle both Anthropic and OpenAI-compatible formats
-    let savedInstructions: string | null = null;
-    let reply = "";
+    // --- Stream the response to the client ---
+    const encoder = new TextEncoder();
+    const corsHeaders = getCorsHeaders(req);
 
     if (aiProvider === "anthropic") {
-      const toolUse = data.content?.find((c: any) => c.type === "tool_use" && c.name === "save_instructions");
-      const textBlock = data.content?.find((c: any) => c.type === "text");
-      reply = textBlock?.text || "";
-      if (toolUse) {
-        savedInstructions = toolUse.input?.instructions ?? null;
-      }
-    } else {
-      const choice = data.choices?.[0]?.message;
-      reply = choice?.content || "";
-      if (choice?.tool_calls?.length > 0) {
-        for (const toolCall of choice.tool_calls) {
-          if (toolCall.function?.name === "save_instructions") {
-            const args = JSON.parse(toolCall.function.arguments);
-            savedInstructions = args.instructions;
+      // Anthropic SSE format: convert to OpenAI-compatible format for the frontend
+      const readable = new ReadableStream({
+        async start(controller) {
+          const reader = aiResponse.body!.getReader();
+          const decoder = new TextDecoder();
+          let fullText = "";
+          let toolName = "";
+          let toolInput = "";
+          let hasToolCall = false;
+          let buffer = "";
+
+          try {
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+
+              buffer += decoder.decode(value, { stream: true });
+              const lines = buffer.split("\n");
+              buffer = lines.pop() || "";
+
+              for (const line of lines) {
+                if (!line.startsWith("data: ")) continue;
+                const data = line.slice(6).trim();
+                if (!data || data === "[DONE]") continue;
+
+                try {
+                  const parsed = JSON.parse(data);
+                  const eventType = parsed.type;
+
+                  if (eventType === "content_block_start") {
+                    if (parsed.content_block?.type === "tool_use") {
+                      hasToolCall = true;
+                      toolName = parsed.content_block.name || "";
+                    }
+                  } else if (eventType === "content_block_delta") {
+                    if (parsed.delta?.type === "text_delta" && parsed.delta.text) {
+                      fullText += parsed.delta.text;
+                      // Send as OpenAI-compatible SSE
+                      const chunk = JSON.stringify({
+                        choices: [{ delta: { content: parsed.delta.text } }]
+                      });
+                      controller.enqueue(encoder.encode(`data: ${chunk}\n\n`));
+                    } else if (parsed.delta?.type === "input_json_delta" && parsed.delta.partial_json) {
+                      toolInput += parsed.delta.partial_json;
+                    }
+                  }
+                } catch {
+                  // Skip unparseable
+                }
+              }
+            }
+
+            // Handle tool call after stream ends
+            if (hasToolCall && toolName === "save_instructions") {
+              let savedInstructions: string | null = null;
+              try {
+                const args = JSON.parse(toolInput);
+                savedInstructions = args.instructions ?? null;
+              } catch {
+                savedInstructions = toolInput;
+              }
+
+              if (savedInstructions !== null) {
+                let merged: string | null;
+                if (savedInstructions === "") {
+                  merged = null;
+                } else {
+                  const existing = project?.custom_instructions || "";
+                  merged = existing ? `${existing}\n\n${savedInstructions}` : savedInstructions;
+                }
+                await supabase.from("projects").update({ custom_instructions: merged }).eq("id", projectId);
+                console.log("Saved custom instructions for project:", projectId);
+
+                // If no text was generated, add a default reply
+                if (!fullText.trim()) {
+                  const defaultReply = savedInstructions === ""
+                    ? "Alle instructies zijn gewist."
+                    : `Ik heb de volgende instructies opgeslagen:\n\n"${savedInstructions}"\n\nWil je dat ik een heranalyse start met deze nieuwe instructies?`;
+                  const chunk = JSON.stringify({ choices: [{ delta: { content: defaultReply } }] });
+                  controller.enqueue(encoder.encode(`data: ${chunk}\n\n`));
+                }
+
+                const siEvent = JSON.stringify({ savedInstructions });
+                controller.enqueue(encoder.encode(`data: ${siEvent}\n\n`));
+              }
+            }
+
+            controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+          } finally {
+            controller.close();
           }
         }
-      }
+      });
+
+      return new Response(readable, {
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          "Connection": "keep-alive",
+        },
+      });
+    } else {
+      // OpenAI-compatible (Lovable/Gemini) — forward SSE stream, intercept tool calls
+      const readable = new ReadableStream({
+        async start(controller) {
+          const reader = aiResponse.body!.getReader();
+          const decoder = new TextDecoder();
+          let toolCallArgs = "";
+          let toolCallName = "";
+          let hasToolCall = false;
+          let buffer = "";
+
+          try {
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+
+              buffer += decoder.decode(value, { stream: true });
+              const lines = buffer.split("\n");
+              buffer = lines.pop() || "";
+
+              for (const line of lines) {
+                if (!line.startsWith("data: ")) continue;
+                const data = line.slice(6).trim();
+                if (!data || data === "[DONE]") continue;
+
+                try {
+                  const parsed = JSON.parse(data);
+                  const delta = parsed.choices?.[0]?.delta;
+
+                  // Detect tool calls
+                  if (delta?.tool_calls) {
+                    hasToolCall = true;
+                    for (const tc of delta.tool_calls) {
+                      if (tc.function?.name) toolCallName = tc.function.name;
+                      if (tc.function?.arguments) toolCallArgs += tc.function.arguments;
+                    }
+                    // Don't forward tool call chunks to client
+                    continue;
+                  }
+
+                  // Forward content chunks
+                  if (delta?.content) {
+                    controller.enqueue(encoder.encode(`${line}\n\n`));
+                  }
+                } catch {
+                  // Forward unparseable lines as-is (safety)
+                  controller.enqueue(encoder.encode(`${line}\n\n`));
+                }
+              }
+            }
+
+            // Handle tool call after stream ends
+            if (hasToolCall && toolCallName === "save_instructions") {
+              let savedInstructions: string | null = null;
+              try {
+                const args = JSON.parse(toolCallArgs);
+                savedInstructions = args.instructions ?? null;
+              } catch {
+                savedInstructions = toolCallArgs;
+              }
+
+              if (savedInstructions !== null) {
+                let merged: string | null;
+                if (savedInstructions === "") {
+                  merged = null;
+                } else {
+                  const existing = project?.custom_instructions || "";
+                  merged = existing ? `${existing}\n\n${savedInstructions}` : savedInstructions;
+                }
+                await supabase.from("projects").update({ custom_instructions: merged }).eq("id", projectId);
+                console.log("Saved custom instructions for project:", projectId);
+
+                const siEvent = JSON.stringify({ savedInstructions });
+                controller.enqueue(encoder.encode(`data: ${siEvent}\n\n`));
+              }
+            }
+
+            controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+          } finally {
+            controller.close();
+          }
+        }
+      });
+
+      return new Response(readable, {
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          "Connection": "keep-alive",
+        },
+      });
     }
-
-    // Persist instructions if the AI called save_instructions
-    if (savedInstructions !== null) {
-      let merged: string | null;
-      if (savedInstructions === "") {
-        // Explicit clear request
-        merged = null;
-      } else {
-        const existing = project?.custom_instructions || "";
-        merged = existing ? `${existing}\n\n${savedInstructions}` : savedInstructions;
-      }
-
-      await supabase
-        .from("projects")
-        .update({ custom_instructions: merged })
-        .eq("id", projectId);
-
-      console.log("Saved custom instructions for project:", projectId);
-
-      if (!reply) {
-        reply = savedInstructions === ""
-          ? "Alle instructies zijn gewist."
-          : `Ik heb de volgende instructies opgeslagen:\n\n"${savedInstructions}"\n\nWil je dat ik een heranalyse start met deze nieuwe instructies?`;
-      }
-    }
-
-    return new Response(JSON.stringify({
-      reply,
-      savedInstructions,
-    }), {
-      headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
-    });
   } catch (error) {
     console.error("Chat error:", error);
     return new Response(
