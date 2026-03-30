@@ -1165,8 +1165,10 @@ const ProjectDetail = () => {
                   </div>
                 </div>
               )}
-            </CardContent>
-          </Card>
+              </CardContent>
+              </CollapsibleContent>
+            </Card>
+          </Collapsible>
 
           <Card>
             <CardHeader className="pb-3">
