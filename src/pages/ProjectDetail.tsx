@@ -817,14 +817,7 @@ const ProjectDetail = () => {
   const gradedCount = students?.filter((s) => s.status === "graded").length || 0;
   const totalStudents = students?.length || 0;
   const progress = totalStudents > 0 ? (gradedCount / totalStudents) * 100 : 0;
-  const docsUploaded = (project.opdracht_pdf_url ? 1 : 0) + (project.graderingstabel_pdf_url ? 1 : 0);
-
-  // Auto-open documenten section if docs are missing
-  useEffect(() => {
-    if (docsUploaded < 2 && !sectionStates.documenten) {
-      updateSectionState("documenten", true);
-    }
-  }, [docsUploaded]); // eslint-disable-line react-hooks/exhaustive-deps
+  const docsUploaded = (project?.opdracht_pdf_url ? 1 : 0) + (project?.graderingstabel_pdf_url ? 1 : 0);
 
   const isDemo = (project as any)?.is_demo === true;
   const isOwner = project?.user_id === user?.id;
