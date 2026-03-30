@@ -1,4 +1,4 @@
-import { BookOpen, Brain, ShieldCheck, Sparkles, Target, AlertTriangle, RotateCcw, MessageSquare, TrendingUp, CheckCircle, X, Users, FileText, BarChart3, Upload, Globe, Lock } from "lucide-react";
+import { BookOpen, Brain, ShieldCheck, Sparkles, Target, AlertTriangle, RotateCcw, MessageSquare, TrendingUp, CheckCircle, X, Users, FileText, BarChart3, Upload, Globe, Lock, Keyboard, Undo2, Share2, Eye, Zap, Search } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
@@ -44,6 +44,11 @@ const strengths = [
 
 const features = [
   {
+    title: "AI Kwaliteit",
+    description:
+      "Kies per project de AI-kwaliteit: 'Snel' (snelle beoordeling, geschikt voor de meeste opdrachten), 'Uitgebreid' (grondiger analyse voor complexe opdrachten), of 'Premium' (meest nauwkeurige beoordeling). De technische modelnamen zijn verborgen — u kiest eenvoudig op basis van snelheid vs. diepgang.",
+  },
+  {
     title: "Onderwijscontext",
     description:
       "Stel per project in welke opleiding en welk type studenten u beoordeelt. De AI past verwachtingsniveau en taal hierop aan. Dit veld wordt gesaniteerd zodat het de AI nooit kan verwarren — leeg laten is altijd veilig.",
@@ -68,6 +73,11 @@ const features = [
     description:
       "Stel vragen over de opdracht, rubric of specifieke studenten via een ingebouwde chatfunctie. De AI heeft volledige context over uw project en geeft direct antwoord.",
   },
+  {
+    title: "Inklapbare secties",
+    description:
+      "De projectdetailpagina is opgedeeld in inklapbare secties (Instellingen, Documenten, Studenten) met statusbadges. De inklap-status wordt per project onthouden, zodat u altijd snel bij uw werkgebied bent.",
+  },
 ];
 
 const collaborationFeatures = [
@@ -85,6 +95,16 @@ const collaborationFeatures = [
     title: "E-mailnotificaties",
     description:
       "Wanneer een reviewer klaar is met het beoordelen van alle studenten, ontvangt de projecteigenaar automatisch een e-mailnotificatie.",
+  },
+  {
+    title: "Feedback delen met studenten",
+    description:
+      "Genereer per student een deelbare link naar een feedbackportaal. Studenten kunnen via deze link (zonder account) hun scores, AI-feedback en docentfeedback inzien. Ze kunnen per criterium reageren met 'Eens', 'Oneens' of een vraag stellen. U kunt links individueel of in bulk genereren en toegang per student in- of uitschakelen.",
+  },
+  {
+    title: "Studentreacties",
+    description:
+      "Bekijk alle reacties van studenten op hun feedback in een overzichtelijk tabblad op de projectpagina, filterbaar per student en criterium. U ontvangt een notificatiebadge wanneer er nieuwe reacties zijn.",
   },
 ];
 
@@ -106,13 +126,73 @@ const exportFeatures = [
   },
 ];
 
+const analyticsFeatures = [
+  {
+    title: "Scoreverdelingen",
+    description:
+      "Bekijk histogrammen van scoreverdelingen, gemiddelden, mediaan, standaarddeviatie, minimum en maximum per project of over alle projecten.",
+  },
+  {
+    title: "AI-betrouwbaarheid",
+    description:
+      "Overzicht van AI-betrouwbaarheid per criterium en een top-studenten ranglijst.",
+  },
+  {
+    title: "Pedagogische klasinzichten",
+    description:
+      "De AI analyseert alle feedback over een hele klas (of meerdere projecten) en extraheert terugkerende thema's. Bijvoorbeeld: '7 van de 12 studenten worstelen met reflectieve diepgang' of 'De meeste studenten scoren goed op structuur maar zwak op bronintegratie'. U krijgt kleurgecodeerde prestatiebalken per criterium, uitklapbare citaten uit studentwerk, en concrete pedagogische aanbevelingen.",
+  },
+];
+
+const plagiarismFeatures = [
+  {
+    title: "Automatische gelijkenisdetectie",
+    description:
+      "Na batch-beoordeling vergelijkt het systeem automatisch alle inzendingen binnen een project op tekstovereenkomst. Dit vangt intern kopieergedrag op — de meest voorkomende vorm van academische oneerlijkheid bij verslagen en essays.",
+  },
+  {
+    title: "Twee vergelijkingsmethoden",
+    description:
+      "Kies tussen TF-IDF (snelle cosinus-gelijkenis) en AI-embeddings (diepere semantische vergelijking), of gebruik beide methoden naast elkaar voor de meest betrouwbare resultaten.",
+  },
+  {
+    title: "Instelbare gevoeligheid",
+    description:
+      "Stel per project de drempelwaarde in waarboven paren als verdacht worden gemarkeerd. Standaard 70%, aanpasbaar naar uw voorkeur.",
+  },
+  {
+    title: "Visuele resultaten",
+    description:
+      "Bekijk gemarkeerde paren met gelijkenisscores in een overzichtelijk tabblad. Alleen paren boven de drempel worden als verdacht gemarkeerd.",
+  },
+];
+
+const productivityFeatures = [
+  {
+    title: "Score ongedaan maken (Undo)",
+    description:
+      "Wanneer u een score aanpast en opslaat, verschijnt een zwevende 'Ongedaan maken'-knop linksonder die 10 seconden zichtbaar blijft. U kunt ook Ctrl+Z (of Cmd+Z op Mac) gebruiken om de laatste scorewijziging terug te draaien. De undo-stack onthoudt tot 50 wijzigingen per sessie en toont precies welke score wordt teruggezet.",
+  },
+  {
+    title: "Sneltoetsen",
+    description:
+      "Versnel uw beoordelingsworkflow met toetsenbordsneltoetsen. Druk op '?' om het volledige overzicht te bekijken. Belangrijke sneltoetsen: Ctrl+S (opslaan), Ctrl+Enter (opslaan & volgende student), Alt+↑/↓ (navigeren tussen studenten), Escape (terug naar project). Op de studentenlijst kunt u met pijltjestoetsen navigeren en Enter drukken om een student te openen.",
+  },
+  {
+    title: "Studentsortering",
+    description:
+      "Sorteer de studentenlijst op naam, status of score. Gebruik de zoekfunctie om snel een specifieke student te vinden.",
+  },
+];
+
 const securityFeatures = [
   "Pad-gebaseerde opslagbeveiliging: bestanden zijn alleen toegankelijk voor de eigenaar van het project.",
   "Rate limiting: maximaal 60 AI-beoordelingen per uur per gebruiker om misbruik te voorkomen.",
   "CORS-beveiliging: alleen verzoeken van geautoriseerde domeinen worden geaccepteerd.",
-  "Audit trail: elke scorewijziging (door AI, docent of reviewer) wordt gelogd met tijdstip, oude waarde en nieuwe waarde.",
+  "Audit trail: elke scorewijziging (door AI, docent of reviewer) wordt gelogd met tijdstip, oude waarde en nieuwe waarde. Undo-acties worden apart geregistreerd.",
   "Row Level Security: alle database-tabellen zijn beveiligd zodat gebruikers alleen hun eigen data kunnen zien.",
   "Projecttoegangscontrole: backend-functies verifiëren dat de gebruiker eigenaar of geaccepteerde reviewer is voordat data wordt verwerkt.",
+  "Studentfeedbacklinks: anonieme toegang is beperkt tot uitsluitend de data van de betreffende student, met optie om per student de toegang in of uit te schakelen.",
 ];
 
 const workflowSteps = [
@@ -120,7 +200,7 @@ const workflowSteps = [
     step: 1,
     title: "Project aanmaken",
     description:
-      "Maak een nieuw project aan via de wizard. Kies een AI-model, vul optioneel de onderwijscontext in, en doorloop het AI-contextgesprek dat uw project beter leert kennen. U kunt ook direct collega's uitnodigen als reviewer.",
+      "Maak een nieuw project aan via de wizard. Kies een AI-kwaliteitsniveau (Snel, Uitgebreid of Premium), vul optioneel de onderwijscontext in, en doorloop het AI-contextgesprek dat uw project beter leert kennen. U kunt ook direct collega's uitnodigen als reviewer.",
   },
   {
     step: 2,
@@ -132,31 +212,43 @@ const workflowSteps = [
     step: 3,
     title: "Studentwerk uploaden",
     description:
-      "Upload PDF- of Word-bestanden van studenten. Meerdere bestanden tegelijk uploaden is mogelijk.",
+      "Upload PDF- of Word-bestanden van studenten. Meerdere bestanden tegelijk uploaden is mogelijk via drag-and-drop.",
   },
   {
     step: 4,
     title: "AI-beoordeling starten",
     description:
-      "Start de beoordeling individueel of in batch. De AI doorloopt het tweefase-proces per student. In batchmodus worden meerdere studenten parallel verwerkt met voortgangsindicatie.",
+      "Start de beoordeling individueel of in batch. De AI doorloopt het tweefase-proces per student. In batchmodus worden meerdere studenten parallel verwerkt met wachtrij-status en voortgangsindicatie inclusief geschatte resterende tijd.",
   },
   {
     step: 5,
     title: "Controleren en bijsturen",
     description:
-      "Bekijk de scorekaart per student. Let op scores met lage betrouwbaarheid en validatiewaarschuwingen. Pas scores en feedback aan waar nodig. Gebruik de AI-chat voor vragen over specifieke beoordelingen.",
+      "Bekijk de scorekaart per student. Let op scores met lage betrouwbaarheid en validatiewaarschuwingen. Pas scores en feedback aan waar nodig. Gebruik de AI-chat voor vragen over specifieke beoordelingen. Gebruik Ctrl+Z om onbedoelde wijzigingen ongedaan te maken en sneltoetsen (?) om sneller te werken.",
   },
   {
     step: 6,
+    title: "Plagiaatcontrole",
+    description:
+      "Het systeem vergelijkt automatisch alle inzendingen op onderlinge gelijkenis na de batch-analyse. Bekijk de resultaten in het Plagiaatsignaal-tabblad en stel de gevoeligheidsdrempel in.",
+  },
+  {
+    step: 7,
     title: "Review (optioneel)",
     description:
       "Als u een reviewer heeft uitgenodigd, kan deze per criterium scores beoordelen. Na afloop ontvangt u een notificatie en kunt u de review-resultaten verwerken.",
   },
   {
-    step: 7,
+    step: 8,
+    title: "Feedback delen met studenten",
+    description:
+      "Genereer deelbare links zodat studenten hun feedback kunnen inzien en erop kunnen reageren. Kopieer de link en plak deze in een e-mail of uw LMS (Smartschool, Toledo, etc.).",
+  },
+  {
+    step: 9,
     title: "Exporteren en finaliseren",
     description:
-      "Exporteer de resultaten als Excel, PDF of Word. Bekijk statistieken in het analytics-dashboard met scoreverdelingen, gemiddelden en vergelijkingen.",
+      "Exporteer de resultaten als Excel, PDF of Word. Bekijk statistieken en pedagogische klasinzichten in het analytics-dashboard.",
   },
 ];
 
@@ -247,6 +339,28 @@ export default function Guide() {
         </Card>
       </section>
 
+      {/* Productivity */}
+      <section className="space-y-4">
+        <div className="flex items-center gap-2">
+          <Keyboard className="h-5 w-5 text-primary" />
+          <h2 className="text-lg font-semibold text-foreground">Productiviteit</h2>
+        </div>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="space-y-4">
+              {productivityFeatures.map((f) => (
+                <div key={f.title} className="flex gap-3">
+                  <span className="text-sm font-medium text-foreground min-w-[180px] shrink-0">
+                    {f.title}
+                  </span>
+                  <p className="text-sm text-muted-foreground">{f.description}</p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+
       {/* Collaboration */}
       <section className="space-y-4">
         <div className="flex items-center gap-2">
@@ -257,6 +371,28 @@ export default function Guide() {
           <CardContent className="pt-6">
             <div className="space-y-4">
               {collaborationFeatures.map((f) => (
+                <div key={f.title} className="flex gap-3">
+                  <span className="text-sm font-medium text-foreground min-w-[180px] shrink-0">
+                    {f.title}
+                  </span>
+                  <p className="text-sm text-muted-foreground">{f.description}</p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+
+      {/* Plagiarism */}
+      <section className="space-y-4">
+        <div className="flex items-center gap-2">
+          <Search className="h-5 w-5 text-primary" />
+          <h2 className="text-lg font-semibold text-foreground">Plagiaatsignaal</h2>
+        </div>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="space-y-4">
+              {plagiarismFeatures.map((f) => (
                 <div key={f.title} className="flex gap-3">
                   <span className="text-sm font-medium text-foreground min-w-[180px] shrink-0">
                     {f.title}
@@ -299,9 +435,16 @@ export default function Guide() {
         </div>
         <Card>
           <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">
-              Het statistiekenpaneel biedt een overzicht per project of over alle projecten heen. U vindt er scoreverdelingen (histogram), gemiddelde, mediaan, standaarddeviatie, minimum en maximum. Er is ook een overzicht van AI-betrouwbaarheid per criterium en een top-studenten ranglijst. Selecteer een specifiek project of bekijk de geaggregeerde statistieken.
-            </p>
+            <div className="space-y-4">
+              {analyticsFeatures.map((f) => (
+                <div key={f.title} className="flex gap-3">
+                  <span className="text-sm font-medium text-foreground min-w-[180px] shrink-0">
+                    {f.title}
+                  </span>
+                  <p className="text-sm text-muted-foreground">{f.description}</p>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
       </section>
