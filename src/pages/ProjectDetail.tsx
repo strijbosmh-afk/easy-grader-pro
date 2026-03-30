@@ -28,6 +28,7 @@ import { ModerationTab } from "@/components/ModerationTab";
 import { StudentReviewView } from "@/components/StudentReviewView";
 import { ShareFeedbackDialog } from "@/components/ShareFeedbackDialog";
 import { StudentReactionsTab } from "@/components/StudentReactionsTab";
+import { PlagiarismTab } from "@/components/PlagiarismTab";
 import { invokeEdgeFunction } from "@/lib/supabase-helpers";
 import { concurrencyPool } from "@/lib/concurrencyPool";
 import {
@@ -609,6 +610,21 @@ const ProjectDetail = () => {
       avgConfidence: avgConf,
       validationWarnings: totalWarnings,
     });
+
+    // Auto-trigger plagiarism check after batch analysis if 2+ students succeeded
+    if (successCount >= 2) {
+      invokeEdgeFunction("check-plagiarism", {
+        body: {
+          projectId: id,
+          method: "tfidf",
+          threshold: (project as any)?.similarity_threshold ?? 70,
+        },
+      }).then(() => {
+        queryClient.invalidateQueries({ queryKey: ["plagiarism", id] });
+      }).catch(() => {
+        // Silent — plagiarism check is a post-step
+      });
+    }
   };
 
   const doBatchAnalyze = async () => {
@@ -1674,6 +1690,18 @@ const ProjectDetail = () => {
         {/* Studentreacties tab */}
         {isOwner && students && students.length > 0 && criteria && criteria.length > 0 && (
           <StudentReactionsTab projectId={id!} students={students} criteria={criteria} />
+        )}
+
+        {/* Plagiarism check tab */}
+        {isOwner && students && students.length >= 2 && (
+          <PlagiarismTab
+            projectId={id!}
+            threshold={(project as any).similarity_threshold ?? 70}
+            onThresholdChange={async (val) => {
+              await supabase.from("projects").update({ similarity_threshold: val } as any).eq("id", id!);
+              queryClient.invalidateQueries({ queryKey: ["project", id] });
+            }}
+          />
         )}
       </main>
 
