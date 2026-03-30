@@ -21,6 +21,7 @@ const Guide = lazy(() => import("./pages/Guide"));
 const Login = lazy(() => import("./pages/Login"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const NotFound = lazy(() => import("./pages/NotFound"));
+const StudentFeedback = lazy(() => import("./pages/StudentFeedback"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -73,6 +74,7 @@ const App = () => (
               <Routes>
                 <Route path="/login" element={<LoginRoute />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/student/feedback/:shareToken" element={<StudentFeedback />} />
                 <Route path="/*" element={<ProtectedRoutes />} />
               </Routes>
             </Suspense>
