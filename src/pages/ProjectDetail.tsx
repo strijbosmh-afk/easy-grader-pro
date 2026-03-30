@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Upload, FileText, Pencil, Check, X, Loader2, Bot, Download, Settings, LayoutGrid, RefreshCw, AlertTriangle, Users, FolderOpen, Search, Eye, Trash2, FileDown, CheckCircle, Circle, Sparkles, Cpu, ShieldCheck, Info, Share2, MessageSquare, ChevronDown } from "lucide-react";
+import { ArrowLeft, Upload, FileText, Pencil, Check, X, Loader2, Bot, Download, Settings, LayoutGrid, RefreshCw, AlertTriangle, Users, FolderOpen, Search, Eye, Trash2, FileDown, CheckCircle, Circle, Sparkles, Cpu, ShieldCheck, Info, Share2, MessageSquare, ChevronDown, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
@@ -114,6 +114,8 @@ const ProjectDetail = () => {
   const [dragOver, setDragOver] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [sortColumn, setSortColumn] = useState<"naam" | "status" | "score" | null>(null);
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [pdfViewerUrl, setPdfViewerUrl] = useState<string | null>(null);
   const [pdfViewerTitle, setPdfViewerTitle] = useState("");
   const [editingStudentId, setEditingStudentId] = useState<string | null>(null);
@@ -1445,9 +1447,24 @@ const ProjectDetail = () => {
                           }}
                         />
                       </TableHead>
-                      <TableHead>Student</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Score</TableHead>
+                      <TableHead className="cursor-pointer select-none hover:bg-muted/50" onClick={() => {
+                        if (sortColumn === "naam") setSortDirection(d => d === "asc" ? "desc" : "asc");
+                        else { setSortColumn("naam"); setSortDirection("asc"); }
+                      }}>
+                        <span className="flex items-center gap-1">Student {sortColumn === "naam" ? (sortDirection === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 text-muted-foreground/50" />}</span>
+                      </TableHead>
+                      <TableHead className="cursor-pointer select-none hover:bg-muted/50" onClick={() => {
+                        if (sortColumn === "status") setSortDirection(d => d === "asc" ? "desc" : "asc");
+                        else { setSortColumn("status"); setSortDirection("asc"); }
+                      }}>
+                        <span className="flex items-center gap-1">Status {sortColumn === "status" ? (sortDirection === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 text-muted-foreground/50" />}</span>
+                      </TableHead>
+                      <TableHead className="cursor-pointer select-none hover:bg-muted/50" onClick={() => {
+                        if (sortColumn === "score") setSortDirection(d => d === "asc" ? "desc" : "asc");
+                        else { setSortColumn("score"); setSortDirection("desc"); }
+                      }}>
+                        <span className="flex items-center gap-1">Score {sortColumn === "score" ? (sortDirection === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 text-muted-foreground/50" />}</span>
+                      </TableHead>
                       <TableHead>Voortgang</TableHead>
                       <TableHead className="text-right">Acties</TableHead>
                     </TableRow>
@@ -1455,6 +1472,17 @@ const ProjectDetail = () => {
                   <TableBody>
                     {students
                       .filter((s) => s.naam.toLowerCase().includes(searchQuery.toLowerCase()))
+                      .sort((a, b) => {
+                        if (!sortColumn) return 0;
+                        const dir = sortDirection === "asc" ? 1 : -1;
+                        if (sortColumn === "naam") return dir * a.naam.localeCompare(b.naam);
+                        if (sortColumn === "status") {
+                          const order: Record<string, number> = { pending: 0, analyzing: 1, reviewed: 2, graded: 3 };
+                          return dir * ((order[a.status] ?? 0) - (order[b.status] ?? 0));
+                        }
+                        if (sortColumn === "score") return dir * ((getTotalScore(a) ?? -1) - (getTotalScore(b) ?? -1));
+                        return 0;
+                      })
                       .map((student) => {
                         const total = getTotalScore(student);
                         const max = getMaxTotal();
