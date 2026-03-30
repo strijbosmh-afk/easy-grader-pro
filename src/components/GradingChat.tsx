@@ -7,7 +7,7 @@ import { MessageSquare, Send, Loader2, ChevronDown, ChevronUp, RefreshCw, Sparkl
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { invokeEdgeFunction } from "@/lib/supabase-helpers";
+import { streamEdgeFunction } from "@/lib/supabase-helpers";
 
 type Message = { role: "user" | "assistant"; content: string };
 
@@ -40,34 +40,83 @@ export function GradingChat({ projectId, onReAnalyzeRequested, onInstructionsCle
     setInput("");
     setIsLoading(true);
 
+    // Add placeholder assistant message for streaming
+    const placeholderMsg: Message = { role: "assistant", content: "" };
+    setMessages([...newMessages, placeholderMsg]);
+
     try {
-      const { data, error } = await invokeEdgeFunction("chat-grading", {
-        body: { messages: newMessages, projectId },
+      const response = await streamEdgeFunction("chat-grading", {
+        messages: newMessages,
+        projectId,
       });
 
-      if (error) throw error;
-
-      if (data.error) {
-        toast.error(data.error);
-        setIsLoading(false);
-        return;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Chatfout");
       }
 
-      const assistantMsg: Message = { role: "assistant", content: data.reply };
-      setMessages([...newMessages, assistantMsg]);
+      const reader = response.body!.getReader();
+      const decoder = new TextDecoder();
+      let fullText = "";
+      let savedInstructions: string | null = null;
 
-      // If instructions were saved, show re-analyze option and refresh project data
-      if (data.savedInstructions !== undefined && data.savedInstructions !== null) {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split("\n");
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const data = line.slice(6).trim();
+          if (data === "[DONE]" || !data) continue;
+
+          try {
+            const parsed = JSON.parse(data);
+
+            // Check for savedInstructions (custom event from edge function)
+            if (parsed.savedInstructions !== undefined) {
+              savedInstructions = parsed.savedInstructions;
+              continue;
+            }
+
+            // OpenAI-compatible streaming format
+            const delta = parsed.choices?.[0]?.delta?.content;
+            if (delta) {
+              fullText += delta;
+              const currentText = fullText;
+              setMessages(prev => {
+                const updated = [...prev];
+                updated[updated.length - 1] = { role: "assistant", content: currentText };
+                return updated;
+              });
+            }
+          } catch {
+            // Skip unparseable lines
+          }
+        }
+      }
+
+      // Handle savedInstructions
+      if (savedInstructions !== undefined && savedInstructions !== null) {
         setShowReAnalyze(true);
         toast.success("Beoordelingsinstructies opgeslagen!");
-        onInstructionsCleared?.(); // triggers a project refresh in parent
+        onInstructionsCleared?.();
       }
 
-      // Check if the AI mentions re-analysis in its reply
-      if (data.reply?.toLowerCase().includes("heranalyse")) {
+      // Check for re-analysis mention
+      if (fullText.toLowerCase().includes("heranalyse")) {
         setShowReAnalyze(true);
       }
+
+      // If no text came through at all, remove the empty placeholder
+      if (!fullText.trim()) {
+        setMessages(newMessages);
+      }
     } catch (err: any) {
+      // Remove the placeholder message on error
+      setMessages(newMessages);
       toast.error(err?.message || "Chatfout");
     } finally {
       setIsLoading(false);
@@ -176,27 +225,38 @@ export function GradingChat({ projectId, onReAnalyzeRequested, onInstructionsCle
                 </div>
               )}
 
-              {messages.map((msg, idx) => (
-                <div
-                  key={idx}
-                  className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-                >
+              {messages.map((msg, idx) => {
+                const isLastAssistant = msg.role === "assistant" && idx === messages.length - 1;
+                const isStreaming = isLastAssistant && isLoading;
+                return (
                   <div
-                    className={`max-w-[85%] rounded-lg px-3 py-2 text-xs leading-relaxed ${
-                      msg.role === "user"
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-background border border-border"
-                    }`}
+                    key={idx}
+                    className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                   >
-                    {msg.content}
+                    <div
+                      className={`max-w-[85%] rounded-lg px-3 py-2 text-xs leading-relaxed ${
+                        msg.role === "user"
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-background border border-border"
+                      }`}
+                    >
+                      {msg.content}
+                      {isStreaming && (
+                        <span className="inline-block w-[2px] h-[14px] bg-foreground ml-0.5 align-middle animate-pulse" />
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
 
-              {isLoading && (
+              {isLoading && messages[messages.length - 1]?.content === "" && messages[messages.length - 1]?.role === "assistant" && (
                 <div className="flex justify-start">
                   <div className="bg-background border border-border rounded-lg px-3 py-2">
-                    <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+                    <span className="inline-flex gap-1">
+                      <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                      <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                      <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                    </span>
                   </div>
                 </div>
               )}
