@@ -481,9 +481,7 @@ const ProjectDetail = () => {
     };
     setBatchProgress({ ...progress });
 
-    // Update all to 'grading' status
-    await supabase.from("students").update({ grading_status: "grading" } as any)
-      .in("id", eligible.map((s) => s.id));
+    // grading_status is now set per-student in the worker to avoid showing all as "analyzing"
 
     let successCount = 0;
     let failCount = 0;
