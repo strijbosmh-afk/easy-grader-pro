@@ -1085,7 +1085,7 @@ const ProjectDetail = () => {
           {/* Onderwijscontext */}
           <Collapsible defaultOpen={false} className="lg:col-span-4">
             <Card>
-              <CollapsibleTrigger asChild>
+              <CollapsibleTrigger asChild className="group">
                 <CardHeader className="pb-3 cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg">
                   <CardTitle className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
                     <Settings className="h-4 w-4" />
@@ -1100,7 +1100,7 @@ const ProjectDetail = () => {
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
-                    <ChevronDown className="h-4 w-4 ml-auto transition-transform duration-200 [[data-state=open]>&]:rotate-180" />
+                    <ChevronDown className="h-4 w-4 ml-auto transition-transform duration-200 group-data-[state=open]:rotate-180" />
                   </CardTitle>
                 </CardHeader>
               </CollapsibleTrigger>
