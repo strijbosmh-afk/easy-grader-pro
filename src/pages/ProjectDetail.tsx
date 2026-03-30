@@ -1452,10 +1452,16 @@ const ProjectDetail = () => {
                                     ? batchProgress.studentTimes.reduce((a, b) => a + b, 0) / batchProgress.studentTimes.length
                                     : 0}
                                 />
+                              ) : queuedStudentIds.has(student.id) ? (
+                                <div className="flex items-center gap-1.5">
+                                  <div className="h-2 w-2 rounded-full bg-muted-foreground animate-pulse" />
+                                  <span className="text-xs text-muted-foreground font-medium">Wachtrij</span>
+                                </div>
                               ) : (
                                 <Badge variant={statusVariants[student.status as StudentStatus]}>
                                   {statusLabels[student.status as StudentStatus]}
                                 </Badge>
+                              )}
                               )}
                             </TableCell>
                             <TableCell>
