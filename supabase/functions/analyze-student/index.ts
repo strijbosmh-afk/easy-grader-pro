@@ -736,7 +736,7 @@ serve(async (req) => {
       });
     }
 
-    // Rate limiting: max 60 AI calls per hour per user
+    // Rate limiting: max 120 AI calls per hour per user
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
     const { count: usageCount } = await supabase
       .from('api_usage')
@@ -745,9 +745,9 @@ serve(async (req) => {
       .eq('function_name', 'analyze-student')
       .gte('created_at', oneHourAgo);
 
-    if (usageCount && usageCount >= 60) {
+    if (usageCount && usageCount >= 120) {
       return new Response(
-        JSON.stringify({ error: 'Rate limit bereikt. Je kunt maximaal 60 beoordelingen per uur uitvoeren. Probeer het later opnieuw.' }),
+        JSON.stringify({ error: 'Rate limit bereikt. Je kunt maximaal 120 beoordelingen per uur uitvoeren. Probeer het later opnieuw.' }),
         { status: 429, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
       );
     }
