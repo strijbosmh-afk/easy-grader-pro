@@ -153,10 +153,10 @@ export function GradingChat({ projectId, onReAnalyzeRequested, onInstructionsCle
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
                 <Sparkles className="h-4 w-4 text-primary" />
-                My Personal Assistant
+                Beoordelingsinstructies voor de AI
                 {customInstructions && (
                   <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                    Instructies actief
+                    Actief
                   </Badge>
                 )}
               </CardTitle>
@@ -171,7 +171,7 @@ export function GradingChat({ projectId, onReAnalyzeRequested, onInstructionsCle
             </div>
             {!isOpen && (
               <p className="text-xs text-muted-foreground mt-1">
-                Geef specifieke instructies aan de AI voor betere beoordelingen
+                Stuur instructies aan de AI om de beoordelingsstijl aan te passen
               </p>
             )}
           </CardHeader>
@@ -212,7 +212,12 @@ export function GradingChat({ projectId, onReAnalyzeRequested, onInstructionsCle
                     Stel een vraag of geef instructies. Bijvoorbeeld:
                   </p>
                   <div className="flex flex-wrap gap-1.5 justify-center mt-2">
-                    {["Let extra op spelling", "Wees strenger bij bronvermelding", "Geef meer gewicht aan creativiteit"].map((suggestion) => (
+                    {[
+                      "Let extra op spelling en grammatica",
+                      "Wees strenger bij bronvermelding",
+                      "Geef opbouwende feedback, niet enkel kritiek",
+                      "Vergelijk met het niveau van een 2e bachelor",
+                    ].map((suggestion) => (
                       <button
                         key={suggestion}
                         onClick={() => setInput(suggestion)}

@@ -62,13 +62,16 @@ export function PinGate({ children }: PinGateProps) {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <div className="w-full max-w-xs text-center space-y-8">
-        {/* Avatar / greeting */}
-        <div className="space-y-3">
-          <div className="mx-auto h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center text-4xl select-none">
-            👩‍🏫
+        {/* Brand + greeting */}
+        <div className="space-y-4">
+          <div className="mx-auto h-16 w-16 rounded-2xl bg-primary flex items-center justify-center shadow-lg">
+            <svg className="h-9 w-9 text-primary-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/>
+            </svg>
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Welkom, Els!</h1>
+            <p className="text-xs font-semibold uppercase tracking-widest text-primary mb-1">GradeAssist</p>
+            <h1 className="text-3xl font-bold text-foreground">Welkom, Els!</h1>
             <p className="text-sm text-muted-foreground mt-1">Voer je pincode in om verder te gaan</p>
           </div>
         </div>

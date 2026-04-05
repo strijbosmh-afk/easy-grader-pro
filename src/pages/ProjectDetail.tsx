@@ -13,6 +13,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, Upload, FileText, Pencil, Check, X, Loader2, Bot, Download, Settings, LayoutGrid, RefreshCw, AlertTriangle, Users, FolderOpen, Search, Eye, Trash2, FileDown, CheckCircle, Circle, Sparkles, Cpu, ShieldCheck, Info, Share2, MessageSquare, ChevronDown, ArrowUpDown, ArrowUp, ArrowDown, Zap, Brain } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
+import { WorkflowStepper } from "@/components/WorkflowStepper";
+import { ProjectSummaryCard } from "@/components/ProjectSummaryCard";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -1114,7 +1116,49 @@ const ProjectDetail = () => {
         </div>
       </header>
 
-      <main className="container mx-auto px-6 py-8 space-y-4">
+      <main className="container mx-auto px-6 py-6 space-y-4">
+
+        {/* Workflow progress stepper */}
+        <WorkflowStepper
+          hasOpdracht={!!project?.opdracht_pdf_url}
+          hasGraderingstabel={!!project?.graderingstabel_pdf_url}
+          hasStudents={(students?.length || 0) > 0}
+          hasAnalysedStudents={(students?.filter(s => s.status === "reviewed" || s.status === "graded").length || 0) > 0}
+          allGraded={(students?.length || 0) > 0 && students?.every(s => s.status === "graded")}
+        />
+
+        {/* Summary stats — only shown when there's something to show */}
+        {students && students.length > 0 && criteria && criteria.length > 0 && (
+          <ProjectSummaryCard students={students} criteria={criteria} />
+        )}
+
+        {/* Quick action: finalize all reviewed at once */}
+        {students && students.filter(s => s.status === "reviewed").length > 0 && (
+          <div className="flex items-center gap-3 rounded-lg border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/20 px-4 py-3">
+            <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400 shrink-0" />
+            <p className="text-sm text-green-800 dark:text-green-200 flex-1">
+              <span className="font-semibold">{students.filter(s => s.status === "reviewed").length} studenten</span> zijn geanalyseerd en klaar om te finaliseren.
+            </p>
+            <Button
+              size="sm"
+              className="bg-green-600 hover:bg-green-700 text-white shrink-0"
+              disabled={finalizing}
+              onClick={async () => {
+                const toFinalize = students.filter(s => s.status === "reviewed");
+                setFinalizing(true);
+                try {
+                  await supabase.from("students").update({ status: "graded" as any }).in("id", toFinalize.map(s => s.id));
+                  queryClient.invalidateQueries({ queryKey: ["students", id] });
+                  toast.success(`${toFinalize.length} studenten gefinaliseerd!`);
+                } catch { toast.error("Finaliseren mislukt"); }
+                finally { setFinalizing(false); }
+              }}
+            >
+              {finalizing ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <CheckCircle className="h-4 w-4 mr-1" />}
+              Alles finaliseren
+            </Button>
+          </div>
+        )}
         {/* ── Section 1: Instellingen ── */}
         <Collapsible
           open={sectionStates.instellingen}
@@ -1605,15 +1649,26 @@ const ProjectDetail = () => {
                         {students
                           .filter((s) => s.naam.toLowerCase().includes(searchQuery.toLowerCase()))
                           .sort((a, b) => {
-                            if (!sortColumn) return 0;
-                            const dir = sortDirection === "asc" ? 1 : -1;
-                            if (sortColumn === "naam") return dir * a.naam.localeCompare(b.naam);
-                            if (sortColumn === "status") {
-                              const order: Record<string, number> = { pending: 0, analyzing: 1, reviewed: 2, graded: 3 };
-                              return dir * ((order[a.status] ?? 0) - (order[b.status] ?? 0));
+                            if (sortColumn) {
+                              const dir = sortDirection === "asc" ? 1 : -1;
+                              if (sortColumn === "naam") return dir * a.naam.localeCompare(b.naam);
+                              if (sortColumn === "status") {
+                                const order: Record<string, number> = { pending: 0, analyzing: 1, reviewed: 2, graded: 3 };
+                                return dir * ((order[a.status] ?? 0) - (order[b.status] ?? 0));
+                              }
+                              if (sortColumn === "score") return dir * ((getTotalScore(a) ?? -1) - (getTotalScore(b) ?? -1));
+                              return 0;
                             }
-                            if (sortColumn === "score") return dir * ((getTotalScore(a) ?? -1) - (getTotalScore(b) ?? -1));
-                            return 0;
+                            // Default: attention-flagged reviewed first, then pending, then graded
+                            const priority = (s: any) => {
+                              if (s.status === "graded") return 3;
+                              if (s.status === "reviewed") {
+                                const hasWarning = Array.isArray((s as any).ai_validation_warnings) && (s as any).ai_validation_warnings.length > 0;
+                                return hasWarning ? 0 : 1;
+                              }
+                              return 2; // pending
+                            };
+                            return priority(a) - priority(b);
                           })
                           .map((student, idx) => {
                             const total = getTotalScore(student);
