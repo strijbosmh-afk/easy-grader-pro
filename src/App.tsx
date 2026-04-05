@@ -42,8 +42,7 @@ function PageLoader() {
 }
 
 function ProtectedRoutes() {
-  const { isAuthenticated } = useAuth();
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  // Auth handled by PinGate — no Supabase login required
   return (
     <AppLayout>
       <Suspense fallback={<PageLoader />}>
@@ -89,9 +88,8 @@ const App = () => (
 );
 
 function LoginRoute() {
-  const { isAuthenticated } = useAuth();
-  if (isAuthenticated) return <Navigate to="/" replace />;
-  return <Login />;
+  // Skip login — PIN handles authentication
+  return <Navigate to="/" replace />;
 }
 
 export default App;
