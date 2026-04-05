@@ -990,8 +990,8 @@ const ProjectDetail = () => {
                 </div>
               )}
             </div>
-            {/* Header actions: export & overview */}
-            <div className="flex items-center gap-2 shrink-0 pt-1">
+            {/* Header actions */}
+            <div className="flex items-center gap-2 shrink-0 pt-1 flex-wrap justify-end">
               {isOwner && (
                 <Button variant="outline" size="sm" onClick={() => setShowInviteReviewer(true)}>
                   <ShieldCheck className="h-4 w-4 mr-2" />
@@ -1008,79 +1008,105 @@ const ProjectDetail = () => {
                     <LayoutGrid className="h-4 w-4 mr-2" />
                     Scoreoverzicht
                   </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      const hasScores = students.some((s: any) => s.student_scores?.some((sc: any) => sc.final_score !== null || sc.ai_suggested_score !== null));
-                      if (!hasScores) {
-                        toast.info("Nog geen scores om te exporteren. Analyseer eerst minstens één student.");
-                        return;
-                      }
-                      exportProjectToExcel(project, students, criteria);
-                      toast.success("Excel geëxporteerd!");
-                    }}
-                  >
-                    <Download className="h-4 w-4 mr-2" />
-                    Exporteer naar Excel
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={exportingWord}
-                    onClick={async () => {
-                      setExportingWord(true);
-                      try {
-                        const toExport = selectedStudents.size > 0
-                          ? students.filter((s) => selectedStudents.has(s.id))
-                          : students;
-                        const scoresMap = new Map<string, any[]>();
-                        for (const s of toExport) {
-                          scoresMap.set(s.id, s.student_scores || []);
-                        }
-                        await exportStudentsBatchToWord(toExport, project, criteria, scoresMap);
-                        toast.success(`${toExport.length} verslag(en) geëxporteerd`);
-                      } catch {
-                        toast.error("Word export mislukt");
-                      } finally {
-                        setExportingWord(false);
-                      }
-                    }}
-                  >
-                    {exportingWord ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileDown className="h-4 w-4 mr-2" />}
-                    {selectedStudents.size > 0 ? `Export Verslag (${selectedStudents.size})` : "Export Verslag"}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={exportingPdf}
-                    onClick={async () => {
-                      const hasScores = students!.some((s: any) => s.student_scores?.some((sc: any) => sc.final_score !== null || sc.ai_suggested_score !== null));
-                      if (!hasScores) {
-                        toast.info("Nog geen scores om te exporteren.");
-                        return;
-                      }
-                      setExportingPdf(true);
-                      setPdfProgress("");
-                      try {
-                        const toExport = selectedStudents.size > 0
-                          ? students!.filter((s) => selectedStudents.has(s.id))
-                          : students!;
-                        await downloadBatchReportsZip(toExport, project, criteria!, (cur, tot, name) => {
-                          setPdfProgress(`Rapport ${cur} van ${tot}: ${name}`);
-                        });
-                        toast.success("PDF rapporten geëxporteerd!");
-                      } catch (err: any) {
-                        toast.error(err?.message || "PDF export mislukt");
-                      } finally {
-                        setExportingPdf(false);
-                        setPdfProgress("");
-                      }
-                    }}
-                  >
-                    {exportingPdf ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileText className="h-4 w-4 mr-2" />}
-                    {exportingPdf && pdfProgress ? pdfProgress : selectedStudents.size > 0 ? `Download Rapporten (${selectedStudents.size})` : "Download Rapporten (PDF)"}
-                  </Button>
+
+                  {/* Export dropdown group */}
+                  <div className="flex items-center gap-1 border rounded-md overflow-hidden">
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="rounded-none border-r h-8 px-3"
+                            onClick={() => {
+                              const hasScores = students.some((s: any) => s.student_scores?.some((sc: any) => sc.final_score !== null || sc.ai_suggested_score !== null));
+                              if (!hasScores) {
+                                toast.info("Nog geen scores om te exporteren. Analyseer eerst minstens één student.");
+                                return;
+                              }
+                              exportProjectToExcel(project, students, criteria);
+                              toast.success("Excel geëxporteerd!");
+                            }}
+                          >
+                            <Download className="h-3.5 w-3.5 mr-1.5" />
+                            Excel
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Exporteer scores naar Excel</TooltipContent>
+                      </Tooltip>
+
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="rounded-none border-r h-8 px-3"
+                            disabled={exportingWord}
+                            onClick={async () => {
+                              setExportingWord(true);
+                              try {
+                                const toExport = selectedStudents.size > 0
+                                  ? students.filter((s) => selectedStudents.has(s.id))
+                                  : students;
+                                const scoresMap = new Map<string, any[]>();
+                                for (const s of toExport) {
+                                  scoresMap.set(s.id, s.student_scores || []);
+                                }
+                                await exportStudentsBatchToWord(toExport, project, criteria, scoresMap);
+                                toast.success(`${toExport.length} verslag(en) geëxporteerd`);
+                              } catch {
+                                toast.error("Word export mislukt");
+                              } finally {
+                                setExportingWord(false);
+                              }
+                            }}
+                          >
+                            {exportingWord ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <FileDown className="h-3.5 w-3.5 mr-1.5" />}
+                            Word{selectedStudents.size > 0 ? ` (${selectedStudents.size})` : ""}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Exporteer verslagen naar Word{selectedStudents.size > 0 ? ` voor ${selectedStudents.size} geselecteerde studenten` : ""}</TooltipContent>
+                      </Tooltip>
+
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="rounded-none h-8 px-3"
+                            disabled={exportingPdf}
+                            onClick={async () => {
+                              const hasScores = students!.some((s: any) => s.student_scores?.some((sc: any) => sc.final_score !== null || sc.ai_suggested_score !== null));
+                              if (!hasScores) {
+                                toast.info("Nog geen scores om te exporteren.");
+                                return;
+                              }
+                              setExportingPdf(true);
+                              setPdfProgress("");
+                              try {
+                                const toExport = selectedStudents.size > 0
+                                  ? students!.filter((s) => selectedStudents.has(s.id))
+                                  : students!;
+                                await downloadBatchReportsZip(toExport, project, criteria!, (cur, tot, name) => {
+                                  setPdfProgress(`Rapport ${cur} van ${tot}: ${name}`);
+                                });
+                                toast.success("PDF rapporten geëxporteerd!");
+                              } catch (err: any) {
+                                toast.error(err?.message || "PDF export mislukt");
+                              } finally {
+                                setExportingPdf(false);
+                                setPdfProgress("");
+                              }
+                            }}
+                          >
+                            {exportingPdf ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <FileText className="h-3.5 w-3.5 mr-1.5" />}
+                            {exportingPdf && pdfProgress ? pdfProgress : `PDF${selectedStudents.size > 0 ? ` (${selectedStudents.size})` : ""}`}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Download PDF-rapporten{selectedStudents.size > 0 ? ` voor ${selectedStudents.size} geselecteerde studenten` : ""}</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
                 </>
               )}
             </div>
@@ -1378,54 +1404,95 @@ const ProjectDetail = () => {
               <CardContent className="pt-0">
                 {/* Action buttons */}
                 {students && students.length > 0 && (
-                  <div className="flex flex-wrap items-center gap-3 mb-4 pb-4 border-b">
-                    {/* Groep 1: Analyse acties */}
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="default"
-                        size="sm"
-                        disabled={batchAnalyzing || reAnalyzing || !project.opdracht_pdf_url || !project.graderingstabel_pdf_url}
-                        onClick={() => {
-                          const pending = students?.filter((s) => s.status === "pending" || s.status === "reviewed") || [];
-                          if (pending.length === 0) {
-                            toast.info("Geen studenten om te analyseren");
-                            return;
-                          }
-                          setModelPickerAction("batch");
-                          setShowModelPicker(true);
-                        }}
-                      >
-                        {batchAnalyzing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Bot className="h-4 w-4 mr-2" />}
-                        {selectedStudents.size > 0 ? `Analyseer (${selectedStudents.size})` : "Analyseer alle"}
-                      </Button>
+                  <div className="flex flex-wrap items-center gap-2 mb-4 pb-4 border-b">
 
-                      {students.some((s) => s.status === "reviewed" || s.status === "graded") && (
-                        <>
-                          <Separator orientation="vertical" className="h-6" />
-                          <div className="flex items-center gap-1.5">
-                            <Select value={reAnalyzeNiveau} onValueChange={setReAnalyzeNiveau}>
-                              <SelectTrigger className="w-[100px] h-8 text-xs">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="streng">Streng</SelectItem>
-                                <SelectItem value="neutraal">Neutraal</SelectItem>
-                                <SelectItem value="mild">Mild</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <Button variant="outline" size="sm" disabled={reAnalyzing || batchAnalyzing} onClick={batchReAnalyze}>
-                              {reAnalyzing ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-1.5" />}
-                              {selectedStudents.size > 0 ? `Heranalyse (${selectedStudents.size})` : "Heranalyse"}
+                    {/* Primary: Start AI analysis */}
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span>
+                            <Button
+                              variant="default"
+                              size="sm"
+                              disabled={batchAnalyzing || reAnalyzing || !project.opdracht_pdf_url || !project.graderingstabel_pdf_url}
+                              onClick={() => {
+                                const pending = students?.filter((s) => s.status === "pending" || s.status === "reviewed") || [];
+                                if (pending.length === 0) {
+                                  toast.info("Alle studenten zijn al geanalyseerd");
+                                  return;
+                                }
+                                setModelPickerAction("batch");
+                                setShowModelPicker(true);
+                              }}
+                            >
+                              {batchAnalyzing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Bot className="h-4 w-4 mr-2" />}
+                              {selectedStudents.size > 0
+                                ? `AI-analyse starten (${selectedStudents.size})`
+                                : "AI-analyse starten"}
                             </Button>
-                          </div>
-                        </>
-                      )}
-                    </div>
+                          </span>
+                        </TooltipTrigger>
+                        {(!project.opdracht_pdf_url || !project.graderingstabel_pdf_url) && (
+                          <TooltipContent>
+                            Upload eerst een opdracht én graderingstabel om te kunnen analyseren
+                          </TooltipContent>
+                        )}
+                      </Tooltip>
+                    </TooltipProvider>
 
-                    {/* Groep 2: Delen & Finaliseren */}
-                    <div className="flex items-center gap-2">
+                    {/* Re-analyse (only shown when relevant) */}
+                    {students.some((s) => s.status === "reviewed" || s.status === "graded") && (
+                      <>
+                        <Separator orientation="vertical" className="h-6" />
+                        <div className="flex items-center gap-1.5">
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="flex items-center gap-1.5">
+                                  <Select value={reAnalyzeNiveau} onValueChange={setReAnalyzeNiveau}>
+                                    <SelectTrigger className="w-[105px] h-8 text-xs">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="streng">Streng</SelectItem>
+                                      <SelectItem value="neutraal">Neutraal</SelectItem>
+                                      <SelectItem value="mild">Mild</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  <Button variant="outline" size="sm" disabled={reAnalyzing || batchAnalyzing} onClick={batchReAnalyze}>
+                                    {reAnalyzing ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-1.5" />}
+                                    Heranalyseer{selectedStudents.size > 0 ? ` (${selectedStudents.size})` : ""}
+                                  </Button>
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent>Analyseer reeds beoordeelde studenten opnieuw met een ander niveau</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                      </>
+                    )}
+
+                    {/* Finalize selected — only shown when students are selected */}
+                    {selectedStudents.size > 0 && (
+                      <>
+                        <Separator orientation="vertical" className="h-6" />
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={finalizeSelected}
+                          disabled={finalizing}
+                          className="border-green-300 text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-400"
+                        >
+                          {finalizing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />}
+                          Markeer als beoordeeld ({selectedStudents.size})
+                        </Button>
+                      </>
+                    )}
+
+                    {/* Share feedback — pushed to the right */}
+                    <div className="ml-auto">
                       <Button
-                        variant="outline"
+                        variant="ghost"
                         size="sm"
                         disabled={sharingAll}
                         onClick={async () => {
@@ -1447,21 +1514,8 @@ const ProjectDetail = () => {
                         }}
                       >
                         {sharingAll ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Share2 className="h-4 w-4 mr-1.5" />}
-                        Deel feedback met alle studenten
+                        Deel feedback
                       </Button>
-
-                      {selectedStudents.size > 0 && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={finalizeSelected}
-                          disabled={finalizing}
-                          className="border-green-300 text-green-700 hover:bg-green-50"
-                        >
-                          {finalizing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />}
-                          Finaliseer ({selectedStudents.size})
-                        </Button>
-                      )}
                     </div>
                   </div>
                 )}
@@ -1641,30 +1695,55 @@ const ProjectDetail = () => {
                                 </TableCell>
                                 <TableCell className="text-right">
                                   <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
-                                    <Button size="sm" variant="outline"
-                                      disabled={!project.opdracht_pdf_url || !project.graderingstabel_pdf_url || student.status === "analyzing"}
-                                      onClick={() => runBatchSequential([student], {}, setBatchAnalyzing)}>
-                                      <Bot className="h-4 w-4 mr-1" />Analyseer
-                                    </Button>
+                                    {/* Primary: Analyse — most important action */}
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <span>
+                                            <Button size="sm" variant={student.status === "pending" ? "default" : "outline"}
+                                              disabled={!project.opdracht_pdf_url || !project.graderingstabel_pdf_url || student.status === "analyzing"}
+                                              onClick={() => runBatchSequential([student], {}, setBatchAnalyzing)}>
+                                              {student.status === "analyzing"
+                                                ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                                : <Bot className="h-3.5 w-3.5 mr-1" />}
+                                              {student.status === "analyzing" ? "" : student.status === "reviewed" || student.status === "graded" ? "Heranalyseer" : "Analyseer"}
+                                            </Button>
+                                          </span>
+                                        </TooltipTrigger>
+                                        {(!project.opdracht_pdf_url || !project.graderingstabel_pdf_url) && (
+                                          <TooltipContent side="left">Upload eerst opdracht & graderingstabel</TooltipContent>
+                                        )}
+                                      </Tooltip>
+                                    </TooltipProvider>
+
+                                    {/* Share feedback */}
                                     <TooltipProvider><Tooltip><TooltipTrigger asChild>
                                       <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setShareStudent(student)}>
                                         <Share2 className="h-3.5 w-3.5" />
                                       </Button>
-                                    </TooltipTrigger><TooltipContent><span className="text-xs">Deel feedback</span></TooltipContent></Tooltip></TooltipProvider>
-                                    <Button size="icon" variant="ghost" className="h-8 w-8"
-                                      onClick={() => { setEditingStudentId(student.id); setEditStudentName(student.naam); }}>
-                                      <Pencil className="h-3.5 w-3.5" />
-                                    </Button>
+                                    </TooltipTrigger><TooltipContent side="left"><span className="text-xs">Deel feedback met student</span></TooltipContent></Tooltip></TooltipProvider>
+
+                                    {/* Rename */}
+                                    <TooltipProvider><Tooltip><TooltipTrigger asChild>
+                                      <Button size="icon" variant="ghost" className="h-8 w-8"
+                                        onClick={() => { setEditingStudentId(student.id); setEditStudentName(student.naam); }}>
+                                        <Pencil className="h-3.5 w-3.5" />
+                                      </Button>
+                                    </TooltipTrigger><TooltipContent side="left"><span className="text-xs">Naam wijzigen</span></TooltipContent></Tooltip></TooltipProvider>
+
+                                    {/* Delete with confirmation */}
                                     {deletingStudentId === student.id ? (
                                       <div className="flex items-center gap-1">
-                                        <Button size="sm" variant="destructive" className="h-8 text-xs" onClick={() => deleteStudent(student.id)}>Bevestig</Button>
+                                        <Button size="sm" variant="destructive" className="h-8 text-xs" onClick={() => deleteStudent(student.id)}>Verwijder</Button>
                                         <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setDeletingStudentId(null)}><X className="h-3.5 w-3.5" /></Button>
                                       </div>
                                     ) : (
-                                      <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                                        onClick={() => setDeletingStudentId(student.id)}>
-                                        <Trash2 className="h-3.5 w-3.5" />
-                                      </Button>
+                                      <TooltipProvider><Tooltip><TooltipTrigger asChild>
+                                        <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                          onClick={() => setDeletingStudentId(student.id)}>
+                                          <Trash2 className="h-3.5 w-3.5" />
+                                        </Button>
+                                      </TooltipTrigger><TooltipContent side="left"><span className="text-xs">Student verwijderen</span></TooltipContent></Tooltip></TooltipProvider>
                                     )}
                                   </div>
                                 </TableCell>
@@ -1798,7 +1877,7 @@ const ProjectDetail = () => {
 
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={dismissGradingDialog} disabled={applyingCriteria}>
-              Nee, alleen uploaden
+              Alleen uploaden, criteria bewaren
             </Button>
             <Button onClick={applyNewCriteria} disabled={applyingCriteria}>
               {applyingCriteria ? (
@@ -1807,7 +1886,7 @@ const ProjectDetail = () => {
                   Toepassen...
                 </>
               ) : (
-                "Ja, toepassen & heranalyseren"
+                "Toepassen & heranalyseren"
               )}
             </Button>
           </DialogFooter>

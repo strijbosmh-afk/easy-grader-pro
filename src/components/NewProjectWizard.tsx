@@ -426,7 +426,7 @@ export function NewProjectWizard({ open, onOpenChange }: NewProjectWizardProps) 
             {step === 0 ? "Annuleren" : (
               <>
                 <ArrowLeft className="h-4 w-4 mr-1" />
-                Vorige
+                Vorige stap
               </>
             )}
           </Button>
@@ -438,7 +438,8 @@ export function NewProjectWizard({ open, onOpenChange }: NewProjectWizardProps) 
                 onClick={() => createProject.mutate()}
                 disabled={createProject.isPending}
               >
-                {contextSummary ? "Project aanmaken" : "Overslaan & aanmaken"}
+                {createProject.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+                {contextSummary ? "Project aanmaken" : "Context overslaan & aanmaken"}
               </Button>
             )}
             {step < 2 ? (
@@ -446,7 +447,7 @@ export function NewProjectWizard({ open, onOpenChange }: NewProjectWizardProps) 
                 onClick={() => setStep(step + 1)}
                 disabled={step === 0 && !canProceedStep0}
               >
-                Volgende
+                Volgende stap
                 <ArrowRight className="h-4 w-4 ml-1" />
               </Button>
             ) : (

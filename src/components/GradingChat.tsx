@@ -196,7 +196,7 @@ export function GradingChat({ projectId, onReAnalyzeRequested, onInstructionsCle
                     title="Wis alle instructies"
                   >
                     {isClearing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
-                    <span className="ml-1">Wissen</span>
+                    <span className="ml-1">Instructies wissen</span>
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap">{customInstructions}</p>
@@ -268,7 +268,7 @@ export function GradingChat({ projectId, onReAnalyzeRequested, onInstructionsCle
               <div className="flex items-center gap-2 rounded-md bg-accent/50 border border-accent p-2.5">
                 <RefreshCw className="h-4 w-4 text-primary shrink-0" />
                 <p className="text-xs text-foreground flex-1">
-                  Instructies opgeslagen. Wil je een heranalyse starten?
+                  Instructies opgeslagen. Heranalyse aanbevolen voor nieuwe instellingen.
                 </p>
                 <Button
                   size="sm"
@@ -279,7 +279,7 @@ export function GradingChat({ projectId, onReAnalyzeRequested, onInstructionsCle
                     onReAnalyzeRequested();
                   }}
                 >
-                  Heranalyse
+                  Nu heranalyseren
                 </Button>
                 <Button
                   size="sm"
@@ -304,11 +304,12 @@ export function GradingChat({ projectId, onReAnalyzeRequested, onInstructionsCle
               />
               <Button
                 size="sm"
-                className="h-8 px-3"
+                className="h-8 px-3 gap-1.5"
                 onClick={sendMessage}
                 disabled={!input.trim() || isLoading}
               >
-                <Send className="h-3.5 w-3.5" />
+                {isLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                <span className="text-xs">Stuur</span>
               </Button>
             </div>
           </CardContent>

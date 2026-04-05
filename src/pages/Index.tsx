@@ -12,6 +12,7 @@ import { useNavigate } from "react-router-dom";
 import { ShareProjectDialog } from "@/components/ShareProjectDialog";
 import { NewProjectWizard } from "@/components/NewProjectWizard";
 import { OnboardingOverlay } from "@/components/OnboardingOverlay";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Dialog,
   DialogContent,
@@ -158,8 +159,8 @@ const Index = () => {
             size="sm"
             onClick={() => setShowArchived(!showArchived)}
           >
-            <Archive className="h-4 w-4 mr-2" />
-            Archief{archivedProjects.length > 0 && ` (${archivedProjects.length})`}
+            {showArchived ? <ArchiveRestore className="h-4 w-4 mr-2" /> : <Archive className="h-4 w-4 mr-2" />}
+            {showArchived ? "Actieve projecten" : `Archief${archivedProjects.length > 0 ? ` (${archivedProjects.length})` : ""}`}
           </Button>
           <span className="text-sm text-muted-foreground">
             {filtered.length} project{filtered.length !== 1 ? "en" : ""}
@@ -241,34 +242,44 @@ const Index = () => {
                       </p>
                       {owned && (
                         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            title="Delen"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setShareProject({ id: project.id, naam: project.naam });
-                            }}
-                          >
-                            <Share2 className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            title={project.archived ? "Herstellen" : "Archiveren"}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleArchive.mutate({ id: project.id, archived: !project.archived });
-                            }}
-                          >
-                            {project.archived ? (
-                              <ArchiveRestore className="h-3.5 w-3.5" />
-                            ) : (
-                              <Archive className="h-3.5 w-3.5" />
-                            )}
-                          </Button>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setShareProject({ id: project.id, naam: project.naam });
+                                  }}
+                                >
+                                  <Share2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Project delen</TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleArchive.mutate({ id: project.id, archived: !project.archived });
+                                  }}
+                                >
+                                  {project.archived ? (
+                                    <ArchiveRestore className="h-3.5 w-3.5" />
+                                  ) : (
+                                    <Archive className="h-3.5 w-3.5" />
+                                  )}
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>{project.archived ? "Terugzetten" : "Archiveren"}</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         </div>
                       )}
                     </div>
