@@ -946,13 +946,13 @@ const ProjectDetail = () => {
       )}
       {/* Header */}
       <header className="border-b bg-card">
-        <div className="container mx-auto px-6 py-4">
+        <div className="container mx-auto px-4 sm:px-6 py-4">
           <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="mb-3">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Terug
           </Button>
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex-1">
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+            <div className="flex-1 min-w-0">
               {editingName ? (
                 <div className="flex items-center gap-2">
                   <Input
@@ -995,7 +995,7 @@ const ProjectDetail = () => {
               )}
             </div>
             {/* Header actions */}
-            <div className="flex items-center gap-2 shrink-0 pt-1 flex-wrap justify-end">
+            <div className="flex items-center gap-2 flex-wrap justify-start sm:justify-end w-full sm:w-auto sm:shrink-0">
               {isOwner && (
                 <Button variant="outline" size="sm" onClick={() => setShowInviteReviewer(true)}>
                   <ShieldCheck className="h-4 w-4 mr-2" />
@@ -1118,7 +1118,7 @@ const ProjectDetail = () => {
         </div>
       </header>
 
-      <main className="container mx-auto px-6 py-6 space-y-4">
+      <main className="container mx-auto px-4 sm:px-6 py-6 space-y-4">
 
         {/* Workflow progress stepper */}
         <WorkflowStepper
@@ -1625,6 +1625,7 @@ const ProjectDetail = () => {
                         <Input placeholder="Zoek student..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9 max-w-xs" />
                       </div>
                     )}
+                    <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -1828,6 +1829,7 @@ const ProjectDetail = () => {
                         )}
                       </TableBody>
                     </Table>
+                    </div>
                   </div>
                 )}
               </CardContent>

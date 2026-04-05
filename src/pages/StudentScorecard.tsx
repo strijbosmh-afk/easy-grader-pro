@@ -11,6 +11,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { ArrowLeft, ArrowRight, Loader2, Bot, Check, Download, RefreshCw, FileText, FileDown, ChevronLeft, ChevronRight, Eye, X, AlertTriangle, ClipboardCopy, CheckCheck, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { toast } from "sonner";
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { exportStudentToPdf } from "@/lib/export";
 import { downloadStudentReport } from "@/lib/export-pdf";
 import { exportStudentToWord } from "@/lib/export-word";
@@ -37,7 +38,8 @@ const StudentScorecard = () => {
   const [docentFeedback, setDocentFeedback] = useState<string | null>(null);
   const [reAnalyzeNiveau, setReAnalyzeNiveau] = useState("streng");
   const [generatingReport, setGeneratingReport] = useState(false);
-  const [showPdfPanel, setShowPdfPanel] = useState(true);
+  const isMobile = useIsMobile();
+  const [showPdfPanel, setShowPdfPanel] = useState(!isMobile);
   const [copied, setCopied] = useState(false);
 
   const [isDirty, setIsDirty] = useState(false);
@@ -499,7 +501,7 @@ const StudentScorecard = () => {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b bg-card">
-        <div className="container mx-auto px-6 py-4">
+        <div className="container mx-auto px-4 sm:px-6 py-4">
           <div className="flex items-center justify-between mb-3">
             <Button variant="ghost" size="sm" onClick={() => navigate(`/project/${projectId}`)}>
               <ArrowLeft className="h-4 w-4 mr-2" />
@@ -584,9 +586,9 @@ const StudentScorecard = () => {
         </div>
       </header>
 
-      <main className="container mx-auto px-6 py-4">
+      <main className="container mx-auto px-4 sm:px-6 py-4">
         {/* Action buttons row - full width above the split */}
-        <div className="flex flex-wrap gap-2 mb-4">
+        <div className="flex flex-wrap gap-2 mb-4 items-center">
           {/* Accept all AI scores — the biggest time saver */}
           {scores && scores.some((s) => s.ai_suggested_score !== null) && (
             <Button
@@ -645,7 +647,7 @@ const StudentScorecard = () => {
 
           {/* Export group */}
           {criteria && criteria.length > 0 && (
-            <div className="flex items-center gap-1 border rounded-md overflow-hidden ml-auto">
+            <div className="flex items-center gap-1 border rounded-md overflow-hidden sm:ml-auto">
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -707,7 +709,7 @@ const StudentScorecard = () => {
         <div className="flex flex-col lg:flex-row gap-6">
           {/* Left: PDF viewer (when showPdfPanel && student.pdf_url) */}
           {showPdfPanel && student.pdf_url && (
-            <div className="w-full lg:w-1/2 shrink-0 lg:sticky lg:top-4 lg:self-start" style={{ height: 'calc(100vh - 180px)' }}>
+            <div className="w-full lg:w-1/2 shrink-0 lg:sticky lg:top-4 lg:self-start" style={{ height: 'calc(100dvh - 180px)' }}>
               <Card className="h-full flex flex-col">
                 <CardHeader className="py-2 px-3 flex flex-row items-center justify-between">
                   <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -964,7 +966,8 @@ const StudentScorecard = () => {
       </main>
       {/* Floating Undo Button */}
       {scoreHistory.canUndo && scoreHistory.visible && (
-        <div className="fixed bottom-6 left-6 z-50 animate-in slide-in-from-bottom-4 fade-in duration-300">
+        <div className="fixed left-4 z-50 animate-in slide-in-from-bottom-4 fade-in duration-300"
+          style={{ bottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))' }}>
           <Button
             onClick={handleUndo}
             disabled={scoreHistory.undoing}

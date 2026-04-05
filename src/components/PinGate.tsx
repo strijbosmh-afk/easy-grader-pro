@@ -60,8 +60,9 @@ export function PinGate({ children }: PinGateProps) {
   if (unlocked) return <>{children}</>;
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-4">
-      <div className="w-full max-w-xs text-center space-y-8">
+    <div className="min-h-screen flex items-center justify-center bg-background px-6"
+      style={{ paddingTop: 'env(safe-area-inset-top, 0px)', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+      <div className="w-full max-w-xs text-center space-y-10">
         {/* Brand + greeting */}
         <div className="space-y-4">
           <div className="mx-auto h-16 w-16 rounded-2xl bg-primary flex items-center justify-center shadow-lg">
@@ -78,7 +79,7 @@ export function PinGate({ children }: PinGateProps) {
 
         {/* PIN inputs */}
         <div
-          className={`flex justify-center gap-3 ${shake ? "animate-[shake_0.5s_ease-in-out]" : ""}`}
+          className={`flex justify-center gap-4 ${shake ? "animate-[shake_0.5s_ease-in-out]" : ""}`}
           style={shake ? { animation: "shake 0.5s ease-in-out" } : {}}
         >
           {pin.map((digit, i) => (
@@ -87,11 +88,14 @@ export function PinGate({ children }: PinGateProps) {
               ref={(el) => { inputRefs.current[i] = el; }}
               type="password"
               inputMode="numeric"
+              pattern="[0-9]*"
+              autoComplete={i === 0 ? "one-time-code" : "off"}
               maxLength={1}
               value={digit}
               onChange={(e) => handleInput(i, e.target.value)}
               onKeyDown={(e) => handleKeyDown(i, e)}
-              className={`w-14 h-14 text-center text-2xl font-bold rounded-xl border-2 bg-card outline-none transition-all
+              style={{ fontSize: '24px' }}
+              className={`w-16 h-16 text-center font-bold rounded-xl border-2 bg-card outline-none transition-all
                 ${error
                   ? "border-destructive text-destructive"
                   : digit

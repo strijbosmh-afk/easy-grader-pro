@@ -144,8 +144,8 @@ const Index = () => {
           </Button>
         </div>
 
-        <div className="flex items-center gap-4 mb-8">
-          <div className="relative flex-1 max-w-md">
+        <div className="flex flex-wrap items-center gap-3 mb-6">
+          <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Zoek projecten..."
@@ -157,12 +157,13 @@ const Index = () => {
           <Button
             variant={showArchived ? "default" : "outline"}
             size="sm"
+            className="h-10 shrink-0"
             onClick={() => setShowArchived(!showArchived)}
           >
             {showArchived ? <ArchiveRestore className="h-4 w-4 mr-2" /> : <Archive className="h-4 w-4 mr-2" />}
             {showArchived ? "Actieve projecten" : `Archief${archivedProjects.length > 0 ? ` (${archivedProjects.length})` : ""}`}
           </Button>
-          <span className="text-sm text-muted-foreground">
+          <span className="text-sm text-muted-foreground shrink-0">
             {filtered.length} project{filtered.length !== 1 ? "en" : ""}
           </span>
         </div>
@@ -241,7 +242,7 @@ const Index = () => {
                         {new Date(project.created_at).toLocaleDateString("nl-NL")}
                       </p>
                       {owned && (
-                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>

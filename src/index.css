@@ -48,6 +48,12 @@
     --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 222 18% 30%;
     --sidebar-ring: 217 91% 70%;
+
+    /* Safe area insets for iOS notch / home indicator */
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-left: env(safe-area-inset-left, 0px);
+    --safe-right: env(safe-area-inset-right, 0px);
   }
 
   .dark {
@@ -90,9 +96,52 @@
     @apply border-border;
   }
 
+  html {
+    /* Prevent horizontal scroll on iOS */
+    overflow-x: hidden;
+  }
+
   body {
     @apply bg-background text-foreground;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    /* Prevent iOS rubber-band overscroll from showing white gap */
+    overscroll-behavior: none;
+    /* Prevent iOS text size adjustment when rotating */
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* Prevent iOS from auto-zooming inputs with font-size < 16px */
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+
+  /* Override for components that explicitly set larger sizes */
+  input[class*="text-2xl"], input[class*="text-xl"], input[class*="text-lg"] {
+    font-size: inherit !important;
+  }
+
+  /* Smooth momentum scrolling on iOS */
+  .overflow-y-auto, .overflow-y-scroll, [data-radix-scroll-area-viewport] {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Use dynamic viewport height — fixes iOS Safari's collapsing address bar */
+  .min-h-screen {
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+
+  /* Minimum 44px touch targets for all interactive elements on iOS */
+  @media (max-width: 768px) {
+    button, [role="button"] {
+      min-height: 44px;
+    }
+
+    /* But not icon-only buttons inside toolbars — they get padding instead */
+    .touch-target-sm {
+      min-height: 44px;
+      min-width: 44px;
+    }
   }
 }
 
@@ -112,4 +161,15 @@
 
 .animate-progress-indeterminate {
   animation: progress-indeterminate 1.8s ease-in-out infinite;
+}
+
+/* iOS safe area utilities */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+.bottom-safe {
+  bottom: env(safe-area-inset-bottom, 1.5rem);
 }
