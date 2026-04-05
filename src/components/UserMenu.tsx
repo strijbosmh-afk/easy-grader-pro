@@ -81,7 +81,10 @@ export function UserMenu() {
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
-          onClick={logout}
+          onClick={async () => {
+            sessionStorage.removeItem("pin_unlocked");
+            await logout();
+          }}
           className="text-destructive focus:text-destructive"
         >
           <LogOut className="h-4 w-4 mr-2" />

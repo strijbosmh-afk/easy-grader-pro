@@ -42,8 +42,11 @@ function PageLoader() {
 }
 
 function ProtectedRoutes() {
-  // PinGate is the only auth layer. Supabase session is restored automatically
-  // from localStorage after PIN entry — no login screen needed.
+  const { isAuthenticated } = useAuth();
+  // PIN = daily lock screen. Supabase = data access.
+  // Session auto-restores from localStorage on known devices.
+  // On new device or after logout → show login once.
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
   return (
     <AppLayout>
       <Suspense fallback={<PageLoader />}>
@@ -89,8 +92,9 @@ const App = () => (
 );
 
 function LoginRoute() {
-  // Redirect away from login — PIN handles everything
-  return <Navigate to="/" replace />;
+  const { isAuthenticated } = useAuth();
+  if (isAuthenticated) return <Navigate to="/" replace />;
+  return <Login />;
 }
 
 export default App;

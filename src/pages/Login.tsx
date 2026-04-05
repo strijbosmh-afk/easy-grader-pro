@@ -141,8 +141,8 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center space-y-1">
-          <CardTitle className="text-2xl font-bold">GradeIt</CardTitle>
-          <CardDescription>Log in om je beoordelingen te beheren</CardDescription>
+          <CardTitle className="text-2xl font-bold">GradeAssist</CardTitle>
+          <CardDescription>Verbind je account om je projecten te laden</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Google OAuth */}
