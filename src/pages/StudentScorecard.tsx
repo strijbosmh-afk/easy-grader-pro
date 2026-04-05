@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { ArrowLeft, ArrowRight, Loader2, Bot, Check, Download, RefreshCw, FileText, FileDown, ChevronLeft, ChevronRight, Eye, X, AlertTriangle } from "lucide-react";
+import { ArrowLeft, ArrowRight, Loader2, Bot, Check, Download, RefreshCw, FileText, FileDown, ChevronLeft, ChevronRight, Eye, X, AlertTriangle, ClipboardCopy, CheckCheck, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { toast } from "sonner";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { exportStudentToPdf } from "@/lib/export";
@@ -38,9 +38,24 @@ const StudentScorecard = () => {
   const [reAnalyzeNiveau, setReAnalyzeNiveau] = useState("streng");
   const [generatingReport, setGeneratingReport] = useState(false);
   const [showPdfPanel, setShowPdfPanel] = useState(true);
+  const [copied, setCopied] = useState(false);
 
   const [isDirty, setIsDirty] = useState(false);
   const scoreHistory = useScoreHistory(projectId);
+
+  // Fetch all students' scores for class comparison
+  const { data: allStudents } = useQuery({
+    queryKey: ["students-for-comparison", projectId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("students")
+        .select("id, status, student_scores(criterium_id, final_score, ai_suggested_score)")
+        .eq("project_id", projectId!)
+        .in("status", ["reviewed", "graded"]);
+      if (error) throw error;
+      return data;
+    },
+  });
 
   const { data: project } = useQuery({
     queryKey: ["project", projectId],
@@ -363,6 +378,77 @@ const StudentScorecard = () => {
 
   useKeyboardShortcuts(shortcuts);
 
+  // Accept all AI scores in one click
+  const acceptAllAiScores = () => {
+    if (!criteria || !scores) return;
+    const updated: Record<string, { final_score: string; opmerkingen: string }> = { ...localScores };
+    let count = 0;
+    for (const c of criteria) {
+      const score = scores.find((s) => s.criterium_id === c.id);
+      if (score?.ai_suggested_score !== null && score?.ai_suggested_score !== undefined) {
+        updated[c.id] = {
+          final_score: score.ai_suggested_score.toString(),
+          opmerkingen: updated[c.id]?.opmerkingen ?? score?.opmerkingen ?? "",
+        };
+        count++;
+      }
+    }
+    setLocalScores(updated);
+    setIsDirty(true);
+    toast.success(`${count} AI-scores overgenomen`);
+  };
+
+  // Copy all feedback to clipboard
+  const copyFeedbackToClipboard = async () => {
+    if (!criteria) return;
+    const lines: string[] = [];
+    lines.push(`FEEDBACK: ${student?.naam}`);
+    lines.push(`Project: ${project?.naam}`);
+    lines.push(`Datum: ${new Date().toLocaleDateString("nl-BE")}`);
+    lines.push("");
+    if (student?.ai_feedback) {
+      lines.push("=== Algemene AI Feedback ===");
+      lines.push(student.ai_feedback);
+      lines.push("");
+    }
+    lines.push("=== Scores per criterium ===");
+    for (const c of criteria) {
+      const vals = getScoreForCriterium(c.id);
+      const ai = getAiData(c.id);
+      lines.push(`\n${c.criterium_naam} — ${vals.final_score || ai.ai_suggested_score || "?"}/${c.max_score}`);
+      if (ai.ai_motivatie) lines.push(ai.ai_motivatie);
+      if (vals.opmerkingen) lines.push(`Opmerking: ${vals.opmerkingen}`);
+    }
+    const feedbackVal = docentFeedback !== null ? docentFeedback : (student?.docent_feedback || "");
+    if (feedbackVal) {
+      lines.push("\n=== Docent Feedback ===");
+      lines.push(feedbackVal);
+    }
+    lines.push(`\nTotaal: ${totalFinal}/${totalMax}`);
+    await navigator.clipboard.writeText(lines.join("\n"));
+    setCopied(true);
+    toast.success("Feedback gekopieerd naar klembord");
+    setTimeout(() => setCopied(false), 3000);
+  };
+
+  // Compute class average % and this student's comparison
+  const classComparison = useMemo(() => {
+    if (!allStudents || allStudents.length < 2 || !criteria || totalMax === 0) return null;
+    const otherTotals = allStudents
+      .filter((s) => s.id !== studentId)
+      .map((s) => {
+        const scores = (s.student_scores || []);
+        return scores.reduce((sum: number, sc: any) => sum + (sc.final_score ?? sc.ai_suggested_score ?? 0), 0);
+      })
+      .filter((t) => t > 0);
+    if (otherTotals.length === 0) return null;
+    const classAvg = otherTotals.reduce((a, b) => a + b, 0) / otherTotals.length;
+    const classAvgPct = Math.round((classAvg / totalMax) * 100);
+    const studentPct = Math.round((totalFinal / totalMax) * 100);
+    const diff = studentPct - classAvgPct;
+    return { classAvgPct, studentPct, diff };
+  }, [allStudents, studentId, criteria, totalFinal, totalMax]);
+
   const analyzeStudent = useMutation({
     mutationFn: async (niveauOverride?: string) => {
       await supabase.from("students").update({ status: "analyzing" as any }).eq("id", studentId!);
@@ -465,7 +551,33 @@ const StudentScorecard = () => {
                 {student.status === "graded" ? "Beoordeeld" : student.status === "analyzing" ? "Analyseren..." : "Wacht op beoordeling"}
               </Badge>
               {totalMax > 0 && (
-                <span className="text-2xl font-bold text-foreground">{totalFinal}/{totalMax}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl font-bold text-foreground">{totalFinal}/{totalMax}</span>
+                  {classComparison && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Badge
+                            variant="outline"
+                            className={`text-xs gap-1 cursor-default ${
+                              classComparison.diff > 5 ? "border-green-400 text-green-700 dark:text-green-400" :
+                              classComparison.diff < -5 ? "border-red-400 text-red-700 dark:text-red-400" :
+                              "border-border text-muted-foreground"
+                            }`}
+                          >
+                            {classComparison.diff > 5 ? <TrendingUp className="h-3 w-3" /> :
+                             classComparison.diff < -5 ? <TrendingDown className="h-3 w-3" /> :
+                             <Minus className="h-3 w-3" />}
+                            {classComparison.diff > 0 ? "+" : ""}{classComparison.diff}% vs klas
+                          </Badge>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          Klasgemiddelde: {classComparison.classAvgPct}% · Deze student: {classComparison.studentPct}%
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                </div>
               )}
             </div>
           </div>
@@ -474,7 +586,19 @@ const StudentScorecard = () => {
 
       <main className="container mx-auto px-6 py-4">
         {/* Action buttons row - full width above the split */}
-        <div className="flex flex-wrap gap-3 mb-4">
+        <div className="flex flex-wrap gap-2 mb-4">
+          {/* Accept all AI scores — the biggest time saver */}
+          {scores && scores.some((s) => s.ai_suggested_score !== null) && (
+            <Button
+              variant="default"
+              onClick={acceptAllAiScores}
+              className="bg-primary"
+            >
+              <CheckCheck className="h-4 w-4 mr-2" />
+              Alle AI-scores overnemen
+            </Button>
+          )}
+
           <Button
             variant="outline"
             onClick={() => analyzeStudent.mutate(undefined)}
@@ -518,38 +642,46 @@ const StudentScorecard = () => {
               {showPdfPanel ? "Sluit PDF" : "Bekijk PDF"}
             </Button>
           )}
+
+          {/* Export group */}
           {criteria && criteria.length > 0 && (
-            <>
-              <Button
-                variant="outline"
-                onClick={() => downloadStudentReport(student, project!, criteria, scores || [])}
-              >
-                <FileText className="h-4 w-4 mr-2" />
-                Download Rapport
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => exportStudentToPdf(student, project!, criteria, scores || [], getScoreForCriterium, feedbackValue)}
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Export PDF
-              </Button>
-              <Button
-                variant="outline"
-                onClick={async () => {
-                  try {
-                    await exportStudentToWord(student, project!, criteria, scores || []);
-                    toast.success("Word verslag geëxporteerd");
-                  } catch {
-                    toast.error("Word export mislukt");
-                  }
-                }}
-              >
-                <FileDown className="h-4 w-4 mr-2" />
-                Export Word
-              </Button>
-            </>
+            <div className="flex items-center gap-1 border rounded-md overflow-hidden ml-auto">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="sm" className="rounded-none border-r h-8 px-3"
+                      onClick={() => downloadStudentReport(student, project!, criteria, scores || [])}>
+                      <FileText className="h-3.5 w-3.5 mr-1.5" />PDF
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Download PDF rapport</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="sm" className="rounded-none border-r h-8 px-3"
+                      onClick={async () => {
+                        try { await exportStudentToWord(student, project!, criteria, scores || []); toast.success("Word verslag geëxporteerd"); }
+                        catch { toast.error("Word export mislukt"); }
+                      }}>
+                      <FileDown className="h-3.5 w-3.5 mr-1.5" />Word
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Download Word verslag</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="sm" className="rounded-none h-8 px-3"
+                      onClick={copyFeedbackToClipboard}>
+                      {copied ? <Check className="h-3.5 w-3.5 mr-1.5 text-green-500" /> : <ClipboardCopy className="h-3.5 w-3.5 mr-1.5" />}
+                      {copied ? "Gekopieerd!" : "Kopieer"}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Kopieer alle feedback naar klembord</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
           )}
+
           {scores && scores.length > 0 && (
             <Button
               variant="outline"
@@ -557,17 +689,12 @@ const StudentScorecard = () => {
               onClick={async () => {
                 setGeneratingReport(true);
                 try {
-                  const { data, error } = await invokeEdgeFunction("generate-report", {
-                    body: { studentId, projectId },
-                  });
-                  if (error) throw error;
+                  await invokeEdgeFunction("generate-report", { body: { studentId, projectId } });
                   queryClient.invalidateQueries({ queryKey: ["student", studentId] });
                   toast.success("Verslag gegenereerd!");
                 } catch (err: any) {
                   toast.error(err?.message || "Verslag genereren mislukt");
-                } finally {
-                  setGeneratingReport(false);
-                }
+                } finally { setGeneratingReport(false); }
               }}
             >
               {generatingReport ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileText className="h-4 w-4 mr-2" />}
@@ -722,6 +849,44 @@ const StudentScorecard = () => {
                             {ai.ai_motivatie && (
                               <p className="text-xs text-muted-foreground">{ai.ai_motivatie}</p>
                             )}
+                          </div>
+                        )}
+
+                        {/* Rubric Level Selector — shown when rubric_levels is populated */}
+                        {Array.isArray((c as any).rubric_levels) && (c as any).rubric_levels.length > 0 && (
+                          <div className="space-y-1.5">
+                            <p className="text-xs font-medium text-muted-foreground">Niveau kiezen:</p>
+                            <div className="flex flex-wrap gap-2">
+                              {((c as any).rubric_levels as Array<{ label: string; score: number; description?: string }>).map((level, li) => {
+                                const currentScore = vals.final_score;
+                                const isActive = currentScore !== "" && parseFloat(currentScore) === level.score;
+                                return (
+                                  <TooltipProvider key={li}>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <button
+                                          type="button"
+                                          onClick={() => updateLocal(c.id, "final_score", level.score.toString())}
+                                          className={`px-3 py-1.5 rounded-lg border-2 text-xs font-medium transition-all text-left ${
+                                            isActive
+                                              ? "border-primary bg-primary text-primary-foreground"
+                                              : "border-border hover:border-primary/50 text-foreground"
+                                          }`}
+                                        >
+                                          {level.label}
+                                          <span className="ml-1.5 opacity-70">({level.score})</span>
+                                        </button>
+                                      </TooltipTrigger>
+                                      {level.description && (
+                                        <TooltipContent side="bottom" className="max-w-xs text-xs">
+                                          {level.description}
+                                        </TooltipContent>
+                                      )}
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                );
+                              })}
+                            </div>
                           </div>
                         )}
                         {ai.ai_detail_feedback && (

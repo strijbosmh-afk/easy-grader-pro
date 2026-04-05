@@ -15,6 +15,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { toast } from "sonner";
 import { WorkflowStepper } from "@/components/WorkflowStepper";
 import { ProjectSummaryCard } from "@/components/ProjectSummaryCard";
+import { WeakCriteriaPanel } from "@/components/WeakCriteriaPanel";
+import { ProjectNotes } from "@/components/ProjectNotes";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -1132,6 +1134,15 @@ const ProjectDetail = () => {
           <ProjectSummaryCard students={students} criteria={criteria} />
         )}
 
+        {/* Weak criteria panel — shown when enough analysed students */}
+        {students && students.filter(s => s.status === "reviewed" || s.status === "graded").length >= 2 && criteria && criteria.length > 0 && (
+          <WeakCriteriaPanel
+            students={students}
+            criteria={criteria}
+            onNavigateToOverview={() => navigate(`/project/${id}/overzicht`)}
+          />
+        )}
+
         {/* Quick action: finalize all reviewed at once */}
         {students && students.filter(s => s.status === "reviewed").length > 0 && (
           <div className="flex items-center gap-3 rounded-lg border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/20 px-4 py-3">
@@ -1319,6 +1330,9 @@ const ProjectDetail = () => {
                     </div>
                   )}
                 </div>
+
+                {/* Personal notes for Els */}
+                <ProjectNotes projectId={id!} />
               </CardContent>
             </CollapsibleContent>
           </Card>
