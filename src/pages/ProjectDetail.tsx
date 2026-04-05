@@ -125,7 +125,35 @@ const ProjectDetail = () => {
   const [sortColumn, setSortColumn] = useState<"naam" | "status" | "score" | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [pdfViewerUrl, setPdfViewerUrl] = useState<string | null>(null);
+  const [pdfViewerBlobUrl, setPdfViewerBlobUrl] = useState<string | null>(null);
+  const [pdfViewerLoading, setPdfViewerLoading] = useState(false);
   const [pdfViewerTitle, setPdfViewerTitle] = useState("");
+
+  const openPdfViewer = async (signedUrl: string, title: string) => {
+    setPdfViewerTitle(title);
+    setPdfViewerUrl(signedUrl);
+    setPdfViewerBlobUrl(null);
+    setPdfViewerLoading(true);
+    try {
+      // Extract storage path and download via authenticated Supabase client
+      const match = signedUrl.match(/\/object\/(?:public|sign)\/pdfs\/(.+?)(?:\?|$)/);
+      const storagePath = match ? decodeURIComponent(match[1]) : null;
+      if (storagePath) {
+        const { data, error } = await supabase.storage.from("pdfs").download(storagePath);
+        if (!error && data) {
+          setPdfViewerBlobUrl(URL.createObjectURL(data));
+          return;
+        }
+      }
+      // Fallback: direct fetch
+      const res = await fetch(signedUrl);
+      if (res.ok) setPdfViewerBlobUrl(URL.createObjectURL(await res.blob()));
+    } catch {
+      // leave blobUrl null — PdfViewer will show error state
+    } finally {
+      setPdfViewerLoading(false);
+    }
+  };
   const [editingStudentId, setEditingStudentId] = useState<string | null>(null);
   const [editStudentName, setEditStudentName] = useState("");
   const [deletingStudentId, setDeletingStudentId] = useState<string | null>(null);
@@ -1374,7 +1402,7 @@ const ProjectDetail = () => {
                     {project.opdracht_pdf_url ? (
                       <div className="flex items-center gap-2">
                         <button
-                          onClick={() => { setPdfViewerUrl(project.opdracht_pdf_url!); setPdfViewerTitle("Opdracht"); }}
+                          onClick={() => openPdfViewer(project.opdracht_pdf_url!, "Opdracht")}
                           className="text-sm text-primary hover:underline truncate flex-1 text-left flex items-center gap-1.5"
                         >
                           <Eye className="h-3.5 w-3.5 shrink-0" />
@@ -1407,7 +1435,7 @@ const ProjectDetail = () => {
                     ) : project.graderingstabel_pdf_url ? (
                       <div className="flex items-center gap-2">
                         <button
-                          onClick={() => { setPdfViewerUrl(project.graderingstabel_pdf_url!); setPdfViewerTitle("Graderingstabel"); }}
+                          onClick={() => openPdfViewer(project.graderingstabel_pdf_url!, "Graderingstabel")}
                           className="text-sm text-primary hover:underline truncate flex-1 text-left flex items-center gap-1.5"
                         >
                           <Eye className="h-3.5 w-3.5 shrink-0" />
@@ -2021,14 +2049,20 @@ const ProjectDetail = () => {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!pdfViewerUrl} onOpenChange={(open) => !open && setPdfViewerUrl(null)}>
+      <Dialog open={!!pdfViewerUrl} onOpenChange={(open) => {
+        if (!open) {
+          setPdfViewerUrl(null);
+          setPdfViewerBlobUrl(null);
+        }
+      }}>
         <DialogContent className="max-w-4xl h-[85vh] p-0 flex flex-col">
           <DialogHeader className="px-6 pt-6 pb-3 shrink-0">
             <DialogTitle>{pdfViewerTitle}</DialogTitle>
           </DialogHeader>
           <div className="flex-1 px-6 pb-6 min-h-0">
             <PdfViewer
-              url={pdfViewerUrl}
+              blobUrl={pdfViewerBlobUrl}
+              loading={pdfViewerLoading}
               title={pdfViewerTitle}
               className="w-full h-full rounded-md border"
             />

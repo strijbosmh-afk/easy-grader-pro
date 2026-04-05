@@ -733,7 +733,8 @@ const StudentScorecard = () => {
                     </div>
                   ) : (
                     <PdfViewer
-                      url={student.pdf_url}
+                      blobUrl={pdfBlobUrl}
+                      loading={!pdfBlobUrl && !!student.pdf_url}
                       title={`${student.naam} — Document`}
                       className="w-full h-full"
                     />
