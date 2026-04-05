@@ -97,8 +97,8 @@
   }
 
   html {
-    /* Prevent horizontal scroll on iOS */
-    overflow-x: hidden;
+    /* Prevent horizontal scroll - use on specific containers only, not html root */
+    /* overflow-x: hidden breaks iframe rendering and sticky positioning */
   }
 
   body {

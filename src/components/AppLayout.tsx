@@ -39,7 +39,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               <UserMenu />
             </div>
           </header>
-          <main className="flex-1 overflow-x-hidden">{children}</main>
+          <main className="flex-1 min-w-0">{children}</main>
         </div>
       </div>
     </SidebarProvider>

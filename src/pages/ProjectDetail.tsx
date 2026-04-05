@@ -17,6 +17,7 @@ import { WorkflowStepper } from "@/components/WorkflowStepper";
 import { ProjectSummaryCard } from "@/components/ProjectSummaryCard";
 import { WeakCriteriaPanel } from "@/components/WeakCriteriaPanel";
 import { ProjectNotes } from "@/components/ProjectNotes";
+import { PdfViewer } from "@/components/PdfViewer";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -2026,13 +2027,11 @@ const ProjectDetail = () => {
             <DialogTitle>{pdfViewerTitle}</DialogTitle>
           </DialogHeader>
           <div className="flex-1 px-6 pb-6 min-h-0">
-            {pdfViewerUrl && (
-              <iframe
-                src={pdfViewerUrl}
-                className="w-full h-full rounded-md border"
-                title={pdfViewerTitle}
-              />
-            )}
+            <PdfViewer
+              url={pdfViewerUrl}
+              title={pdfViewerTitle}
+              className="w-full h-full rounded-md border"
+            />
           </div>
         </DialogContent>
       </Dialog>

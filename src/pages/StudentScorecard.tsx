@@ -16,7 +16,7 @@ import { exportStudentToPdf } from "@/lib/export";
 import { downloadStudentReport } from "@/lib/export-pdf";
 import { exportStudentToWord } from "@/lib/export-word";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { invokeEdgeFunction } from "@/lib/supabase-helpers";
+import { PdfViewer } from "@/components/PdfViewer";
 import { useScoreHistory } from "@/hooks/useScoreHistory";
 import { useKeyboardShortcuts, type Shortcut } from "@/hooks/useKeyboardShortcuts";
 import { KeyboardShortcutsDialog } from "@/components/KeyboardShortcutsDialog";
@@ -721,24 +721,22 @@ const StudentScorecard = () => {
                   </Button>
                 </CardHeader>
                 <CardContent className="flex-1 p-0 overflow-hidden">
-                  {pdfBlobUrl && student.pdf_url && !student.pdf_url.match(/\.(docx?)/i) ? (
-                    <iframe
-                      src={`${pdfBlobUrl}#toolbar=1&navpanes=0`}
-                      className="w-full h-full border-0"
-                      title="Student document"
-                    />
-                  ) : pdfBlobUrl && student.pdf_url?.match(/\.(docx?)/i) ? (
+                  {student.pdf_url?.match(/\.(docx?)$/i) ? (
                     <div className="flex flex-col items-center justify-center h-full gap-3">
                       <FileText className="h-10 w-10 text-muted-foreground" />
                       <p className="text-sm text-muted-foreground">Word-bestanden kunnen niet inline worden weergegeven</p>
-                      <a href={pdfBlobUrl} download={`${student.naam}.docx`} className="text-sm text-primary hover:underline">
-                        Download bestand
-                      </a>
+                      {pdfBlobUrl && (
+                        <a href={pdfBlobUrl} download={`${student.naam}.docx`} className="text-sm text-primary hover:underline">
+                          Download bestand
+                        </a>
+                      )}
                     </div>
                   ) : (
-                    <div className="flex items-center justify-center h-full">
-                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                    </div>
+                    <PdfViewer
+                      url={student.pdf_url}
+                      title={`${student.naam} — Document`}
+                      className="w-full h-full"
+                    />
                   )}
                 </CardContent>
               </Card>
