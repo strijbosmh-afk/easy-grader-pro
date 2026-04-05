@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 const CORRECT_PIN = "0722";
 const SESSION_KEY = "pin_unlocked";
@@ -38,6 +39,14 @@ export function PinGate({ children }: PinGateProps) {
       const fullPin = [...newPin].join("");
       if (fullPin === CORRECT_PIN) {
         sessionStorage.setItem(SESSION_KEY, "true");
+        // Silently restore existing Supabase session (stored in localStorage).
+        // On her one PC this always works. On a new device it signs in anonymously
+        // so the app still opens — data just won't be there.
+        supabase.auth.getSession().then(({ data: { session } }) => {
+          if (!session) {
+            supabase.auth.signInAnonymously().catch(() => {});
+          }
+        });
         setUnlocked(true);
       } else {
         setError(true);
