@@ -42,7 +42,10 @@ function PageLoader() {
 }
 
 function ProtectedRoutes() {
-  // Auth handled by PinGate — no Supabase login required
+  const { isAuthenticated } = useAuth();
+  // PinGate handles the daily lock screen. Supabase session is needed for data
+  // access (RLS). On a new device, log in once — session persists in localStorage.
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
   return (
     <AppLayout>
       <Suspense fallback={<PageLoader />}>
@@ -88,8 +91,9 @@ const App = () => (
 );
 
 function LoginRoute() {
-  // Skip login — PIN handles authentication
-  return <Navigate to="/" replace />;
+  const { isAuthenticated } = useAuth();
+  if (isAuthenticated) return <Navigate to="/" replace />;
+  return <Login />;
 }
 
 export default App;
