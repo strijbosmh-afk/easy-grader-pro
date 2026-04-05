@@ -7,6 +7,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppLayout } from "@/components/AppLayout";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { PinGate } from "@/components/PinGate";
 
 // Eagerly load the landing page; lazy-load everything else
 import Index from "./pages/Index";
@@ -68,18 +69,20 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <BrowserRouter>
-          <AuthProvider>
-            <Suspense fallback={<PageLoader />}>
-              <Routes>
-                <Route path="/login" element={<LoginRoute />} />
-                <Route path="/reset-password" element={<ResetPassword />} />
-                <Route path="/student/feedback/:shareToken" element={<StudentFeedback />} />
-                <Route path="/*" element={<ProtectedRoutes />} />
-              </Routes>
-            </Suspense>
-          </AuthProvider>
-        </BrowserRouter>
+        <PinGate>
+          <BrowserRouter>
+            <AuthProvider>
+              <Suspense fallback={<PageLoader />}>
+                <Routes>
+                  <Route path="/login" element={<LoginRoute />} />
+                  <Route path="/reset-password" element={<ResetPassword />} />
+                  <Route path="/student/feedback/:shareToken" element={<StudentFeedback />} />
+                  <Route path="/*" element={<ProtectedRoutes />} />
+                </Routes>
+              </Suspense>
+            </AuthProvider>
+          </BrowserRouter>
+        </PinGate>
       </TooltipProvider>
     </ThemeProvider>
   </QueryClientProvider>
