@@ -1747,7 +1747,12 @@ const ProjectDetail = () => {
                                       <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => renameStudent(student.id, editStudentName)}><Check className="h-3 w-3" /></Button>
                                       <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditingStudentId(null)}><X className="h-3 w-3" /></Button>
                                     </div>
-                                  ) : student.naam}
+                                  ) : (
+                                    <span className="flex items-center gap-1.5">
+                                      {student.naam}
+                                      {isNew && <Badge variant="secondary" className="text-[10px] px-1 py-0 bg-primary/10 text-primary">Nieuw</Badge>}
+                                    </span>
+                                  )}
                                 </TableCell>
                                 <TableCell>
                                   {student.status === "analyzing" ? (
