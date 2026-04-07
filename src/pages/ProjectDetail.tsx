@@ -1720,8 +1720,9 @@ const ProjectDetail = () => {
                             const missing = getMissingScores(student);
                             const isEditingSt = editingStudentId === student.id;
                             const isHighlighted = idx === highlightedIndex;
+                            const isNew = (Date.now() - new Date(student.created_at).getTime()) < 5 * 60 * 1000;
                             return (
-                              <TableRow key={student.id} className={`cursor-pointer ${student.status === "graded" ? "bg-green-50/50 dark:bg-green-950/20" : ""} ${isHighlighted ? "ring-2 ring-primary ring-inset bg-accent/50" : ""}`} onClick={() => {
+                              <TableRow key={student.id} className={`cursor-pointer transition-colors ${isNew ? "animate-in fade-in slide-in-from-left-2 duration-500 bg-primary/5 border-l-2 border-l-primary" : ""} ${student.status === "graded" ? "bg-green-50/50 dark:bg-green-950/20" : ""} ${isHighlighted ? "ring-2 ring-primary ring-inset bg-accent/50" : ""}`} onClick={() => {
                                 if (isEditingSt) return;
                                 if (isReviewer) { setReviewStudentId(student.id); return; }
                                 navigate(`/project/${id}/student/${student.id}`);
