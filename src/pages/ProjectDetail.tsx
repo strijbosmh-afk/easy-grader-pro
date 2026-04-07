@@ -506,11 +506,13 @@ const ProjectDetail = () => {
             if (insertError) throw insertError;
 
             success = true;
-          } catch (err) {
+          } catch (err: any) {
+            console.error(`Upload poging ${attempt + 1}/3 mislukt voor ${file.name}:`, err?.message || err);
             if (attempt < 2) {
               await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
             } else {
               failed.push(file.name);
+              toast.error(`Upload mislukt voor ${file.name}: ${err?.message || "Onbekende fout"}`);
             }
           }
         }
