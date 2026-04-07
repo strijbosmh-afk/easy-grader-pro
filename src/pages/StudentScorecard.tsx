@@ -18,6 +18,7 @@ import { exportStudentToWord } from "@/lib/export-word";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PdfViewer } from "@/components/PdfViewer";
 import { useScoreHistory } from "@/hooks/useScoreHistory";
+import { invokeEdgeFunction } from "@/lib/supabase-helpers";
 import { useKeyboardShortcuts, type Shortcut } from "@/hooks/useKeyboardShortcuts";
 import { KeyboardShortcutsDialog } from "@/components/KeyboardShortcutsDialog";
 import { Undo2 } from "lucide-react";
