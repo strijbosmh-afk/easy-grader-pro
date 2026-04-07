@@ -157,6 +157,8 @@ const ProjectDetail = () => {
   const [editingStudentId, setEditingStudentId] = useState<string | null>(null);
   const [editStudentName, setEditStudentName] = useState("");
   const [deletingStudentId, setDeletingStudentId] = useState<string | null>(null);
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const [selectedStudents, setSelectedStudents] = useState<Set<string>>(new Set());
   const [exportingWord, setExportingWord] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
@@ -795,6 +797,23 @@ const ProjectDetail = () => {
     queryClient.invalidateQueries({ queryKey: ["students", id] });
     setDeletingStudentId(null);
     toast.success("Student verwijderd");
+  };
+
+  const deleteSelectedStudents = async () => {
+    setBulkDeleting(true);
+    try {
+      const ids = Array.from(selectedStudents);
+      await supabase.from("student_scores").delete().in("student_id", ids);
+      await supabase.from("score_audit_log").delete().in("student_id", ids);
+      await supabase.from("plagiarism_results").delete().in("student_a_id", ids);
+      await supabase.from("plagiarism_results").delete().in("student_b_id", ids);
+      const { error } = await supabase.from("students").delete().in("id", ids);
+      if (error) { toast.error("Verwijderen mislukt"); return; }
+      queryClient.invalidateQueries({ queryKey: ["students", id] });
+      setSelectedStudents(new Set());
+      toast.success(`${ids.length} student(en) verwijderd`);
+    } catch { toast.error("Verwijderen mislukt"); }
+    finally { setBulkDeleting(false); setShowBulkDeleteConfirm(false); }
   };
 
   // Find the eindscore criterion if it exists
@@ -1573,6 +1592,16 @@ const ProjectDetail = () => {
                           {finalizing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />}
                           Markeer als beoordeeld ({selectedStudents.size})
                         </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowBulkDeleteConfirm(true)}
+                          disabled={bulkDeleting}
+                          className="border-destructive/30 text-destructive hover:bg-destructive/10"
+                        >
+                          {bulkDeleting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Trash2 className="h-4 w-4 mr-2" />}
+                          Verwijder ({selectedStudents.size})
+                        </Button>
                       </>
                     )}
 
@@ -2076,6 +2105,26 @@ const ProjectDetail = () => {
         </DialogContent>
       </Dialog>
       <KeyboardShortcutsDialog shortcuts={projectShortcuts} />
+
+      {/* Bulk delete confirmation dialog */}
+      <Dialog open={showBulkDeleteConfirm} onOpenChange={setShowBulkDeleteConfirm}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Studenten verwijderen</DialogTitle>
+            <DialogDescription>
+              Weet je zeker dat je <span className="font-semibold">{selectedStudents.size} student(en)</span> wilt verwijderen? 
+              Alle scores en feedback worden permanent verwijderd. Het project zelf blijft behouden.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowBulkDeleteConfirm(false)} disabled={bulkDeleting}>Annuleren</Button>
+            <Button variant="destructive" onClick={deleteSelectedStudents} disabled={bulkDeleting}>
+              {bulkDeleting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Trash2 className="h-4 w-4 mr-2" />}
+              Verwijder {selectedStudents.size} student(en)
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
