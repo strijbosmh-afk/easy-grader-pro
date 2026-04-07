@@ -40,6 +40,8 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
 }
 
 function extractStoragePath(url: string): string | null {
+  if (!url) return null;
+  if (!/^https?:\/\//i.test(url)) return decodeURIComponent(url);
   const match = url.match(/\/storage\/v1\/object\/(?:public|sign)\/pdfs\/(.+?)(?:\?|$)/);
   if (match) return match[1];
   const match2 = url.match(/\/object\/(?:public|sign)\/pdfs\/(.+?)(?:\?|$)/);

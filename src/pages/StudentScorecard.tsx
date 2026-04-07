@@ -24,6 +24,8 @@ import { KeyboardShortcutsDialog } from "@/components/KeyboardShortcutsDialog";
 import { Undo2 } from "lucide-react";
 
 function extractStoragePath(url: string): string | null {
+  if (!url) return null;
+  if (!/^https?:\/\//i.test(url)) return url;
   const match = url.match(/\/storage\/v1\/object\/(?:public|sign)\/pdfs\/(.+?)(?:\?|$)/);
   if (match) return decodeURIComponent(match[1]);
   const match2 = url.match(/\/object\/(?:public|sign)\/pdfs\/(.+?)(?:\?|$)/);
@@ -105,10 +107,12 @@ const StudentScorecard = () => {
         }
       }
       // Fallback: try fetching URL directly
-      const res = await fetch(url);
-      if (res.ok) {
-        const blob = await res.blob();
-        return URL.createObjectURL(blob);
+      if (/^https?:\/\//i.test(url)) {
+        const res = await fetch(url);
+        if (res.ok) {
+          const blob = await res.blob();
+          return URL.createObjectURL(blob);
+        }
       }
       return null;
     },
