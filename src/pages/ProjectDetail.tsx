@@ -481,34 +481,48 @@ const ProjectDetail = () => {
 
   const uploadStudentPdfs = async (files: FileList | File[]) => {
     setUploading(true);
+    const failed: string[] = [];
     try {
       for (const file of Array.from(files)) {
         if (!ACCEPTED_DOC_TYPES.includes(file.type) && !file.name.match(/\.(pdf|docx|doc)$/i)) {
           toast.error(`${file.name} is geen PDF of Word-bestand`);
           continue;
         }
-        const naam = extractStudentName(file.name);
-        const path = `${user!.id}/${id}/students/${Date.now()}_${file.name}`;
-        const { error: uploadError } = await supabase.storage.from("pdfs").upload(path, file);
-        if (uploadError) {
-          toast.error(`Upload mislukt: ${file.name}`);
-          continue;
-        }
-        const { data: urlData, error: signError } = await supabase.storage.from("pdfs").createSignedUrl(path, 60 * 60 * 24 * 365); // 1 year
-        if (signError || !urlData?.signedUrl) {
-          toast.error(`Kon URL aanmaken voor: ${file.name}`);
-          continue;
-        }
-        const { error: insertError } = await supabase
-          .from("students")
-          .insert({ project_id: id!, naam, pdf_url: urlData.signedUrl });
-        if (insertError) {
-          toast.error(`Student toevoegen mislukt: ${naam}`);
-          continue;
+
+        let success = false;
+        for (let attempt = 0; attempt < 3 && !success; attempt++) {
+          try {
+            const naam = extractStudentName(file.name);
+            const path = `${user!.id}/${id}/students/${Date.now()}_${file.name}`;
+            const { error: uploadError } = await supabase.storage.from("pdfs").upload(path, file);
+            if (uploadError) throw uploadError;
+
+            const { data: urlData, error: signError } = await supabase.storage.from("pdfs").createSignedUrl(path, 60 * 60 * 24 * 365);
+            if (signError || !urlData?.signedUrl) throw new Error("Signed URL mislukt");
+
+            const { error: insertError } = await supabase
+              .from("students")
+              .insert({ project_id: id!, naam, pdf_url: urlData.signedUrl });
+            if (insertError) throw insertError;
+
+            success = true;
+          } catch (err) {
+            if (attempt < 2) {
+              await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+            } else {
+              failed.push(file.name);
+            }
+          }
         }
       }
       queryClient.invalidateQueries({ queryKey: ["students", id] });
-      toast.success("Studenten toegevoegd!");
+      if (failed.length > 0) {
+        toast.error(`${failed.length} bestand(en) mislukt na 3 pogingen: ${failed.join(", ")}`);
+      }
+      const successCount = Array.from(files).length - failed.length;
+      if (successCount > 0) {
+        toast.success(`${successCount} student(en) toegevoegd!`);
+      }
     } finally {
       setUploading(false);
     }
