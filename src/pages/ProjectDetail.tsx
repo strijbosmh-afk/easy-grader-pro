@@ -799,6 +799,23 @@ const ProjectDetail = () => {
     toast.success("Student verwijderd");
   };
 
+  const deleteSelectedStudents = async () => {
+    setBulkDeleting(true);
+    try {
+      const ids = Array.from(selectedStudents);
+      await supabase.from("student_scores").delete().in("student_id", ids);
+      await supabase.from("score_audit_log").delete().in("student_id", ids);
+      await supabase.from("plagiarism_results").delete().in("student_a_id", ids);
+      await supabase.from("plagiarism_results").delete().in("student_b_id", ids);
+      const { error } = await supabase.from("students").delete().in("id", ids);
+      if (error) { toast.error("Verwijderen mislukt"); return; }
+      queryClient.invalidateQueries({ queryKey: ["students", id] });
+      setSelectedStudents(new Set());
+      toast.success(`${ids.length} student(en) verwijderd`);
+    } catch { toast.error("Verwijderen mislukt"); }
+    finally { setBulkDeleting(false); setShowBulkDeleteConfirm(false); }
+  };
+
   // Find the eindscore criterion if it exists
   const eindscoreCriterium = criteria?.find((c: any) => c.is_eindscore);
 
