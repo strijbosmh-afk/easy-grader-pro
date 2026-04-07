@@ -434,6 +434,13 @@ const StudentScorecard = () => {
     setTimeout(() => setCopied(false), 3000);
   };
 
+  const totalFinal = criteria?.reduce((sum, c) => {
+    const val = getScoreForCriterium(c.id);
+    return sum + (parseFloat(val.final_score) || 0);
+  }, 0) || 0;
+
+  const totalMax = criteria?.reduce((sum, c) => sum + Number(c.max_score), 0) || 0;
+
   // Compute class average % and this student's comparison
   const classComparison = useMemo(() => {
     if (!allStudents || allStudents.length < 2 || !criteria || totalMax === 0) return null;
