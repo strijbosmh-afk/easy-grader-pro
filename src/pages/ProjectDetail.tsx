@@ -1702,13 +1702,38 @@ const ProjectDetail = () => {
                       <TableHeader>
                         <TableRow>
                           <TableHead className="w-10">
-                            <Checkbox
-                              checked={selectedStudents.size === students.length && students.length > 0}
-                              onCheckedChange={(checked) => {
-                                if (checked) setSelectedStudents(new Set(students.map((s) => s.id)));
-                                else setSelectedStudents(new Set());
-                              }}
-                            />
+                            <div className="flex items-center">
+                              <Checkbox
+                                checked={selectedStudents.size === students.length && students.length > 0}
+                                onCheckedChange={(checked) => {
+                                  if (checked) setSelectedStudents(new Set(students.map((s) => s.id)));
+                                  else setSelectedStudents(new Set());
+                                }}
+                              />
+                              <Select
+                                value=""
+                                onValueChange={(val) => {
+                                  if (val === "all") setSelectedStudents(new Set(students.map((s) => s.id)));
+                                  else if (val === "none") setSelectedStudents(new Set());
+                                  else {
+                                    const ids = students.filter((s) => s.status === val).map((s) => s.id);
+                                    setSelectedStudents(new Set(ids));
+                                  }
+                                }}
+                              >
+                                <SelectTrigger className="h-6 w-6 p-0 border-0 shadow-none [&>svg]:h-3 [&>svg]:w-3">
+                                  <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="all">Alles selecteren</SelectItem>
+                                  <SelectItem value="none">Niets selecteren</SelectItem>
+                                  <SelectItem value="pending">Alle 'Wacht' ({students.filter(s => s.status === "pending").length})</SelectItem>
+                                  <SelectItem value="analyzing">Alle 'Analyse...' ({students.filter(s => s.status === "analyzing").length})</SelectItem>
+                                  <SelectItem value="reviewed">Alle 'Te beoordelen' ({students.filter(s => s.status === "reviewed").length})</SelectItem>
+                                  <SelectItem value="graded">Alle 'Beoordeeld' ({students.filter(s => s.status === "graded").length})</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
                           </TableHead>
                           <TableHead className="cursor-pointer select-none hover:bg-muted/50" onClick={() => {
                             if (sortColumn === "naam") setSortDirection(d => d === "asc" ? "desc" : "asc");
