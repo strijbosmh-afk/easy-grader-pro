@@ -63,6 +63,19 @@ const statusVariants: Record<StudentStatus, "secondary" | "outline" | "default" 
   graded: "default",
 };
 
+function sanitizeStorageFileName(fileName: string) {
+  const normalized = fileName.normalize("NFKD").replace(/[\u0300-\u036f]/g, "");
+  const parts = normalized.split(".");
+  const extension = parts.length > 1 ? parts.pop()?.toLowerCase() : "";
+  const baseName = parts.join(".") || normalized;
+  const safeBaseName = baseName
+    .replace(/[^a-zA-Z0-9._-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^[-.]+|[-.]+$/g, "") || "bestand";
+
+  return extension ? `${safeBaseName}.${extension}` : safeBaseName;
+}
+
 function StudentAnalyzingProgress({ studentId, startTimesRef, avgTime }: {
   studentId: string;
   startTimesRef: React.RefObject<Map<string, number>>;
@@ -357,7 +370,9 @@ const ProjectDetail = () => {
 
   const doUploadPdf = async (file: File, type: "opdracht" | "graderingstabel") => {
     const ext = file.name.split('.').pop()?.toLowerCase() || 'pdf';
-    const path = `${user!.id}/${id}/${type}_${Date.now()}.${ext}`;
+    const safeFileName = sanitizeStorageFileName(file.name);
+    const safeExt = safeFileName.split('.').pop()?.toLowerCase() || ext;
+    const path = `${user!.id}/${id}/${type}_${Date.now()}.${safeExt}`;
     const { error: uploadError } = await supabase.storage.from("pdfs").upload(path, file);
     if (uploadError) throw uploadError;
     const { data: urlData, error: signError } = await supabase.storage.from("pdfs").createSignedUrl(path, 60 * 60 * 24 * 365); // 1 year
@@ -498,7 +513,8 @@ const ProjectDetail = () => {
         for (let attempt = 0; attempt < 3 && !success; attempt++) {
           try {
             const naam = extractStudentName(file.name);
-            const path = `${user!.id}/${id}/students/${Date.now()}_${file.name}`;
+            const safeFileName = sanitizeStorageFileName(file.name);
+            const path = `${user!.id}/${id}/students/${Date.now()}_${safeFileName}`;
             const { error: uploadError } = await supabase.storage.from("pdfs").upload(path, file);
             if (uploadError) throw uploadError;
 
