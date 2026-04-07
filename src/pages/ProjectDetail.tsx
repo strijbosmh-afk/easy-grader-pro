@@ -480,6 +480,11 @@ const ProjectDetail = () => {
   const ACCEPTED_DOC_TYPES = ["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/msword"];
 
   const uploadStudentPdfs = async (files: FileList | File[]) => {
+    if (!user?.id || !id) {
+      toast.error("Je moet ingelogd zijn om studenten te uploaden");
+      return;
+    }
+
     setUploading(true);
     const failed: string[] = [];
     try {
@@ -497,13 +502,14 @@ const ProjectDetail = () => {
             const { error: uploadError } = await supabase.storage.from("pdfs").upload(path, file);
             if (uploadError) throw uploadError;
 
-            const { data: urlData, error: signError } = await supabase.storage.from("pdfs").createSignedUrl(path, 60 * 60 * 24 * 365);
-            if (signError || !urlData?.signedUrl) throw new Error("Signed URL mislukt");
-
             const { error: insertError } = await supabase
               .from("students")
-              .insert({ project_id: id!, naam, pdf_url: urlData.signedUrl });
-            if (insertError) throw insertError;
+              .insert({ project_id: id!, naam, pdf_url: path });
+
+            if (insertError) {
+              await supabase.storage.from("pdfs").remove([path]);
+              throw insertError;
+            }
 
             success = true;
           } catch (err: any) {
@@ -517,7 +523,8 @@ const ProjectDetail = () => {
           }
         }
       }
-      queryClient.invalidateQueries({ queryKey: ["students", id] });
+      await queryClient.invalidateQueries({ queryKey: ["students", id] });
+      await queryClient.refetchQueries({ queryKey: ["students", id] });
       if (failed.length > 0) {
         toast.error(`${failed.length} bestand(en) mislukt na 3 pogingen: ${failed.join(", ")}`);
       }
