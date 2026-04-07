@@ -1592,6 +1592,16 @@ const ProjectDetail = () => {
                           {finalizing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />}
                           Markeer als beoordeeld ({selectedStudents.size})
                         </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowBulkDeleteConfirm(true)}
+                          disabled={bulkDeleting}
+                          className="border-destructive/30 text-destructive hover:bg-destructive/10"
+                        >
+                          {bulkDeleting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Trash2 className="h-4 w-4 mr-2" />}
+                          Verwijder ({selectedStudents.size})
+                        </Button>
                       </>
                     )}
 
