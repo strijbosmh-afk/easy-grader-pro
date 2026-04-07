@@ -2105,6 +2105,26 @@ const ProjectDetail = () => {
         </DialogContent>
       </Dialog>
       <KeyboardShortcutsDialog shortcuts={projectShortcuts} />
+
+      {/* Bulk delete confirmation dialog */}
+      <Dialog open={showBulkDeleteConfirm} onOpenChange={setShowBulkDeleteConfirm}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Studenten verwijderen</DialogTitle>
+            <DialogDescription>
+              Weet je zeker dat je <span className="font-semibold">{selectedStudents.size} student(en)</span> wilt verwijderen? 
+              Alle scores en feedback worden permanent verwijderd. Het project zelf blijft behouden.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowBulkDeleteConfirm(false)} disabled={bulkDeleting}>Annuleren</Button>
+            <Button variant="destructive" onClick={deleteSelectedStudents} disabled={bulkDeleting}>
+              {bulkDeleting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Trash2 className="h-4 w-4 mr-2" />}
+              Verwijder {selectedStudents.size} student(en)
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
